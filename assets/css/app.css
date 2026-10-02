@@ -1,0 +1,322 @@
+/* See the Tailwind configuration guide for advanced usage
+   https://tailwindcss.com/docs/configuration */
+
+@import "tailwindcss" source(none);
+@import "phoenix-colocated/notebook/colocated.css";
+@import "../../../kotoba/priv/static/kotoba.css";
+@source "../css";
+@source "../js";
+@source "../../lib/notebook_web";
+/* Required for Tailwind to automatically pick up changes in colocated CSS files in dev */
+@source "../../_build/dev/phoenix-colocated/notebook/*/";
+
+/* A Tailwind plugin that makes "hero-#{ICON}" classes available.
+   The heroicons installation itself is managed by your mix.exs */
+@plugin "../vendor/heroicons";
+
+/* daisyUI Tailwind Plugin. */
+@plugin "daisyui/packages/bundle/daisyui" {
+  themes: false;
+}
+
+/* daisyUI theme plugin.
+  We ship with two themes, a light one inspired on Phoenix colors and a dark one inspired
+  on Elixir colors. Build your own at: https://daisyui.com/theme-generator/ */
+@plugin "daisyui/packages/bundle/daisyui-theme" {
+  name: "dark";
+  default: false;
+  prefersdark: true;
+  color-scheme: "dark";
+  --color-base-100: oklch(30.33% 0.016 252.42);
+  --color-base-200: oklch(25.26% 0.014 253.1);
+  --color-base-300: oklch(20.15% 0.012 254.09);
+  --color-base-content: oklch(97.807% 0.029 256.847);
+  --color-primary: oklch(58% 0.233 277.117);
+  --color-primary-content: oklch(96% 0.018 272.314);
+  --color-secondary: oklch(58% 0.233 277.117);
+  --color-secondary-content: oklch(96% 0.018 272.314);
+  --color-accent: oklch(60% 0.25 292.717);
+  --color-accent-content: oklch(96% 0.016 293.756);
+  --color-neutral: oklch(37% 0.044 257.287);
+  --color-neutral-content: oklch(98% 0.003 247.858);
+  --color-info: oklch(58% 0.158 241.966);
+  --color-info-content: oklch(97% 0.013 236.62);
+  --color-success: oklch(60% 0.118 184.704);
+  --color-success-content: oklch(98% 0.014 180.72);
+  --color-warning: oklch(66% 0.179 58.318);
+  --color-warning-content: oklch(98% 0.022 95.277);
+  --color-error: oklch(58% 0.253 17.585);
+  --color-error-content: oklch(96% 0.015 12.422);
+  --radius-selector: 0.25rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.21875rem;
+  --size-field: 0.21875rem;
+  --border: 1.5px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@plugin "daisyui/packages/bundle/daisyui-theme" {
+  name: "light";
+  default: true;
+  prefersdark: false;
+  color-scheme: "light";
+  --color-base-100: oklch(98% 0 0);
+  --color-base-200: oklch(96% 0.001 286.375);
+  --color-base-300: oklch(92% 0.004 286.32);
+  --color-base-content: oklch(21% 0.006 285.885);
+  --color-primary: oklch(70% 0.213 47.604);
+  --color-primary-content: oklch(98% 0.016 73.684);
+  --color-secondary: oklch(55% 0.027 264.364);
+  --color-secondary-content: oklch(98% 0.002 247.839);
+  --color-accent: oklch(0% 0 0);
+  --color-accent-content: oklch(100% 0 0);
+  --color-neutral: oklch(44% 0.017 285.786);
+  --color-neutral-content: oklch(98% 0 0);
+  --color-info: oklch(62% 0.214 259.815);
+  --color-info-content: oklch(97% 0.014 254.604);
+  --color-success: oklch(70% 0.14 182.503);
+  --color-success-content: oklch(98% 0.014 180.72);
+  --color-warning: oklch(66% 0.179 58.318);
+  --color-warning-content: oklch(98% 0.022 95.277);
+  --color-error: oklch(58% 0.253 17.585);
+  --color-error-content: oklch(96% 0.015 12.422);
+  --radius-selector: 0.25rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.21875rem;
+  --size-field: 0.21875rem;
+  --border: 1.5px;
+  --depth: 1;
+  --noise: 0;
+}
+
+/* Add variants based on LiveView classes */
+@custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
+@custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &);
+@custom-variant phx-change-loading (.phx-change-loading&, .phx-change-loading &);
+
+/* Use the data attribute for dark mode  */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/* Make LiveView wrapper divs transparent for layout */
+[data-phx-session], [data-phx-teleported-src] { display: contents }
+
+/* This file is for your main application CSS */
+
+:root { --paper: #f6f3ec; --ink: #232622; --muted: #697069; --rule: #dcded4; --accent: #a45537; font-family: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; color: var(--ink); background: var(--paper); }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--paper); }
+a { color: inherit; text-decoration: none; }
+button, input { font: inherit; }
+button, a, input { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+.notebook-shell { min-height: 100vh; display: flex; flex-direction: column; }
+.site-header { min-height: 82px; display: flex; align-items: center; gap: 30px; padding: 0 clamp(24px, 5vw, 88px); border-bottom: 1px solid var(--rule); }
+.wordmark { font-size: 1.75rem; font-weight: 700; letter-spacing: -.055em; line-height: 1; }
+.wordmark-dot { color: var(--accent); }
+.site-caption { font: 11px/1.3 ui-sans-serif, system-ui, sans-serif; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+.identity { margin-left: auto; font: 12px ui-sans-serif, system-ui, sans-serif; color: var(--muted); white-space: nowrap; }
+.identity strong { color: var(--ink); font-weight: 600; }
+.notebook-main { width: min(100%, 1100px); margin: 0 auto; padding: clamp(32px, 6vw, 86px) clamp(24px, 5vw, 70px) 100px; flex: 1; }
+.flash-area { position: relative; }
+.index-intro { max-width: 740px; }
+.eyebrow, .page-kicker, .page-nav span { font: 600 10px/1.4 ui-sans-serif, system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
+.index-intro h1, .page-heading h1 { font-size: clamp(3.1rem, 7vw, 6.5rem); font-weight: 400; line-height: .98; letter-spacing: -.065em; margin: 24px 0 28px; }
+.index-intro > p:last-child, .page-heading > p:last-child { font-size: clamp(1rem, 1.6vw, 1.18rem); color: var(--muted); line-height: 1.5; max-width: 590px; }
+.index-tools { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-top: clamp(70px, 10vw, 135px); border-bottom: 1px solid var(--ink); padding-bottom: 22px; }
+.index-tools form { display: flex; flex-direction: column; gap: 12px; width: min(420px, 100%); }
+.index-tools label, .field-label { font: 600 10px ui-sans-serif, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.index-tools input { width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--rule); padding: 6px 0 12px; border-radius: 0; outline-offset: 6px; color: var(--ink); }
+.button { display: inline-flex; justify-content: center; align-items: center; gap: 26px; min-height: 44px; padding: 11px 22px; font: 600 12px ui-sans-serif, system-ui, sans-serif; cursor: pointer; border: 1px solid var(--ink); transition: background .2s ease, color .2s ease; white-space: nowrap; }
+.button-primary { background: var(--ink); color: var(--paper); }
+.button-primary:hover { background: var(--accent); border-color: var(--accent); }
+.page-row { display: flex; justify-content: space-between; gap: 40px; padding: 26px 0 28px; border-bottom: 1px solid var(--rule); transition: padding-left .2s ease; }
+.page-row:hover { padding-left: 10px; }
+.page-row h2 { font-size: clamp(1.4rem, 2.4vw, 2rem); font-weight: 400; letter-spacing: -.035em; margin: 8px 0 7px; }
+.page-row p { color: var(--muted); font-size: .94rem; line-height: 1.45; margin: 0; }
+.page-meta { display: flex; gap: 30px; align-items: center; color: var(--muted); font: 11px ui-sans-serif, system-ui, sans-serif; white-space: nowrap; }
+.page-meta > span[aria-hidden] { font-size: 22px; color: var(--accent); }
+.page-author { color: var(--ink); }
+.page-byline { color: var(--ink); }
+.empty-state { padding: 75px 0 100px; }
+.empty-mark { color: var(--accent); font-size: 2rem; }
+.empty-state h2 { font-size: 2rem; font-weight: 400; margin: 15px 0 5px; }
+.empty-state p { color: var(--muted); }
+.page-nav { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding-bottom: 24px; border-bottom: 1px solid var(--rule); font: 12px ui-sans-serif, system-ui, sans-serif; }
+.page-nav a:hover, .reader-actions a:not(.button):hover, .form-actions a:hover { color: var(--accent); }
+.page-heading { padding: 50px 0 36px; }
+.page-heading h1 { font-size: clamp(3rem, 6vw, 5.4rem); margin: 17px 0 24px; }
+.reader-actions, .form-actions { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; font: 12px ui-sans-serif, system-ui, sans-serif; }
+.reader-actions { padding: 0 0 35px; border-bottom: 1px solid var(--rule); }
+.page-form { display: flex; flex-direction: column; align-items: stretch; gap: 14px; max-width: 900px; }
+.page-form > input { padding: 13px 15px; border: 1px solid var(--rule); background: #fcfbf7; color: var(--ink); font-size: 1.25rem; }
+
+/* Kotoba in paper and ink: the editor and the reader share these tokens. */
+.kotoba, .kotoba-content {
+  --kotoba-font: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  --kotoba-font-size: 1.08rem;
+  --kotoba-line-height: 1.75;
+  --kotoba-text: var(--ink);
+  --kotoba-muted: var(--muted);
+  --kotoba-background: #fcfbf7;
+  --kotoba-surface: #f0ebe0;
+  --kotoba-border: var(--rule);
+  --kotoba-accent: var(--accent);
+  --kotoba-accent-text: #fcfbf7;
+  --kotoba-selection: #ecdccb;
+  --kotoba-mention-text: #854329;
+  --kotoba-mention-background: #f1e4d6;
+  --kotoba-radius: 3px;
+  --kotoba-shadow: 0 14px 38px #22251e1f, 0 2px 6px #22251e14;
+  --kotoba-padding: 26px 30px 34px;
+  --kotoba-h1-size: 2.05em;
+  --kotoba-h2-size: 1.6em;
+  --kotoba-h3-size: 1.3em;
+  --kotoba-h4-size: 1.1em;
+  --kotoba-token-comment: #8c877a;
+  --kotoba-token-keyword: #8b3d6b;
+  --kotoba-token-string: #4d7a39;
+  --kotoba-token-constant: #b0602c;
+  --kotoba-token-function: #2f5d7c;
+  --kotoba-token-attr: #8b5a2b;
+  --kotoba-token-variable: var(--ink);
+  --kotoba-token-operator: #6d6a60;
+  --kotoba-token-punctuation: #6d6a60;
+}
+.page-form .kotoba { min-height: 360px; }
+.kotoba:focus-within { box-shadow: 0 0 0 1px var(--rule), 0 18px 40px -28px #22251e40; }
+.kotoba-editable:focus-visible { outline: none; }
+.kotoba-toolbar { position: sticky; top: 0; z-index: 5; gap: 4px; padding: 6px 8px; background: #f6f2ea; }
+.kotoba-toolbar-group + .kotoba-toolbar-group { padding-left: 4px; }
+.kotoba-toolbar-button { color: #4a4e47; transition: background .15s ease, color .15s ease; }
+.kotoba-toolbar-button:hover { border-color: transparent; background: #ebe4d6; color: var(--ink); }
+.kotoba-toolbar-button[aria-pressed="true"] { background: #e6d6c5; color: #6f341f; }
+.kotoba-toolbar-select { font: 12px ui-sans-serif, system-ui, sans-serif; }
+.kotoba-placeholder { font-style: italic; }
+
+/* Headings read the same while writing and reading: the page's display voice. */
+.kotoba-editable :is(h1, h2, h3, h4), .page-body .kotoba-content :where(h1, h2, h3, h4) { font-weight: 400; letter-spacing: -.03em; line-height: 1.15; }
+.kotoba-editable :is(h1, h2) { margin: 1.1em 0 .45em; }
+.kotoba-editable > :first-child { margin-top: 0; }
+
+/* The selection menu and link card: Notebook's own ink pill. The new page
+   uses Kotoba's default menu with these tokens; the edit page brings its own
+   markup (Heroicons) through <.kotoba_selection_menu>. */
+.kotoba-selection-menu, .kotoba-link-card {
+  --kotoba-floating-background: #262924;
+  --kotoba-floating-text: #f3efe6;
+  --kotoba-floating-border: #3a3e37;
+  --kotoba-floating-hover: #3a3e37;
+  --kotoba-floating-radius: 10px;
+  --kotoba-floating-shadow: 0 16px 34px -12px #1a1c1866, 0 3px 8px #1a1c1833;
+  --kotoba-focus-ring: 0 0 0 2px #d9a184;
+}
+.kotoba-selection-menu .kotoba-toolbar-button { color: #d9d4c9; border-radius: 7px; }
+.kotoba-selection-menu .kotoba-toolbar-button:hover { color: #fff; }
+.kotoba-selection-menu .kotoba-toolbar-button[aria-pressed="true"] { background: var(--accent); color: #fff7ef; }
+.notebook-selection-menu .kotoba-toolbar-button { min-width: 32px; min-height: 32px; }
+.kotoba-link-card-url { color: #e9b89f; font-family: ui-sans-serif, system-ui, sans-serif; }
+.kotoba-link-card-button { color: #d9d4c9; }
+
+/* The reader: a measured column, with wider figures. */
+.page-body { padding: 48px 0 70px; }
+.page-body .kotoba-content { font-size: 1.12rem; line-height: 1.8; overflow-wrap: anywhere; }
+/* Text keeps a reading measure; code, tables, files and galleries take the page's width. */
+.page-body .kotoba-content > :where(p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, .notebook-callout) { max-width: 46em; }
+.page-body .kotoba-content :where(h1) { font-size: 2.3em; margin-top: 1.4em; }
+.page-body .kotoba-content :where(h2) { font-size: 1.75em; margin-top: 1.6em; }
+.page-body .kotoba-content :where(h3) { font-size: 1.35em; }
+.page-body .kotoba-content :where(blockquote) { border-inline-start: 2px solid var(--accent); color: #4f554e; font-style: italic; font-size: 1.08em; }
+.page-body .kotoba-content :where(a) { color: #8a4329; text-decoration-color: #d9b5a3; text-decoration-thickness: 1px; transition: text-decoration-color .15s ease; }
+.page-body .kotoba-content :where(a:hover) { text-decoration-color: currentColor; }
+.page-body .kotoba-content :where(pre) { background: #efe9dc; border: 1px solid #e4dccb; font-size: .82em; }
+.page-body .kotoba-content :where(:not(pre) > code) { background: #efe8da; font-size: .84em; }
+.page-body .kotoba-content :where(hr) { border-top-color: var(--rule); width: 40%; margin: 3em auto; }
+.page-body .kotoba-content :where(.kotoba-table-scroll, figure, .kotoba-gallery) { margin: 1.8em 0; }
+.page-body .kotoba-content :where(h1, h2, h3, h4) + :where(.kotoba-table-scroll, pre, figure) { margin-top: .8em; }
+.page-body .kotoba-content :where(.kotoba-table th) { font-weight: 600; font-family: ui-sans-serif, system-ui, sans-serif; font-size: .82em; letter-spacing: .02em; }
+.page-body .kotoba-content :where(.kotoba-table) { font-size: .95em; }
+.index-tools input:focus-visible, .page-form > input:focus-visible, .settings-form input:focus-visible, .auth-panel input:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 1px 0 var(--accent); }
+.page-form > button, .form-actions { align-self: flex-start; margin-top: 16px; }
+.notebook-callout { display: block; border-left: 2px solid var(--accent); padding: 14px 22px; background: #efe8da; margin: 1.4em 0; border-radius: 0 3px 3px 0; }
+.notebook-callout > br:last-child { display: none; }
+
+/* Flash messages: a quiet note at the top of the page. */
+.notebook-toast { position: fixed; z-index: 50; top: 18px; right: clamp(16px, 4vw, 40px); animation: notebook-toast-in .28s cubic-bezier(.2, .8, .2, 1); }
+.notebook-toast-body { display: flex; align-items: flex-start; gap: 12px; width: min(380px, calc(100vw - 32px)); padding: 14px 14px 14px 16px; background: #fcfbf7; border: 1px solid var(--rule); box-shadow: 0 16px 40px -18px #22251e40; font: 13px/1.45 ui-sans-serif, system-ui, sans-serif; color: var(--ink); }
+.notebook-toast-mark { flex: none; width: 7px; height: 7px; margin-top: 6px; border-radius: 50%; background: var(--accent); }
+.notebook-toast-error .notebook-toast-mark { background: #9c382d; }
+.notebook-toast-error { border-color: #e2c3bd; }
+.notebook-toast-text { flex: 1; }
+.notebook-toast-text p { margin: 0; }
+.notebook-toast-title { font-weight: 600; }
+.notebook-toast-close { flex: none; display: inline-flex; padding: 2px; border: 0; background: none; color: var(--muted); cursor: pointer; transition: color .15s ease; }
+.notebook-toast-close:hover { color: var(--ink); }
+@keyframes notebook-toast-in { from { opacity: 0; transform: translateY(-8px); } }
+@media (prefers-reduced-motion: reduce) { .notebook-toast { animation: none; } }
+.site-footer { border-top: 1px solid var(--rule); padding: 24px clamp(24px, 5vw, 88px); color: var(--muted); font: 11px ui-sans-serif, system-ui, sans-serif; }
+.site-footer span { color: var(--accent); padding: 0 8px; }
+@media (max-width: 650px) { .site-header { gap: 12px; min-height: 68px; } .site-caption { display: none; } .notebook-main { padding-top: 48px; } .index-tools { align-items: stretch; flex-direction: column; margin-top: 70px; } .index-tools .button { align-self: flex-start; } .page-meta time { display: none; } .page-heading { padding-top: 36px; } .page-row { gap: 12px; } .identity { font-size: 10px; } }
+.auth-topbar { display: flex; align-items: center; gap: 27px; min-height: 72px; padding: 0 clamp(24px, 5vw, 88px); border-bottom: 1px solid var(--rule); font: 12px ui-sans-serif, system-ui, sans-serif; }
+.auth-topbar .wordmark { font-family: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; margin-right: auto; }
+.auth-topbar a:not(.wordmark):hover { color: var(--accent); }
+.auth-topbar span:not(.wordmark-dot) { color: var(--muted); }
+.auth-topbar .account-avatar { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: #e8e0d2; color: var(--ink) !important; font: 600 11px ui-sans-serif, system-ui, sans-serif; letter-spacing: .03em; }
+.account-menu { position: relative; margin-left: auto; }
+.account-menu summary { list-style: none; cursor: pointer; }
+.account-menu summary::-webkit-details-marker { display: none; }
+.account-menu[open] .account-avatar, .account-menu summary:hover { background: #ded1bd; }
+.account-menu-panel { position: absolute; z-index: 30; top: calc(100% + 12px); right: 0; width: 230px; padding: 8px; border: 1px solid var(--rule); background: #fcfbf7; box-shadow: 0 12px 35px #22251e12; }
+.account-menu-identity { margin: 0 0 7px; padding: 11px 12px 14px; border-bottom: 1px solid var(--rule); color: var(--ink); font-weight: 600; }
+.account-menu-identity small { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; font-weight: 400; overflow-wrap: anywhere; }
+.account-menu-panel a { display: block; padding: 11px 12px; color: var(--ink); }
+.account-menu-panel a:hover { background: var(--paper); }
+.auth-page { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 430px); align-items: start; gap: clamp(50px, 10vw, 170px); max-width: 1200px; margin: 0 auto; padding: clamp(65px, 10vw, 150px) clamp(24px, 6vw, 90px) 100px; }
+.auth-intro h1 { font-size: clamp(3.5rem, 6vw, 6.3rem); line-height: .99; font-weight: 400; letter-spacing: -.065em; margin: 24px 0; }
+.auth-intro > p:last-child { color: var(--muted); font-size: 1.15rem; line-height: 1.5; }
+.auth-panel { border-top: 1px solid var(--ink); padding-top: 22px; }
+.auth-panel h2 { font-size: 2.3rem; font-weight: 400; letter-spacing: -.04em; margin: 20px 0 10px; }
+.auth-panel > p:not(.eyebrow) { color: var(--muted); margin-bottom: 35px; }
+.auth-panel > p a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.auth-panel form { display: flex; flex-direction: column; gap: 17px; }
+.auth-panel form > div { display: flex; flex-direction: column; gap: 8px; }
+.auth-panel label { color: var(--muted); font: 600 11px ui-sans-serif, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.auth-panel input { width: 100%; padding: 13px 14px; background: #fcfbf7; border: 1px solid var(--rule); border-radius: 0; color: var(--ink); font: 15px ui-sans-serif, system-ui, sans-serif; }
+.auth-panel .button { margin-top: 10px; width: 100%; }
+.auth-panel p.text-error { color: #9c382d; font: 12px ui-sans-serif, system-ui, sans-serif; }
+@media (max-width: 770px) { .auth-page { grid-template-columns: 1fr; gap: 50px; max-width: 540px; padding-top: 60px; } .auth-intro h1 { font-size: 3.8rem; } }
+.settings-page { width: min(100%, 1000px); margin: 0 auto; padding: clamp(30px, 5vw, 75px) clamp(24px, 5vw, 70px) 100px; }
+.settings-page .page-heading { padding-bottom: 55px; }
+.settings-page .page-heading h1 { margin-bottom: 17px; }
+.settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(30px, 6vw, 90px); }
+.settings-grid section { border-top: 1px solid var(--ink); padding-top: 25px; }
+.settings-grid h2 { font-size: 1.65rem; font-weight: 400; letter-spacing: -.035em; margin: 0 0 8px; }
+.settings-grid section > p { color: var(--muted); font-size: .95rem; margin: 0 0 28px; }
+.settings-form { display: flex; flex-direction: column; gap: 16px; align-items: stretch; }
+.settings-form > div { display: flex; flex-direction: column; gap: 8px; }
+.settings-form label { color: var(--muted); font: 600 11px ui-sans-serif, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.settings-form input { width: 100%; background: #fcfbf7; border: 1px solid var(--rule); border-radius: 0; padding: 12px 14px; font: 15px ui-sans-serif, system-ui, sans-serif; }
+.settings-form .button { align-self: flex-start; margin-top: 5px; }
+@media (max-width: 700px) { .settings-grid { grid-template-columns: 1fr; gap: 55px; } }
+.kotoba-editable .kotoba-quote { border-inline-start: 2px solid var(--accent); color: #4f554e; font-style: italic; }
+
+/* Files in the reader: images and PDFs at the page's width, quiet captions. */
+.page-body .kotoba-content :where(figure.kotoba-attachment) { margin: 2.2em 0; }
+.page-body .kotoba-content :where(figure.kotoba-attachment img) { display: block; max-width: 100%; height: auto; border-radius: 3px; box-shadow: 0 1px 0 #22251e14, 0 20px 40px -30px #22251e59; }
+.page-body .kotoba-content :where(figure.kotoba-attachment figcaption) { margin-top: 10px; color: var(--muted); font: 12px/1.4 ui-sans-serif, system-ui, sans-serif; letter-spacing: .01em; }
+.page-body .kotoba-content { --kotoba-media-width: 100%; --kotoba-pdf-height: min(78vh, 920px); }
+.page-body .kotoba-content :where(figure.kotoba-attachment-pdf) { width: 100%; }
+.page-body .kotoba-content :where(figure.kotoba-attachment-pdf object) { border-color: var(--rule); background: #efe9dc; }
+.page-body .kotoba-content :where(.kotoba-gallery) { gap: 10px; }
+.page-body .kotoba-content > :where(figure.kotoba-attachment) img { width: auto; max-height: min(80vh, 760px); }
+
+/* Copy buttons in the reader: the icon turns into a check for a moment. */
+.copy-action { display: inline-flex; align-items: center; gap: 7px; padding: 6px 2px; border: 0; background: none; color: var(--ink); font: inherit; cursor: pointer; transition: color .15s ease; }
+.copy-action:hover { color: var(--accent); }
+.copy-action .copied-icon { display: none; color: #4d7a39; }
+.copy-action[data-copied] .copy-icon { display: none; }
+.copy-action[data-copied] .copied-icon { display: inline-block; animation: copy-pop .25s ease-out; }
+@keyframes copy-pop { from { transform: scale(.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .copy-action[data-copied] .copied-icon { animation: none; } }
