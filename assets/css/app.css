@@ -263,7 +263,6 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
 @media (prefers-reduced-motion: reduce) { .notebook-toast { animation: none; } }
 .site-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px 32px; border-top: 1px solid var(--rule); padding: 24px clamp(24px, 5vw, 88px); color: var(--muted); font: 11px ui-sans-serif, system-ui, sans-serif; }
 .site-made { margin: 0; }
-.site-made span { padding: 0 6px; color: var(--muted); }
 .site-made a { color: var(--ink); text-decoration: none; transition: color .15s ease; }
 .site-made a:hover { color: var(--accent); }
 
