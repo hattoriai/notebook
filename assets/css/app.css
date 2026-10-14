@@ -5,6 +5,8 @@
 @import "phoenix-colocated/notebook/colocated.css";
 @import "../../deps/kotoba/priv/static/kotoba.css";
 @import "../../deps/koyomi/priv/static/koyomi.css";
+@import "../../deps/jumon/priv/static/jumon.css";
+/* @import "../../deps/jumon/priv/static/jumon-sumi.css"; */
 @source "../css";
 @source "../js";
 @source "../../lib/notebook_web";
@@ -188,7 +190,7 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
 }
 .page-form .kotoba { min-height: 360px; }
 .kotoba:focus-within { box-shadow: 0 0 0 1px var(--rule), 0 18px 40px -28px #22251e40; }
-.kotoba-editable:focus-visible { outline: none; }
+.kotoba-editable:focus-visible, .jumon-input:focus-visible { outline: none; }
 .kotoba-toolbar { position: sticky; top: 0; z-index: 5; gap: 4px; padding: 6px 8px; background: #f6f2ea; }
 .kotoba-toolbar-group + .kotoba-toolbar-group { padding-left: 4px; }
 .kotoba-toolbar-button { color: #4a4e47; transition: background .15s ease, color .15s ease; }
@@ -383,3 +385,43 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
   .index-body .page-list { grid-row: 2; }
 }
 @media (max-width: 650px) { .page-dates-grid { grid-template-columns: 1fr; } }
+
+/* Jumon in paper and ink: the command palette takes the page's tokens, as
+   Kotoba and Koyomi do. The notebook has one light theme, so the palette
+   stays light when the system is dark. */
+:root {
+  --jumon-font: ui-sans-serif, system-ui, sans-serif;
+  --jumon-text: var(--ink);
+  --jumon-muted: var(--muted);
+  --jumon-background: #fcfbf7;
+  --jumon-surface: #f0ebe0;
+  --jumon-border: var(--rule);
+  --jumon-accent: var(--accent);
+  --jumon-accent-text: #fcfbf7;
+  --jumon-active: #a4553714;
+  --jumon-active-text: var(--ink);
+  --jumon-active-bar: var(--accent);
+  --jumon-match: var(--accent);
+  --jumon-danger: #9c382d;
+  --jumon-key-background: #f0ebe0;
+  --jumon-key-border: var(--rule);
+  --jumon-key-text: var(--muted);
+  --jumon-radius: 6px;
+  --jumon-inner-radius: 3px;
+  --jumon-shadow: 0 30px 70px -24px #1a1c1866, 0 4px 12px #1a1c1824;
+  --jumon-backdrop: #22251e33;
+  --jumon-focus-ring: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
+}
+
+/* The buttons that open the palette: one beside "New page", one in the
+   page's navigation. */
+.index-actions { display: flex; align-items: center; gap: 12px; }
+.command-trigger { gap: 14px; background: transparent; color: var(--ink); }
+.command-trigger:hover { border-color: var(--accent); color: var(--accent); }
+.page-nav-end { display: flex; align-items: center; gap: 18px; }
+.command-link { display: inline-flex; align-items: center; gap: 8px; padding: 2px 0; border: 0; background: none; color: var(--ink); font: 12px ui-sans-serif, system-ui, sans-serif; cursor: pointer; transition: color .15s ease; }
+.command-link:hover { color: var(--accent); }
+.page-nav .command-link { min-width: 0; width: auto; }
+.page-nav .command-link .jumon-button-label { flex: none; font: inherit; letter-spacing: normal; text-transform: none; color: inherit; }
+.command-trigger:focus-visible, .command-link:focus-visible { outline: none; box-shadow: var(--jumon-focus-ring); }
+@media (max-width: 650px) { .index-actions { align-self: flex-start; } .command-link .jumon-button-label { display: none; } }

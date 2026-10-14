@@ -27,6 +27,7 @@ import topbar from "../vendor/topbar"
 import {Kotoba, registerCollaboration, highlightRenderedContent} from "kotoba"
 import {enableCollaboration} from "kotoba/collab"
 import {Koyomi} from "koyomi"
+import {Jumon} from "jumon"
 
 enableCollaboration(registerCollaboration)
 
@@ -34,7 +35,7 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, Kotoba, Koyomi},
+  hooks: {...colocatedHooks, Kotoba, Koyomi, Jumon},
 })
 
 // Show progress bar on live navigation and form submits
