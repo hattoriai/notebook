@@ -57,20 +57,35 @@ defmodule NotebookWeb.Commands do
   @impl true
   def history_key(socket), do: socket.assigns.current_scope.user.id
 
+  defp search_pages(""), do: Pages.list() |> Enum.take(5) |> Enum.map(&page_action/1)
+
+  # The titles are ranked as the palette ranks its actions, so that a typo
+  # still finds a page ("notebok"); then the pages whose words have the
+  # query. The notebook is small enough to rank every title.
   defp search_pages(query) do
-    for page <- query |> Pages.list() |> Enum.take(if(query == "", do: 5, else: 8)) do
-      action(page.id, page.title,
-        icon: "hero-document-text",
-        subtitle: page_subtitle(page),
-        navigate: ~p"/pages/#{page.id}",
-        actions: [
-          action(:edit, "Edit together",
-            icon: "hero-pencil-square",
-            navigate: ~p"/pages/#{page.id}/edit"
-          )
-        ]
-      )
-    end
+    by_title =
+      Pages.list()
+      |> Enum.map(&page_action/1)
+      |> Jumon.Match.rank(query)
+      |> Enum.map(fn {action, _result} -> action end)
+
+    by_words = query |> Pages.list() |> Enum.map(&page_action/1)
+
+    (by_title ++ by_words) |> Enum.uniq_by(& &1.id) |> Enum.take(8)
+  end
+
+  defp page_action(page) do
+    action(page.id, page.title,
+      icon: "hero-document-text",
+      subtitle: page_subtitle(page),
+      navigate: ~p"/pages/#{page.id}",
+      actions: [
+        action(:edit, "Edit together",
+          icon: "hero-pencil-square",
+          navigate: ~p"/pages/#{page.id}/edit"
+        )
+      ]
+    )
   end
 
   defp page_subtitle(%{due_on: %Date{} = due} = page),

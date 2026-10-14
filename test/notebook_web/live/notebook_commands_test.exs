@@ -42,6 +42,15 @@ defmodule NotebookWeb.NotebookCommandsTest do
     assert result["id"] == "pages:#{page.id}"
   end
 
+  test "a search forgives a typo in a title", %{conn: conn, scope: scope} do
+    {:ok, _page} = Pages.create(scope, %{"title" => "A tour of Notebook"})
+
+    {:ok, view, _html} = live(conn, ~p"/")
+    results = view |> search("notebok") |> Enum.filter(&(&1["source"] == "pages"))
+
+    assert ["A tour of Notebook"] = names(results)
+  end
+
   test "a day from the palette filters the list", %{conn: conn, scope: scope} do
     today = Koyomi.Rules.today(Page.review_rules())
 
