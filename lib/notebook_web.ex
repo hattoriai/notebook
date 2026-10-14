@@ -82,6 +82,7 @@ defmodule NotebookWeb do
       # Core UI components
       import NotebookWeb.CoreComponents
       import Kotoba.Components
+      import Koyomi.Components
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS
