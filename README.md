@@ -4,25 +4,9 @@ A shared notebook built to exercise Kotoba and Koyomi in a complete Phoenix app.
 
 ## Run locally
 
-Notebook currently uses the sibling Kotoba and Koyomi checkouts so changes to either can be tested before release. Put the three directories next to each other:
-
-```text
-hattori/
-  kotoba/
-  koyomi/
-  notebook/
-```
-
-Use Elixir 1.18 or later. The included `.tool-versions` pins the versions used here. Build Kotoba's and Koyomi's package bundles once, then set up Notebook:
+Notebook uses the published Kotoba and Koyomi from Hex, as your app would. Use Elixir 1.18 or later. The included `.tool-versions` pins the versions used here.
 
 ```sh
-cd kotoba
-mix deps.get
-mix kotoba.build
-cd ../koyomi
-mix deps.get
-mix koyomi.build
-cd ../notebook
 mix setup
 mix phx.server
 ```
@@ -55,4 +39,12 @@ mix test
 mix precommit
 ```
 
-Run `mix kotoba.build` (or `mix koyomi.build`) again in the sibling checkout whenever its assets or stylesheet change, then run `mix assets.build` in Notebook.
+## Try an unreleased change
+
+To test a change to Kotoba or Koyomi before its release, put its checkout next to Notebook and point Notebook at it for a while. For Koyomi:
+
+1. In `mix.exs`, use `{:koyomi, path: "../koyomi"}`.
+2. In `assets/css/app.css`, import `../../../koyomi/priv/static/koyomi.css`.
+3. Run `mix koyomi.build` in the checkout, then remove `deps/koyomi` (esbuild finds the Hex copy there first), run `mix deps.get` and `mix assets.build`, and restart the server.
+
+Run `mix koyomi.build` and `mix assets.build` again after each change. Kotoba works the same way, with `mix kotoba.build`. Put the Hex versions back before you commit.
