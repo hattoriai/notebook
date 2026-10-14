@@ -3,8 +3,8 @@
 
 @import "tailwindcss" source(none);
 @import "phoenix-colocated/notebook/colocated.css";
-@import "../../../kotoba/priv/static/kotoba.css";
-@import "../../../koyomi/priv/static/koyomi.css";
+@import "../../deps/kotoba/priv/static/kotoba.css";
+@import "../../deps/koyomi/priv/static/koyomi.css";
 @source "../css";
 @source "../js";
 @source "../../lib/notebook_web";
