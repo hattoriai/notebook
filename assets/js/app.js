@@ -26,6 +26,7 @@ import {hooks as colocatedHooks} from "phoenix-colocated/notebook"
 import topbar from "../vendor/topbar"
 import {Kotoba, registerCollaboration, highlightRenderedContent} from "kotoba"
 import {enableCollaboration} from "kotoba/collab"
+import {Koyomi} from "koyomi"
 
 enableCollaboration(registerCollaboration)
 
@@ -33,7 +34,7 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, Kotoba},
+  hooks: {...colocatedHooks, Kotoba, Koyomi},
 })
 
 // Show progress bar on live navigation and form submits

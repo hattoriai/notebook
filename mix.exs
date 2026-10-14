@@ -71,7 +71,9 @@ defmodule Notebook.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
-      {:kotoba, path: "../kotoba"}
+      {:kotoba, path: "../kotoba"},
+      {:koyomi, path: "../koyomi"},
+      {:tz, "~> 0.28"}
     ]
   end
 

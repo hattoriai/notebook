@@ -86,6 +86,11 @@ config :kotoba,
   storage: Kotoba.Storage.Local,
   nodes: [Notebook.Kotoba.Nodes.Callout]
 
+# Koyomi's pickers write dates for a reader in Lisbon: "today", the review
+# times and the wall clock of the review picker are in this zone.
+config :koyomi, locale: "en-GB", time_zone: "Europe/Lisbon"
+config :elixir, :time_zone_database, Tz.TimeZoneDatabase
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

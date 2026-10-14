@@ -170,7 +170,30 @@ unless Notebook.Repo.get_by(Page, title: tour_title) do
     }
   }
 
-  {:ok, _} = Pages.create(Scope.for_user(hanzo), %{"title" => tour_title, "body" => body})
+  # Dates near today, so that the index calendar shows them: due in a week,
+  # about this week, a review on the next weekday at 14:00 in Lisbon, and a
+  # revisit every two weeks from the due day.
+  today = Date.utc_today()
+  monday = Date.beginning_of_week(today)
+
+  review_day =
+    Stream.iterate(Date.add(today, 1), &Date.add(&1, 1))
+    |> Enum.find(&(Date.day_of_week(&1) in 1..5))
+
+  review_at =
+    review_day
+    |> DateTime.new!(~T[14:00:00], Pages.time_zone())
+    |> DateTime.shift_zone!("Etc/UTC")
+
+  {:ok, _} =
+    Pages.create(Scope.for_user(hanzo), %{
+      "title" => tour_title,
+      "body" => body,
+      "due_on" => Date.add(today, 7),
+      "covers" => Date.range(monday, Date.add(monday, 4)),
+      "review_at" => review_at,
+      "revisit" => "FREQ=WEEKLY;INTERVAL=2"
+    })
 end
 
 IO.puts("Hattori Hanzo can sign in as #{hanzo_email} with the password \"no more swords\".")

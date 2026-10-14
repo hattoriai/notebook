@@ -11,7 +11,7 @@ defmodule NotebookWeb.NotebookLive do
 
     socket =
       socket
-      |> assign(name: name, search: "", page_title: "Notebook")
+      |> assign(name: name, search: "", day: nil, page_title: "Notebook")
       |> load_page(params)
 
     {:ok, socket}
@@ -42,6 +42,7 @@ defmodule NotebookWeb.NotebookLive do
     assign(socket,
       pages: Pages.list(),
       page: nil,
+      today: Koyomi.Rules.today(Page.review_rules()),
       form: to_form(Pages.change(%Page{})),
       collab: nil
     )
@@ -95,27 +96,63 @@ defmodule NotebookWeb.NotebookLive do
             <.link class="button button-primary" navigate={~p"/pages/new"}>New page
             <span aria-hidden="true">↗</span></.link>
           </div>
-          <div class="page-list">
-            <div :if={@pages == []} class="empty-state">
-              <span class="empty-mark">✳</span>
-              <h2>Start with a blank page.</h2>
-              <p>Try a heading, mention a person, or drop in an image or PDF.</p>
-            </div>
-            <.link
-              :for={page <- @pages}
-              class="page-row"
-              navigate={~p"/pages/#{page.id}"}
-            >
-              <div>
-                <span class="page-kicker">PAGE / {page.id}</span><h2>{page.title}</h2><p>
-                  {excerpt(page.body)}
+          <div class="index-body">
+            <aside class="agenda" aria-labelledby="agenda-label">
+              <p id="agenda-label" class="field-label">The notebook's days</p>
+              <.calendar
+                id="notebook-calendar"
+                label="The notebook's days"
+                select="date"
+                on_change="day"
+                days
+                holidays="PT"
+                typing={false}
+              />
+              <ul class="agenda-legend">
+                <li><i data-tone="accent"></i>Due</li>
+                <li><i data-tone="success"></i>Review</li>
+                <li><i data-tone="warning"></i>Revisit</li>
+                <li><i data-tone="muted"></i>Covered</li>
+              </ul>
+            </aside>
+            <div class="page-list">
+              <div :if={@day} class="day-filter">
+                <p>
+                  <span class="eyebrow">On {Calendar.strftime(@day, "%A")}</span>
+                  <strong>{Calendar.strftime(@day, "%-d %B %Y")}</strong>
+                  · {page_count(length(@pages))}
                 </p>
+                <button type="button" class="copy-action" phx-click="all_days">Show every page</button>
               </div>
-              <div class="page-meta">
-                <span :if={page.author} class="page-author">{page.author.name}</span>
-                <time>{Calendar.strftime(page.updated_at, "%d %b %Y")}</time><span aria-hidden="true">↗</span>
+              <div :if={@pages == [] and @day} class="empty-state">
+                <span class="empty-mark">✳</span>
+                <h2>Nothing on this day.</h2>
+                <p>Give a page a due date, the days it covers, a review or a revisit.</p>
               </div>
-            </.link>
+              <div :if={@pages == [] and is_nil(@day)} class="empty-state">
+                <span class="empty-mark">✳</span>
+                <h2>Start with a blank page.</h2>
+                <p>Try a heading, mention a person, or drop in an image or PDF.</p>
+              </div>
+              <.link
+                :for={page <- @pages}
+                class="page-row"
+                navigate={~p"/pages/#{page.id}"}
+              >
+                <div>
+                  <span class="page-kicker">PAGE / {page.id}</span><h2>{page.title}</h2><p>
+                    {excerpt(page.body)}
+                  </p>
+                </div>
+                <div class="page-meta">
+                  <span :if={page.due_on} class={["page-due", due_tone(page.due_on, @today)]}>
+                    Due {Calendar.strftime(page.due_on, "%-d %b")}
+                  </span>
+                  <span :if={page.author} class="page-author">{page.author.name}</span>
+                  <time>{Calendar.strftime(page.updated_at, "%d %b %Y")}</time><span aria-hidden="true">↗</span>
+                </div>
+              </.link>
+            </div>
           </div>
         </div>
 
@@ -144,6 +181,7 @@ defmodule NotebookWeb.NotebookLive do
               maxlength="160"
               autofocus
             />
+            <.page_dates form={@form} />
             <label class="field-label" for="new-body">Body</label>
             <.kotoba
               field={@form[:body]}
@@ -215,6 +253,29 @@ defmodule NotebookWeb.NotebookLive do
               }
             }
           </script>
+          <dl :if={@live_action == :show and dated?(@page)} class="page-dates-summary">
+            <div :if={@page.due_on}>
+              <dt>Due</dt>
+              <dd>{Calendar.strftime(@page.due_on, "%A, %-d %B %Y")}</dd>
+            </div>
+            <div :if={@page.covers}>
+              <dt>Covers</dt>
+              <dd>{span(@page.covers)}</dd>
+            </div>
+            <div :if={@page.review_at}>
+              <dt>Review together</dt>
+              <dd>{review_time(@page.review_at)}</dd>
+            </div>
+            <div :if={@page.revisit}>
+              <dt>Revisit</dt>
+              <dd>
+                {Koyomi.Recurrence.describe(@page.revisit, "en", start: Pages.revisit_start(@page))}
+                <span :if={Pages.next_revisit(@page)} class="page-dates-next">
+                  Next on {Calendar.strftime(Pages.next_revisit(@page), "%-d %B %Y")}
+                </span>
+              </dd>
+            </div>
+          </dl>
           <article :if={@live_action == :show} class="page-body">
             <.kotoba_content content={@page.body} />
           </article>
@@ -234,6 +295,7 @@ defmodule NotebookWeb.NotebookLive do
               maxlength="160"
               required
             />
+            <.page_dates form={@form} />
             <label class="field-label" for="body-editor">Body · live collaboration</label>
             <.kotoba
               field={@form[:body]}
@@ -285,6 +347,132 @@ defmodule NotebookWeb.NotebookLive do
     """
   end
 
+  attr :form, Phoenix.HTML.Form, required: true
+
+  # The page's dates. Each picker posts with the form, so the form's own
+  # validate and save events have the values, and the changeset checks
+  # the rules the pickers show (Page.covers_rules/0, Page.review_rules/0).
+  defp page_dates(assigns) do
+    ~H"""
+    <fieldset class="page-dates">
+      <legend class="field-label">Dates</legend>
+      <div class="page-dates-grid">
+        <div class="page-date">
+          <span id="due-label" class="page-date-label">Due</span>
+          <.date_picker
+            field={@form[:due_on]}
+            label_id="due-label"
+            presets={[:today, :tomorrow, {:in, 1, :week}, {:in, 1, :month}]}
+          />
+          <.date_errors field={@form[:due_on]} />
+        </div>
+        <div class="page-date">
+          <span id="covers-label" class="page-date-label">Covers</span>
+          <.date_range_picker
+            field={@form[:covers]}
+            label_id="covers-label"
+            rules={Page.covers_rules()}
+            months={2}
+            presets={[:this_week, :next_week, :this_month, {:last, 7, :days}]}
+          />
+          <.date_errors field={@form[:covers]} />
+        </div>
+        <div class="page-date">
+          <span id="review-label" class="page-date-label">Review together</span>
+          <.datetime_picker
+            field={@form[:review_at]}
+            label_id="review-label"
+            rules={Page.review_rules()}
+            time_zone={Pages.time_zone()}
+            slots
+          />
+          <.date_errors field={@form[:review_at]} />
+        </div>
+        <div class="page-date">
+          <span id="revisit-label" class="page-date-label">Revisit</span>
+          <.recurrence_picker
+            field={@form[:revisit]}
+            label_id="revisit-label"
+            start={revisit_start(@form[:due_on].value)}
+          />
+          <.date_errors field={@form[:revisit]} />
+        </div>
+      </div>
+    </fieldset>
+    """
+  end
+
+  attr :field, Phoenix.HTML.FormField, required: true
+
+  defp date_errors(assigns) do
+    ~H"""
+    <p :for={msg <- date_error_messages(@field)} class="page-date-error">{msg}</p>
+    """
+  end
+
+  defp date_error_messages(field) do
+    if Phoenix.Component.used_input?(field),
+      do: Enum.map(field.errors, &translate_error/1),
+      else: []
+  end
+
+  # The revisits start on the due day, as the reader counts them.
+  defp revisit_start(%Date{} = date), do: date
+
+  defp revisit_start(text) when is_binary(text) do
+    case Date.from_iso8601(text) do
+      {:ok, date} -> date
+      {:error, _reason} -> nil
+    end
+  end
+
+  defp revisit_start(_other), do: nil
+
+  defp dated?(page), do: Enum.any?([page.due_on, page.covers, page.review_at, page.revisit])
+
+  defp span(%Date.Range{first: first, last: last} = range) do
+    days = Enum.count(range)
+    from = if first.year == last.year, do: "%-d %B", else: "%-d %B %Y"
+
+    "#{Calendar.strftime(first, from)} – #{Calendar.strftime(last, "%-d %B %Y")} · " <>
+      "#{days} #{if days == 1, do: "day", else: "days"}"
+  end
+
+  defp review_time(at) do
+    local = Pages.local(at)
+    city = Pages.time_zone() |> String.split("/") |> List.last() |> String.replace("_", " ")
+    Calendar.strftime(local, "%A, %-d %B %Y at %H:%M") <> " (#{city} time)"
+  end
+
+  defp due_tone(due, today) do
+    case Date.compare(due, today) do
+      :lt -> "page-due-past"
+      :eq -> "page-due-today"
+      :gt -> nil
+    end
+  end
+
+  defp page_count(1), do: "1 page"
+  defp page_count(n), do: "#{n} pages"
+
+  @tones %{due: :accent, review: :success, revisit: :warning, covers: :muted}
+  @kinds %{due: "Due", review: "Review", revisit: "Revisit", covers: "Covers"}
+
+  # The index calendar's days: a mark for each thing a page has on the
+  # day, and the titles for screen readers and the hover.
+  defp agenda_days(range) do
+    for {day, items} <- Pages.agenda(Pages.list(), range), into: %{} do
+      title = Enum.map_join(items, "; ", fn {kind, page} -> "#{@kinds[kind]}: #{page.title}" end)
+      {day, [marks: Enum.map(items, fn {kind, _page} -> @tones[kind] end), title: title]}
+    end
+  end
+
+  defp list_pages(socket) do
+    pages = Pages.list(socket.assigns.search)
+    pages = if socket.assigns.day, do: Pages.on_day(pages, socket.assigns.day), else: pages
+    assign(socket, pages: pages)
+  end
+
   # The Markdown or the plain text of a page, for the copy buttons.
   defp copy_text(%{body: nil}, _format), do: ""
   defp copy_text(%{body: %Kotoba.Content{text: text}}, :text), do: text || ""
@@ -315,7 +503,36 @@ defmodule NotebookWeb.NotebookLive do
 
   @impl true
   def handle_event("search", %{"query" => query}, socket),
-    do: {:noreply, assign(socket, search: query, pages: Pages.list(query))}
+    do: {:noreply, socket |> assign(search: query) |> list_pages()}
+
+  # A day picked in the index calendar shows the pages that have something
+  # on it; picking it again clears it.
+  def handle_event("day", %{"value" => value}, socket) do
+    day =
+      case Date.from_iso8601(value || "") do
+        {:ok, day} -> day
+        {:error, _reason} -> nil
+      end
+
+    {:noreply, socket |> assign(day: day) |> list_pages()}
+  end
+
+  def handle_event("all_days", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(day: nil)
+     |> list_pages()
+     |> Koyomi.Live.push_value("notebook-calendar", nil)}
+  end
+
+  def handle_event("koyomi:days", %{"id" => "notebook-calendar"} = params, socket),
+    do: Koyomi.Live.handle_days(socket, params, &agenda_days/1)
+
+  # The review picker's free times; the page's own review is not taken.
+  def handle_event("koyomi:days", %{"id" => "page_review_at_picker"} = params, socket) do
+    page_id = socket.assigns.page && socket.assigns.page.id
+    Koyomi.Live.handle_days(socket, params, &Pages.review_slots(&1, page_id))
+  end
 
   def handle_event("validate", %{"page" => params}, socket) do
     socket =
@@ -351,14 +568,21 @@ defmodule NotebookWeb.NotebookLive do
              revision
            ),
          {:ok, page} <-
-           Pages.update(socket.assigns.page, %{title: params["title"], body: content}) do
+           Pages.update(socket.assigns.page, page_params(params, content)) do
       {:noreply,
        socket
        |> assign(page: page)
        |> put_flash(:info, "Page published")
        |> push_navigate(to: ~p"/pages/#{page.id}")}
     else
-      _ -> {:noreply, put_flash(socket, :error, "Could not publish this revision. Please retry.")}
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply,
+         socket
+         |> assign(form: to_form(changeset))
+         |> put_flash(:error, "Check the page's dates, then publish again.")}
+
+      _ ->
+        {:noreply, put_flash(socket, :error, "Could not publish this revision. Please retry.")}
     end
   end
 
@@ -389,5 +613,13 @@ defmodule NotebookWeb.NotebookLive do
     if entry.done?,
       do: {:noreply, Kotoba.Live.consume_uploads(socket, :attachments, "body-editor")},
       else: {:noreply, socket}
+  end
+
+  # The title and the dates come from the form; the body is the accepted
+  # revision of the collaboration.
+  defp page_params(params, content) do
+    params
+    |> Map.take(~w(title due_on covers review_at revisit))
+    |> Map.put("body", content)
   end
 end

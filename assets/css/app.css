@@ -4,6 +4,7 @@
 @import "tailwindcss" source(none);
 @import "phoenix-colocated/notebook/colocated.css";
 @import "../../../kotoba/priv/static/kotoba.css";
+@import "../../../koyomi/priv/static/koyomi.css";
 @source "../css";
 @source "../js";
 @source "../../lib/notebook_web";
@@ -320,3 +321,65 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
 .copy-action[data-copied] .copied-icon { display: inline-block; animation: copy-pop .25s ease-out; }
 @keyframes copy-pop { from { transform: scale(.6); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .copy-action[data-copied] .copied-icon { animation: none; } }
+
+/* Koyomi in paper and ink: the pickers take the page's tokens, as Kotoba does. */
+:root {
+  --koyomi-font: ui-sans-serif, system-ui, sans-serif;
+  --koyomi-font-size: .95rem;
+  --koyomi-text: var(--ink);
+  --koyomi-muted: var(--muted);
+  --koyomi-background: #fcfbf7;
+  --koyomi-surface: #f0ebe0;
+  --koyomi-border: var(--rule);
+  --koyomi-accent: var(--accent);
+  --koyomi-accent-text: #fcfbf7;
+  --koyomi-range: #a4553724;
+  --koyomi-range-preview: #a4553714;
+  --koyomi-holiday: #9c382d;
+  --koyomi-tone-success: #4d7a39;
+  --koyomi-tone-warning: #b07a1f;
+  --koyomi-tone-muted: #a9ab9f;
+  --koyomi-radius: 3px;
+  --koyomi-field-height: 2.9rem;
+  --koyomi-shadow: 0 14px 38px #22251e1f, 0 2px 6px #22251e14;
+  --koyomi-focus-ring: 0 0 0 1px var(--accent);
+}
+.koyomi-caption { font-family: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; }
+
+/* The dates of a page: four pickers in two columns under the title. */
+.page-dates { margin: 10px 0 8px; padding: 22px 0 26px; border: 0; border-block: 1px solid var(--rule); }
+.page-dates legend { float: left; width: 100%; margin-bottom: 16px; padding: 0; }
+.page-dates-grid { clear: both; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 28px; }
+.page-date { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.page-date-label { font: 13px ui-sans-serif, system-ui, sans-serif; color: var(--ink); }
+.page-date-error { margin: 0; color: #9c382d; font: 12px ui-sans-serif, system-ui, sans-serif; }
+
+/* The reader's dates: a quiet line of terms under the heading. */
+.page-dates-summary { display: flex; flex-wrap: wrap; gap: 18px 44px; margin: 0 0 30px; font: 13px/1.5 ui-sans-serif, system-ui, sans-serif; }
+.page-dates-summary dt { font: 600 10px ui-sans-serif, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 5px; }
+.page-dates-summary dd { margin: 0; color: var(--ink); }
+.page-dates-next { display: block; color: var(--muted); }
+
+/* The index: the list, with the notebook's calendar beside it. */
+.index-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 clamp(32px, 5vw, 64px); align-items: start; }
+.index-body .page-list { grid-column: 1; grid-row: 1; }
+.agenda { grid-column: 2; position: sticky; top: 24px; display: flex; flex-direction: column; gap: 12px; padding-top: 26px; }
+.agenda .koyomi-inline { --koyomi-background: transparent; }
+.agenda-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 0; list-style: none; color: var(--muted); font: 11px ui-sans-serif, system-ui, sans-serif; }
+.agenda-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.agenda-legend i { width: 6px; height: 6px; border-radius: 50%; background: var(--koyomi-tone-accent); }
+.agenda-legend i[data-tone="success"] { background: var(--koyomi-tone-success); }
+.agenda-legend i[data-tone="warning"] { background: var(--koyomi-tone-warning); }
+.agenda-legend i[data-tone="muted"] { background: var(--koyomi-tone-muted); }
+.day-filter { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 22px 0; border-bottom: 1px solid var(--rule); font: 13px ui-sans-serif, system-ui, sans-serif; }
+.day-filter p { margin: 0; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; color: var(--muted); }
+.day-filter strong { color: var(--ink); font: 400 1.3rem "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; letter-spacing: -.02em; }
+.page-due { color: var(--ink); }
+.page-due-today { color: var(--accent); font-weight: 600; }
+.page-due-past { color: #9c382d; }
+@media (max-width: 900px) {
+  .index-body { grid-template-columns: 1fr; }
+  .agenda { grid-column: 1; grid-row: 1; position: static; padding-bottom: 10px; }
+  .index-body .page-list { grid-row: 2; }
+}
+@media (max-width: 650px) { .page-dates-grid { grid-template-columns: 1fr; } }
