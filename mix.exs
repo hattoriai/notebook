@@ -73,6 +73,7 @@ defmodule Notebook.MixProject do
       {:bandit, "~> 1.5"},
       {:kotoba, "~> 0.2.1"},
       {:koyomi, "~> 0.1.2"},
+      {:jumon, "~> 0.1.1"},
       {:tz, "~> 0.28"}
     ]
   end

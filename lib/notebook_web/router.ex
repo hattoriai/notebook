@@ -21,7 +21,10 @@ defmodule NotebookWeb.Router do
     pipe_through [:browser, :require_authenticated_user]
 
     live_session :notebook_authenticated,
-      on_mount: [{NotebookWeb.UserAuth, :require_authenticated}] do
+      on_mount: [
+        {NotebookWeb.UserAuth, :require_authenticated},
+        {Jumon.Live, NotebookWeb.Commands}
+      ] do
       live "/", NotebookLive, :index
       live "/pages/new", NotebookLive, :new
       live "/pages/:id", NotebookLive, :show

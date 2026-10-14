@@ -13,8 +13,162 @@ defmodule NotebookWeb.NotebookLive do
       socket
       |> assign(name: name, search: "", day: nil, page_title: "Notebook")
       |> load_page(params)
+      |> page_actions()
 
     {:ok, socket}
+  end
+
+  # The command palette's actions of what this LiveView shows; the actions
+  # of the whole notebook are in NotebookWeb.Commands.
+  defp page_actions(%{assigns: %{live_action: :index}} = socket) do
+    today = socket.assigns.today
+
+    days =
+      for offset <- 0..6 do
+        day = Date.add(today, offset)
+
+        Jumon.action("day-#{day}", day_name(day, today),
+          icon: "hero-calendar",
+          subtitle: Calendar.strftime(day, "%-d %B"),
+          run: &show_day(&1, day)
+        )
+      end
+
+    Jumon.Live.put_actions(socket, [
+      Jumon.action(:show_day, "Show a day",
+        section: "The notebook's days",
+        icon: "hero-calendar-days",
+        keywords: ~w(agenda calendar due review),
+        shortcut: "g d",
+        children: days
+      ),
+      Jumon.action(:all_days, "Show every page",
+        section: "The notebook's days",
+        icon: "hero-squares-2x2",
+        run: &show_day(&1, nil)
+      )
+    ])
+  end
+
+  defp page_actions(%{assigns: %{live_action: :show, page: page}} = socket) do
+    Jumon.Live.put_actions(socket, [
+      Jumon.action(:edit_page, "Edit together",
+        section: page.title,
+        icon: "hero-pencil-square",
+        shortcut: "e",
+        navigate: ~p"/pages/#{page.id}/edit"
+      ),
+      Jumon.action(:rename_page, "Rename this page…",
+        section: page.title,
+        icon: "hero-pencil",
+        args: [title: [type: :text, placeholder: page.title, max_length: 160]],
+        run: &rename_page/2
+      ),
+      Jumon.action(:due_page, "Set the due date…",
+        section: page.title,
+        icon: "hero-flag",
+        keywords: ~w(deadline date),
+        args: [
+          due: [label: "Due", options: due_options(Koyomi.Rules.today(Page.review_rules()), page)]
+        ],
+        run: &set_due/2
+      ),
+      Jumon.action(:copy_link, "Copy link",
+        section: page.title,
+        icon: "hero-link",
+        copy: url(~p"/pages/#{page.id}")
+      ),
+      Jumon.action(:copy_markdown, "Copy Markdown",
+        section: page.title,
+        icon: "hero-clipboard-document",
+        copy: copy_text(page, :markdown)
+      )
+    ])
+  end
+
+  defp page_actions(%{assigns: %{live_action: :edit, page: page}} = socket) do
+    Jumon.Live.put_actions(socket, [
+      Jumon.action(:read_page, "Read this page",
+        section: page.title,
+        icon: "hero-book-open",
+        navigate: ~p"/pages/#{page.id}"
+      ),
+      Jumon.action(:copy_link, "Copy link",
+        section: page.title,
+        icon: "hero-link",
+        copy: url(~p"/pages/#{page.id}")
+      )
+    ])
+  end
+
+  defp page_actions(socket), do: socket
+
+  defp due_name(day, today) do
+    if Date.diff(day, today) == 14, do: "In two weeks", else: day_name(day, today)
+  end
+
+  defp day_name(day, today) do
+    case Date.diff(day, today) do
+      0 -> "Today"
+      1 -> "Tomorrow"
+      _ -> Calendar.strftime(day, "%A")
+    end
+  end
+
+  # The days that a page is often due: soon, at the end of a week, or not.
+  defp due_options(today, page) do
+    next = fn weekday -> Date.add(today, rem(weekday - Date.day_of_week(today) + 6, 7) + 1) end
+
+    days =
+      [today, Date.add(today, 1), next.(5), next.(1), Date.add(today, 14)]
+      |> Enum.uniq()
+      |> Enum.sort(Date)
+
+    options =
+      for day <- days do
+        Jumon.action(Date.to_iso8601(day), due_name(day, today),
+          icon: "hero-calendar",
+          subtitle: Calendar.strftime(day, "%-d %B")
+        )
+      end
+
+    if page.due_on,
+      do: options ++ [Jumon.action("none", "No due date", icon: "hero-x-mark")],
+      else: options
+  end
+
+  defp show_day(socket, day) do
+    socket
+    |> assign(day: day)
+    |> list_pages()
+    |> Koyomi.Live.push_value("notebook-calendar", day)
+  end
+
+  defp rename_page(%{title: title}, socket),
+    do: update_page(socket, %{"title" => title}, "Page renamed")
+
+  defp set_due(%{due: "none"}, socket),
+    do: update_page(socket, %{"due_on" => nil}, "Due date removed")
+
+  defp set_due(%{due: day}, socket), do: update_page(socket, %{"due_on" => day}, "Due date set")
+
+  defp update_page(socket, attrs, message) do
+    case Pages.update(socket.assigns.page, attrs) do
+      {:ok, page} ->
+        socket
+        |> assign(page: page, page_title: page.title, form: to_form(Pages.change(page)))
+        |> page_actions()
+        |> put_flash(:info, message)
+
+      {:error, changeset} ->
+        {:error, changeset_message(changeset), socket}
+    end
+  end
+
+  defp changeset_message(changeset) do
+    changeset
+    |> Ecto.Changeset.traverse_errors(&translate_error/1)
+    |> Enum.map_join(". ", fn {_field, messages} -> Enum.join(messages, ", ") end)
   end
 
   defp load_page(socket, %{"id" => id} = params) do
@@ -93,8 +247,11 @@ defmodule NotebookWeb.NotebookLive do
                 phx-debounce="250"
               />
             </form>
-            <.link class="button button-primary" navigate={~p"/pages/new"}>New page
-            <span aria-hidden="true">↗</span></.link>
+            <div class="index-actions">
+              <Jumon.Components.command_button id="index-commands" class="button command-trigger" />
+              <.link class="button button-primary" navigate={~p"/pages/new"}>New page
+              <span aria-hidden="true">↗</span></.link>
+            </div>
           </div>
           <div class="index-body">
             <aside class="agenda" aria-labelledby="agenda-label">
@@ -158,7 +315,10 @@ defmodule NotebookWeb.NotebookLive do
 
         <div :if={@live_action == :new} class="page-view">
           <div class="page-nav">
-            <.link navigate={~p"/"}>← All pages</.link><span>NEW PAGE</span>
+            <.link navigate={~p"/"}>← All pages</.link>
+            <div class="page-nav-end">
+              <Jumon.Components.command_button id="page-commands" class="command-link" /><span>NEW PAGE</span>
+            </div>
           </div>
           <div class="page-heading">
             <p class="eyebrow">A fresh page</p><h1>What are we writing?</h1>
@@ -198,7 +358,10 @@ defmodule NotebookWeb.NotebookLive do
 
         <div :if={@live_action in [:show, :edit]} class="page-view">
           <div class="page-nav">
-            <.link navigate={~p"/"}>← All pages</.link><span>PAGE / {@page.id}</span>
+            <.link navigate={~p"/"}>← All pages</.link>
+            <div class="page-nav-end">
+              <Jumon.Components.command_button id="page-commands" class="command-link" /><span>PAGE / {@page.id}</span>
+            </div>
           </div>
           <div class="page-heading">
             <p class="eyebrow">Shared page</p>
@@ -342,7 +505,13 @@ defmodule NotebookWeb.NotebookLive do
           </.form>
         </div>
       </main>
-      <footer class="site-footer">Notebook <span>·</span> Made with Kotoba</footer>
+      <Jumon.Components.command_palette
+        jumon={@jumon}
+        placeholder="Search pages, or type a command…"
+        icons={~w(hero-document-text hero-pencil-square)}
+      >
+        <:icon :let={name}><.icon name={name} class="size-4" /></:icon>
+      </Jumon.Components.command_palette>
     </div>
     """
   end

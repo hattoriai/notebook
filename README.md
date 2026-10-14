@@ -1,6 +1,6 @@
 # Notebook
 
-A shared notebook built to exercise Kotoba and Koyomi in a complete Phoenix app. Everyone with an account can write and read the same pages. Pages are stored in SQLite, files are served through authenticated routes, collaborative edits are saved with Kotoba's revision authority, and each page's dates are picked with Koyomi.
+A shared notebook built to exercise Kotoba, Koyomi and Jumon in a complete Phoenix app. Everyone with an account can write and read the same pages. Pages are stored in SQLite, files are served through authenticated routes, collaborative edits are saved with Kotoba's revision authority, each page's dates are picked with Koyomi, and Jumon's command palette (⌘K) finds pages and runs the notebook's actions.
 
 ## Run locally
 
@@ -29,6 +29,9 @@ Run `mix run priv/repo/seeds.exs` to add **A tour of Notebook**, a page with eve
 - Give a page its dates under the title, with Koyomi. **Due** is a date picker with presets; type a segment or a word into it ("next friday", "in 2 weeks"). **Covers** is a range of days, kept in SQLite as an ISO 8601 interval (`Koyomi.DateRange`, `storage: :string`). **Review together** picks a time in Lisbon from the free hours the LiveView offers (`Pages.review_slots/2`): weekdays from 10:00 to 16:00, with the hours another page's review takes disabled. **Revisit** is a repeat rule (`Koyomi.Recurrence`), and the reader says it in words with the next date. The changeset checks the same rules as the pickers (`Page.review_rules/0`).
 - The calendar beside the page list marks each page's due day, covered days, review and revisits, and Portugal's public holidays. Pick a day to see the pages that have something on it.
 - Copy a published page to the clipboard as Markdown or plain text, and search the cached text from the page list.
+- Press ⌘K (Ctrl+K), or **Search or jump to…**, to open Jumon's command palette. It searches the pages by their title and their words (a source of the server; the titles are ranked with `Jumon.Match`, so a typo such as "notebok" still finds a page), and lists the pages changed last when the box is empty; → on a page offers **Edit together**. The actions of the whole notebook are in `NotebookWeb.Commands`: **New page** (`c`), **All pages** (`g h`), **Settings** (`g s`) and **Log out**. Press `?` for every shortcut.
+- The palette also has the actions of what you look at, from `Jumon.Live.put_actions/2` in `NotebookLive`. On the page list, **Show a day** (`g d`) is a page of the next seven days, and picks the day in the calendar too. On a page, **Edit together** (`e`), **Rename this page…** (a text, checked on the server against the page's 160 characters), **Set the due date…** (a choice of days), **Copy link** and **Copy Markdown**.
+- What each person runs is kept in SQLite (`Jumon.History.Ecto`, the `jumon_history` table), so **Recent** follows you to any browser.
 
 Notebook is a single shared space. Any signed-in account can see and edit every page. The sample app does not have private workspaces or per-page permissions.
 
