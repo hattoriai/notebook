@@ -505,7 +505,6 @@ defmodule NotebookWeb.NotebookLive do
           </.form>
         </div>
       </main>
-      <footer class="site-footer">Notebook <span>·</span> Made with Kotoba, Koyomi and Jumon</footer>
       <Jumon.Components.command_palette
         jumon={@jumon}
         placeholder="Search pages, or type a command…"

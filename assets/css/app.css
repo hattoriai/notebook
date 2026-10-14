@@ -110,12 +110,14 @@
 
 :root { --paper: #f6f3ec; --ink: #232622; --muted: #697069; --rule: #dcded4; --accent: #a45537; font-family: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; color: var(--ink); background: var(--paper); }
 html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--paper); }
+body { margin: 0; background: var(--paper); min-height: 100vh; display: flex; flex-direction: column; }
+/* The page fills the window, and the footer of the root layout stays at its foot. */
+body > [data-phx-main] { flex: 1; display: flex; flex-direction: column; }
 a { color: inherit; text-decoration: none; }
 button, input { font: inherit; }
 button, a, input { -webkit-tap-highlight-color: transparent; }
 :focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
-.notebook-shell { min-height: 100vh; display: flex; flex-direction: column; }
+.notebook-shell { flex: 1; display: flex; flex-direction: column; }
 .site-header { min-height: 82px; display: flex; align-items: center; gap: 30px; padding: 0 clamp(24px, 5vw, 88px); border-bottom: 1px solid var(--rule); }
 .wordmark { font-size: 1.75rem; font-weight: 700; letter-spacing: -.055em; line-height: 1; }
 .wordmark-dot { color: var(--accent); }
@@ -259,8 +261,20 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
 .notebook-toast-close:hover { color: var(--ink); }
 @keyframes notebook-toast-in { from { opacity: 0; transform: translateY(-8px); } }
 @media (prefers-reduced-motion: reduce) { .notebook-toast { animation: none; } }
-.site-footer { border-top: 1px solid var(--rule); padding: 24px clamp(24px, 5vw, 88px); color: var(--muted); font: 11px ui-sans-serif, system-ui, sans-serif; }
-.site-footer span { color: var(--accent); padding: 0 8px; }
+.site-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px 32px; border-top: 1px solid var(--rule); padding: 24px clamp(24px, 5vw, 88px); color: var(--muted); font: 11px ui-sans-serif, system-ui, sans-serif; }
+.site-made { margin: 0; }
+.site-made span { padding: 0 6px; color: var(--muted); }
+.site-made a { color: var(--ink); text-decoration: none; transition: color .15s ease; }
+.site-made a:hover { color: var(--accent); }
+
+/* The signature of the Hattori AI banners: a blade orange rule, then the
+   name in spaced capitals. */
+.hattori-mark { display: inline-flex; align-items: center; gap: 14px; margin: 0; color: var(--ink); font: 600 10px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .24em; text-transform: uppercase; text-decoration: none; transition: color .15s ease; }
+.hattori-mark::before { content: ""; width: 28px; height: 1.5px; background: #e84a1c; transition: width .2s ease; }
+a.hattori-mark:hover { color: #e84a1c; }
+a.hattori-mark:hover::before { width: 36px; }
+.auth-intro .hattori-mark { margin-top: 56px; }
+@media (prefers-reduced-motion: reduce) { .hattori-mark, .hattori-mark::before { transition: none; } }
 @media (max-width: 650px) { .site-header { gap: 12px; min-height: 68px; } .site-caption { display: none; } .notebook-main { padding-top: 48px; } .index-tools { align-items: stretch; flex-direction: column; margin-top: 70px; } .index-tools .button { align-self: flex-start; } .page-meta time { display: none; } .page-heading { padding-top: 36px; } .page-row { gap: 12px; } .identity { font-size: 10px; } }
 .auth-topbar { display: flex; align-items: center; gap: 27px; min-height: 72px; padding: 0 clamp(24px, 5vw, 88px); border-bottom: 1px solid var(--rule); font: 12px ui-sans-serif, system-ui, sans-serif; }
 .auth-topbar .wordmark { font-family: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; margin-right: auto; }
@@ -278,7 +292,7 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
 .account-menu-panel a:hover { background: var(--paper); }
 .auth-page { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 430px); align-items: start; gap: clamp(50px, 10vw, 170px); max-width: 1200px; margin: 0 auto; padding: clamp(65px, 10vw, 150px) clamp(24px, 6vw, 90px) 100px; }
 .auth-intro h1 { font-size: clamp(3.5rem, 6vw, 6.3rem); line-height: .99; font-weight: 400; letter-spacing: -.065em; margin: 24px 0; }
-.auth-intro > p:last-child { color: var(--muted); font-size: 1.15rem; line-height: 1.5; }
+.auth-intro > h1 + p { color: var(--muted); font-size: 1.15rem; line-height: 1.5; }
 .auth-panel { border-top: 1px solid var(--ink); padding-top: 22px; }
 .auth-panel h2 { font-size: 2.3rem; font-weight: 400; letter-spacing: -.04em; margin: 20px 0 10px; }
 .auth-panel > p:not(.eyebrow) { color: var(--muted); margin-bottom: 35px; }

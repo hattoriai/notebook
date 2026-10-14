@@ -15,6 +15,7 @@ defmodule NotebookWeb.UserLive.Login do
         <p class="eyebrow">Welcome back</p><h1>Pick up where<br />you left off.</h1><p>
           Your pages are waiting.
         </p>
+        <p class="hattori-mark">A demo by Hattori AI</p>
       </div>
       <section class="auth-panel" aria-labelledby="login-title">
         <p class="eyebrow">Notebook</p><h2 id="login-title">Log in</h2>
