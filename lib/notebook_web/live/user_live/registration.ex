@@ -22,7 +22,7 @@ defmodule NotebookWeb.UserLive.Registration do
         <p class="eyebrow">Your space starts here</p><h1>Make room for<br />your ideas.</h1><p>
           A shared notebook for words, images, files, and people.
         </p>
-        <p class="hattori-mark">A demo by Hattori AI</p>
+        <a class="hattori-mark" href="https://hattori.ai/">A demo by Hattori AI</a>
       </div>
       <section class="auth-panel" aria-labelledby="register-title">
         <p class="eyebrow">Join Notebook</p><h2 id="register-title">Create your account</h2>
