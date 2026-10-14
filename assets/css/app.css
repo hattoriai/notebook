@@ -192,7 +192,7 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
 }
 .page-form .kotoba { min-height: 360px; }
 .kotoba:focus-within { box-shadow: 0 0 0 1px var(--rule), 0 18px 40px -28px #22251e40; }
-.kotoba-editable:focus-visible, .jumon-input:focus-visible { outline: none; }
+.kotoba-editable:focus-visible { outline: none; }
 .kotoba-toolbar { position: sticky; top: 0; z-index: 5; gap: 4px; padding: 6px 8px; background: #f6f2ea; }
 .kotoba-toolbar-group + .kotoba-toolbar-group { padding-left: 4px; }
 .kotoba-toolbar-button { color: #4a4e47; transition: background .15s ease, color .15s ease; }
