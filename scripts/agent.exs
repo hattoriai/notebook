@@ -4,8 +4,10 @@
 #
 #     mix run --no-start scripts/agent.exs "http://localhost:4000/mcp?token=..." board "The forge, planned"
 #
-# What it does: on a board, adds notes and joins them; on a table, edits
-# cells and adds a row; on a text, types a line. Open the page in a
+# What it does: on a board, adds cards and joins them; on a table, edits
+# cells and adds a row; on a text, types a line; `selected`, on a text,
+# makes bold what a person has selected there (OF=name, Hattori Hanzo
+# unless given). Open the page in a
 # browser first, to watch it work.
 
 {:ok, _apps} = Application.ensure_all_started([:req, :sake])
@@ -74,6 +76,22 @@ case kind do
       call.(session, "add_rows", %{
         "grid" => grid,
         "rows" => [%{"title" => "Sharpen for the ceremony", "status" => "todo", "owner" => "Hanzo", "points" => 3}]
+      })
+
+  "selected" ->
+    # What a person of the page has selected: the agent reads it, and
+    # makes it bold and highlighted, there.
+    document = page["use"]["document"]
+    who = System.get_env("OF", "Hattori Hanzo")
+    {_, session} = call.(session, "set_status", %{"room" => page["room"], "status" => "Looking at what #{who} selected"})
+    {%{"selected" => %{"text" => text}}, session} = call.(session, "read_text", %{"document" => document, "of" => who})
+    IO.puts("#{who} selected: #{inspect(text)}")
+
+    {_, _session} =
+      call.(session, "format_text", %{
+        "document" => document,
+        "of" => who,
+        "marks" => %{"bold" => true, "highlight" => true}
       })
 
   "text" ->

@@ -54,6 +54,12 @@ defmodule NotebookWeb.AgentsLive do
                 “In <em>Blades in progress</em>, give every task without an owner to Masamune, and mark the folded steel done.”
               </li>
               <li>“Read <em>A tour of Notebook</em> and add a short summary at the top, in bold.”</li>
+              <li>
+                Select some words in a page, then: “Rewrite what I have selected in <em>A tour of Notebook</em>, plainer.”
+              </li>
+              <li>
+                Select cards on a board, then: “Join the cards I selected, in order, with arrows that say <em>then</em>.”
+              </li>
             </ul>
             <p>Open the page in your browser first, to watch it work.</p>
           </section>
