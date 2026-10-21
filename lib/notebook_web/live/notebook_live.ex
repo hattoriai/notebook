@@ -218,6 +218,7 @@ defmodule NotebookWeb.NotebookLive do
 
   defp assign_kind(socket, page) do
     assign(socket,
+      boards: boards(),
       collab:
         Kotoba.Collab.token(Notebook.Issho, "#{Notebook.Collaboration.room(page)}/body",
           user: user(socket),
@@ -226,6 +227,28 @@ defmodule NotebookWeb.NotebookLive do
           undo: :page
         )
     )
+  end
+
+  # The boards a text embeds, by their id as the document keeps it: each
+  # page and its graph, for the board that opens their room first.
+  defp boards do
+    for page <- Pages.list(),
+        page.kind == "board",
+        into: %{},
+        do: {to_string(page.id), %{page: page, graph: Notebook.Boards.graph(page)}}
+  end
+
+  # A link to a board of the Notebook, pasted or dropped in a text, is the
+  # board itself.
+  defp resolve_board(url) do
+    with %URI{host: host, path: "/pages/" <> id} <- URI.parse(url),
+         true <- host in [nil, NotebookWeb.Endpoint.host()],
+         {id, ""} <- Integer.parse(id),
+         %Page{kind: "board"} = page <- Pages.get(id) do
+      %{kind: "board", ref: to_string(page.id), title: page.title}
+    else
+      _other -> nil
+    end
   end
 
   # The person, as every part of the page knows them: the same key, name
@@ -244,6 +267,72 @@ defmodule NotebookWeb.NotebookLive do
       {"@", :people, [search: &Notebook.People.search/1, label: "People", spaces: true]},
       {"#", :pages, [search: &Pages.mentions/1, label: "Pages", spaces: true]}
     ]
+  end
+
+  # A page's board, on its own page or embedded in a text (a Kotoba embed),
+  # in the board's room either way.
+  attr :id, :string, required: true
+  attr :page, Page, required: true
+  attr :graph, :any, required: true
+  attr :user, :map, required: true
+  attr :embedded, :boolean, default: false
+
+  defp board(assigns) do
+    ~H"""
+    <Hakushi.Components.canvas
+      id={@id}
+      graph={@graph}
+      live={{Notebook.Issho, Notebook.Collaboration.room(@page)}}
+      user={@user}
+      on_change={Notebook.Boards.on_change(@page.id)}
+      new_node={&Notebook.Boards.new_node/2}
+      background={:dots}
+      grid={20}
+      snap
+      rules={[loops: false]}
+      class="board-canvas"
+      wheel={if @embedded, do: :scroll, else: :pan}
+      refit={@embedded}
+      minimap={not @embedded}
+      label={"The board of " <> @page.title}
+    >
+      <:node :let={node} type="title">
+        <div class="board-title">
+          <strong>{node.data["text"]}</strong><span>{node.data["sub"]}</span>
+        </div>
+      </:node>
+      <:node :let={node} type="card">
+        <div class="board-card">
+          <Hakushi.Components.handle kind={:both} side={:left} />
+          <Hakushi.Components.handle kind={:both} side={:right} />
+          <Hakushi.Components.handle kind={:both} side={:bottom} />
+          <small>{node.data["kicker"]}</small>
+          <p>{node.data["text"]}</p>
+          <em :if={node.data["foot"]}>{node.data["foot"]}</em>
+        </div>
+      </:node>
+      <:node :let={node} type="note" resizable>
+        <div class="board-note" data-tone={node.data["tone"] || "ochre"}>
+          <Hakushi.Components.handle kind={:both} side={:left} />
+          <Hakushi.Components.handle kind={:both} side={:right} />
+          {node.data["text"]}
+        </div>
+      </:node>
+      <:node :let={node} type="page">
+        <div class="board-page-card">
+          <Hakushi.Components.handle kind={:both} side={:left} />
+          <span class="eyebrow">{kind_name(node.data["kind"])} / {node.data["page"]}</span>
+          <strong>{node.data["title"]}</strong>
+          <.link navigate={~p"/pages/#{node.data["page"]}"}>Open ↗</.link>
+        </div>
+      </:node>
+      <:node :let={node} type="frame" group resizable>
+        <div class="board-frame-node">
+          <span data-hakushi-drag>{node.data["title"]}</span>
+        </div>
+      </:node>
+    </Hakushi.Components.canvas>
+    """
   end
 
   @impl true
@@ -431,56 +520,7 @@ defmodule NotebookWeb.NotebookLive do
               <span class="space-hint">Drag from a card's side to another to join them.</span>
               <.maximize_buttons />
             </div>
-            <Hakushi.Components.canvas
-              id="board"
-              graph={@graph}
-              live={{Notebook.Issho, Notebook.Collaboration.room(@page)}}
-              user={user(assigns)}
-              on_change={Notebook.Boards.on_change(@page.id)}
-              new_node={&Notebook.Boards.new_node/2}
-              background={:dots}
-              grid={20}
-              snap
-              rules={[loops: false]}
-              class="board-canvas"
-              label={"The board of " <> @page.title}
-            >
-              <:node :let={node} type="title">
-                <div class="board-title">
-                  <strong>{node.data["text"]}</strong><span>{node.data["sub"]}</span>
-                </div>
-              </:node>
-              <:node :let={node} type="card">
-                <div class="board-card">
-                  <Hakushi.Components.handle kind={:both} side={:left} />
-                  <Hakushi.Components.handle kind={:both} side={:right} />
-                  <Hakushi.Components.handle kind={:both} side={:bottom} />
-                  <small>{node.data["kicker"]}</small>
-                  <p>{node.data["text"]}</p>
-                  <em :if={node.data["foot"]}>{node.data["foot"]}</em>
-                </div>
-              </:node>
-              <:node :let={node} type="note" resizable>
-                <div class="board-note" data-tone={node.data["tone"] || "ochre"}>
-                  <Hakushi.Components.handle kind={:both} side={:left} />
-                  <Hakushi.Components.handle kind={:both} side={:right} />
-                  {node.data["text"]}
-                </div>
-              </:node>
-              <:node :let={node} type="page">
-                <div class="board-page-card">
-                  <Hakushi.Components.handle kind={:both} side={:left} />
-                  <span class="eyebrow">{kind_name(node.data["kind"])} / {node.data["page"]}</span>
-                  <strong>{node.data["title"]}</strong>
-                  <.link navigate={~p"/pages/#{node.data["page"]}"}>Open ↗</.link>
-                </div>
-              </:node>
-              <:node :let={node} type="frame" group resizable>
-                <div class="board-frame-node">
-                  <span data-hakushi-drag>{node.data["title"]}</span>
-                </div>
-              </:node>
-            </Hakushi.Components.canvas>
+            <.board id="board" page={@page} graph={@graph} user={user(assigns)} />
           </div>
         </div>
 
@@ -535,6 +575,8 @@ defmodule NotebookWeb.NotebookLive do
             <.link
               class="button button-primary"
               navigate={~p"/pages/#{@page.id}/edit"}
+              data-issho-anchor="edit-together"
+              data-issho-follow
             >Edit together</.link>
             <button
               :for={{format, label} <- [markdown: "Copy Markdown", text: "Copy text"]}
@@ -626,6 +668,7 @@ defmodule NotebookWeb.NotebookLive do
               prompts={@prompts}
               extensions={[~p"/assets/kotoba/extensions/callout.js"]}
               placeholder="Write something worth keeping…"
+              embeds
             >
               <:selection>
                 <.kotoba_selection_menu id="body-selection-menu" class="notebook-selection-menu">
@@ -660,6 +703,44 @@ defmodule NotebookWeb.NotebookLive do
               }>Read page</.link>
             </div>
           </.form>
+          <.kotoba_embeds
+            :if={@live_action == :edit}
+            for="body-editor"
+            label="Board"
+            icon="canvas"
+            picker_title="Embed a board"
+            resolve={&resolve_board/1}
+          >
+            <:embed :let={embed}>
+              <Hakushi.Components.canvas_embed
+                :if={board = @boards[embed.ref]}
+                title={board.page.title}
+                subtitle="Board"
+                for={"board-" <> embed.id}
+                readonly={embed.readonly}
+                full={embed.full}
+                on_full={embed.toggle_full}
+              >
+                <.board
+                  id={"board-" <> embed.id}
+                  page={board.page}
+                  graph={board.graph}
+                  user={user(assigns)}
+                  embedded
+                />
+              </Hakushi.Components.canvas_embed>
+              <p :if={!@boards[embed.ref]} class="embed-gone">{embed.title}: this board is gone.</p>
+            </:embed>
+            <:picker>
+              <.kotoba_embed_option
+                :for={{id, board} <- @boards}
+                phx-click="embed_board"
+                phx-value-id={id}
+                title={board.page.title}
+                about="A board, live in the text"
+              />
+            </:picker>
+          </.kotoba_embeds>
         </div>
       </main>
       <Jumon.Components.command_palette
@@ -742,7 +823,7 @@ defmodule NotebookWeb.NotebookLive do
         )} / {@page.id}</span>
       </div>
     </div>
-    <Issho.Components.pointers id="page-pointers" grant={@grant} />
+    <Issho.Components.pointers id="page-pointers" grant={@grant} follow_agents="on_behalf" />
     """
   end
 
@@ -925,6 +1006,12 @@ defmodule NotebookWeb.NotebookLive do
   end
 
   @impl true
+  def handle_event("embed_board", %{"id" => id}, socket) do
+    %{page: page} = Map.fetch!(socket.assigns.boards, id)
+
+    {:noreply, Kotoba.Live.insert_embed(socket, "body-editor", "board", id, title: page.title)}
+  end
+
   def handle_event("search", %{"query" => query}, socket),
     do: {:noreply, socket |> assign(search: query) |> list_pages()}
 
