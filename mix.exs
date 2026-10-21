@@ -71,13 +71,11 @@ defmodule Notebook.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
-      # Issho and the libraries on it, unreleased: checkouts next to this
-      # one (see the README). Their Hex versions come with their releases.
-      {:issho, path: "../issho", override: true},
-      {:kotoba, path: "../kotoba"},
-      {:hakushi, path: "../hakushi"},
-      {:masu, path: "../masu"},
-      {:sake, "~> 0.4"},
+      {:issho, "~> 0.2"},
+      {:kotoba, "~> 0.6"},
+      {:hakushi, "~> 0.2"},
+      {:masu, "~> 0.4"},
+      {:sake, "~> 0.4.4"},
       {:koyomi, "~> 0.1.2"},
       {:jumon, "~> 0.1.1"},
       {:tz, "~> 0.28"}

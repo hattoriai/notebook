@@ -4,20 +4,7 @@ A shared notebook where people and agents work together, live: a Phoenix app bui
 
 ## Run locally
 
-This branch runs on the unreleased Issho, Kotoba, Hakushi and Masu: check them out next to this one, and build their assets once.
-
-```sh
-git clone https://github.com/hattoriai/issho ../issho
-git clone -b claude/zen-ramanujan-g5n646 https://github.com/hattoriai/kotoba ../kotoba
-git clone https://github.com/hattoriai/hakushi ../hakushi
-git clone -b claude/zen-ramanujan-g5n646 https://github.com/hattoriai/masu ../masu
-(cd ../issho && mix deps.get && mix issho.build)
-(cd ../kotoba && mix deps.get && mix kotoba.build)
-(cd ../hakushi && mix deps.get && mix hakushi.build)
-(cd ../masu && mix deps.get && mix masu.build)
-```
-
-Then, with Elixir 1.18 or later (`.tool-versions` pins the versions used here):
+Notebook uses the published Issho, Kotoba, Hakushi, Masu, Koyomi and Jumon from Hex, as your app would. With Elixir 1.18 or later (`.tool-versions` pins the versions used here):
 
 ```sh
 mix setup
@@ -82,10 +69,10 @@ mix precommit
 
 ## Try an unreleased change
 
-Issho, Kotoba, Hakushi and Masu come from checkouts next to this one on this branch (see Run locally); after a change to one, run its build (`mix kotoba.build`...) and `mix assets.build` again. To test a change to Koyomi or Jumon before its release, put its checkout next to Notebook and point Notebook at it for a while. For Koyomi:
+To test a change to one of the libraries before its release, put its checkout next to Notebook and point Notebook at it for a while. For Koyomi:
 
 1. In `mix.exs`, use `{:koyomi, path: "../koyomi"}`.
 2. In `assets/css/app.css`, import `../../../koyomi/priv/static/koyomi.css`.
 3. Run `mix koyomi.build` in the checkout, then remove `deps/koyomi` (esbuild finds the Hex copy there first), run `mix deps.get` and `mix assets.build`, and restart the server.
 
-Run `mix koyomi.build` and `mix assets.build` again after each change. Put the Hex versions back before you commit.
+Run `mix koyomi.build` and `mix assets.build` again after each change. Issho, Kotoba, Hakushi and Masu work the same way, with their own build task (`mix kotoba.build`...). Put the Hex versions back before you commit.

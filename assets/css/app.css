@@ -3,11 +3,10 @@
 
 @import "tailwindcss" source(none);
 @import "phoenix-colocated/notebook/colocated.css";
-/* Issho and the libraries on it: checkouts next to this one (see the README). */
-@import "../../../issho/priv/static/issho.css";
-@import "../../../kotoba/priv/static/kotoba.css";
-@import "../../../hakushi/priv/static/hakushi.css";
-@import "../../../masu/priv/static/masu.css";
+@import "../../deps/issho/priv/static/issho.css";
+@import "../../deps/kotoba/priv/static/kotoba.css";
+@import "../../deps/hakushi/priv/static/hakushi.css";
+@import "../../deps/masu/priv/static/masu.css";
 @import "../../deps/koyomi/priv/static/koyomi.css";
 @import "../../deps/jumon/priv/static/jumon.css";
 /* @import "../../deps/jumon/priv/static/jumon-sumi.css"; */
