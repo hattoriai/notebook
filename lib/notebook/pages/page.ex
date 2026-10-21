@@ -11,6 +11,11 @@ defmodule Notebook.Pages.Page do
     field :covers, Koyomi.DateRange, storage: :string
     field :review_at, :utc_datetime
     field :revisit, Koyomi.Recurrence
+    # What the page is: a text (Kotoba), a board (Hakushi, its graph in
+    # `board`) or a table (Masu, its rows in page_rows).
+    field :kind, :string, default: "text"
+    field :board, :map
+    has_many :rows, Notebook.Pages.Row
     belongs_to :author, Notebook.Accounts.User
     timestamps(type: :utc_datetime)
   end
@@ -31,7 +36,8 @@ defmodule Notebook.Pages.Page do
 
   def changeset(page, attrs) do
     page
-    |> cast(attrs, [:title, :body, :due_on, :covers, :revisit])
+    |> cast(attrs, [:title, :body, :due_on, :covers, :revisit, :kind])
+    |> validate_inclusion(:kind, ~w(text board table))
     |> Koyomi.Changeset.cast_datetime(attrs, :review_at, review_rules().time_zone)
     |> validate_required([:title])
     |> validate_length(:title, max: 160)

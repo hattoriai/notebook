@@ -1,12 +1,20 @@
 defmodule Notebook.CollabStore do
+  @moduledoc """
+  The shared text of each page (`"page:<id>/body"`): its accepted state
+  and content, in `collab_drafts`. A page with no draft starts from its
+  published body.
+  """
   @behaviour Kotoba.Collab.Store
   import Ecto.Query
-  alias Notebook.Pages
   alias Notebook.CollabStore.Draft
+  alias Notebook.Pages
 
   @impl true
   def load(repo, id) do
-    case {Pages.get(id), repo.get(Draft, id)} do
+    page_id = Notebook.Collaboration.page_id(id)
+    page = if page_id, do: Pages.get(page_id)
+
+    case {page, repo.get(Draft, id)} do
       {nil, _} -> {:error, :not_found}
       {page, nil} -> {:ok, %{state: nil, content: page.body || Kotoba.Content.empty()}}
       {_, draft} -> {:ok, %{state: draft.state, content: draft.content}}

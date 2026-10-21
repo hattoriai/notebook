@@ -58,7 +58,8 @@ defmodule NotebookWeb.NotebookTest do
       })
 
     {:ok, page} = Pages.create(Scope.for_user(user), %{title: "Shared"})
-    id = to_string(page.id)
+    # The page's text, a document of its room.
+    id = "page:#{page.id}/body"
     assert {:ok, %{state: nil}} = Notebook.CollabStore.load(Repo, id)
     state = %{"epoch" => "epoch-1", "revision" => 1}
     content = Kotoba.Content.empty()

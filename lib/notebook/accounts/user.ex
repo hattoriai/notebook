@@ -141,4 +141,19 @@ defmodule Notebook.Accounts.User do
     Bcrypt.no_user_verify()
     false
   end
+
+  # Each writer keeps one color, so that two cursors never look the same.
+  @colors ~w(#a45537 #3f6f8f #5d7f3a #8b4f86 #b07a1f #2f7d74 #9b3d4f #56608f)
+
+  @doc "The writer's color: theirs on every part of every page."
+  def color(%__MODULE__{id: id}), do: Enum.at(@colors, rem(id, length(@colors)))
+end
+
+defimpl Issho.Actor, for: Notebook.Accounts.User do
+  # A person in the pages' rooms: the key their text, board and table know
+  # them by, and an agent that works for them acts on their behalf.
+  def key(user), do: to_string(user.id)
+
+  def display(user),
+    do: %{name: user.name, color: Notebook.Accounts.User.color(user), kind: :human}
 end

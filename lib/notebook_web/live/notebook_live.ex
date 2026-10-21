@@ -2,6 +2,7 @@ defmodule NotebookWeb.NotebookLive do
   use NotebookWeb, :live_view
 
   alias Notebook.Pages
+  alias Phoenix.LiveView.JS
   alias Notebook.Pages.Page
 
   @impl true
@@ -175,13 +176,17 @@ defmodule NotebookWeb.NotebookLive do
     page = Pages.get!(id)
 
     socket =
-      assign(socket,
+      socket
+      |> assign(
         page: page,
         page_title: page.title,
         form: to_form(Pages.change(page)),
-        collab: Kotoba.Collab.token(socket, to_string(id), user: user(socket), role: :write),
+        # The page's room: its people and their pointers, listed and drawn
+        # once for the page, whatever it is.
+        grant: Issho.Live.grant(Notebook.Issho, user(socket), Notebook.Collaboration.room(page)),
         editing?: Map.has_key?(params, "edit")
       )
+      |> assign_kind(page)
 
     allow_upload(socket, :attachments,
       accept: ~w(.png .jpg .jpeg .gif .webp .pdf .mp4 .webm),
@@ -198,20 +203,41 @@ defmodule NotebookWeb.NotebookLive do
       page: nil,
       today: Koyomi.Rules.today(Page.review_rules()),
       form: to_form(Pages.change(%Page{})),
+      grant: nil,
       collab: nil
     )
   end
 
-  defp user(socket) do
-    account = socket.assigns.current_scope.user
-    %{id: account.id, name: socket.assigns.name, color: participant_color(account.id)}
+  # What the page is: its shared text, its board, or its table, each a part
+  # of the page's room.
+  defp assign_kind(socket, %Page{kind: "board"} = page),
+    do: assign(socket, collab: nil, graph: Notebook.Boards.graph(page))
+
+  defp assign_kind(socket, %Page{kind: "table"} = page),
+    do: assign(socket, collab: nil, grid: Notebook.Grids.rows(page))
+
+  defp assign_kind(socket, page) do
+    assign(socket,
+      collab:
+        Kotoba.Collab.token(Notebook.Issho, "#{Notebook.Collaboration.room(page)}/body",
+          user: user(socket),
+          role: :write,
+          people: false,
+          undo: :page
+        )
+    )
   end
 
-  # Each writer keeps one color, so that two cursors never look the same.
-  @participant_colors ~w(#a45537 #3f6f8f #5d7f3a #8b4f86 #b07a1f #2f7d74 #9b3d4f #56608f)
+  # The person, as every part of the page knows them: the same key, name
+  # and color in the text, the board, the table and the room's list.
+  defp user(%{assigns: assigns}), do: user(assigns)
 
-  defp participant_color(id),
-    do: Enum.at(@participant_colors, rem(id, length(@participant_colors)))
+  defp user(%{current_scope: %{user: account}}),
+    do: %{
+      id: to_string(account.id),
+      name: account.name,
+      color: Notebook.Accounts.User.color(account)
+    }
 
   defp prompts do
     [
@@ -297,8 +323,10 @@ defmodule NotebookWeb.NotebookLive do
                 navigate={~p"/pages/#{page.id}"}
               >
                 <div>
-                  <span class="page-kicker">PAGE / {page.id}</span><h2>{page.title}</h2><p>
-                    {excerpt(page.body)}
+                  <span class="page-kicker">{kind_name(page.kind)} / {page.id}</span><h2>
+                    {page.title}
+                  </h2><p>
+                    {excerpt(page)}
                   </p>
                 </div>
                 <div class="page-meta">
@@ -330,6 +358,18 @@ defmodule NotebookWeb.NotebookLive do
             phx-submit="create"
             class="page-form"
           >
+            <fieldset class="page-kinds">
+              <legend class="field-label">A page of</legend>
+              <label :for={{kind, name, hint} <- kinds()} class="page-kind">
+                <input
+                  type="radio"
+                  name="page[kind]"
+                  value={kind}
+                  checked={to_string(@form[:kind].value || "text") == kind}
+                />
+                <span><strong>{name}</strong><small>{hint}</small></span>
+              </label>
+            </fieldset>
             <label for="page_title" class="field-label">Title</label>
             <input
               id="page_title"
@@ -342,8 +382,13 @@ defmodule NotebookWeb.NotebookLive do
               autofocus
             />
             <.page_dates form={@form} />
-            <label class="field-label" for="new-body">Body</label>
+            <label
+              :if={to_string(@form[:kind].value || "text") == "text"}
+              class="field-label"
+              for="new-body"
+            >Body</label>
             <.kotoba
+              :if={to_string(@form[:kind].value || "text") == "text"}
               field={@form[:body]}
               id="new-body"
               label="Body"
@@ -356,13 +401,125 @@ defmodule NotebookWeb.NotebookLive do
           </.form>
         </div>
 
-        <div :if={@live_action in [:show, :edit]} class="page-view">
-          <div class="page-nav">
-            <.link navigate={~p"/"}>← All pages</.link>
-            <div class="page-nav-end">
-              <Jumon.Components.command_button id="page-commands" class="command-link" /><span>PAGE / {@page.id}</span>
-            </div>
+        <div
+          :if={@live_action in [:show, :edit] and @page.kind == "board"}
+          class="page-view page-space"
+        >
+          <.page_bar page={@page} grant={@grant} />
+          <div class="page-heading">
+            <p class="eyebrow">Board · shared live</p>
+            <h1>{@page.title}</h1>
+            <p>{kind_hint(@page.kind)}</p>
           </div>
+          <div
+            id="board-frame"
+            class="space-frame board-frame"
+            data-issho-anchor="board"
+            phx-hook=".Maximize"
+            phx-mounted={JS.ignore_attributes(["data-maximized"])}
+          >
+            <div class="space-tools">
+              <Hakushi.Components.canvas_item for="board" item="card" class="space-add">
+                <.icon name="hero-rectangle-stack" class="size-4" /> Card
+              </Hakushi.Components.canvas_item>
+              <Hakushi.Components.canvas_item for="board" item="note" class="space-add">
+                <.icon name="hero-pencil" class="size-4" /> Note
+              </Hakushi.Components.canvas_item>
+              <Hakushi.Components.canvas_item for="board" item="frame" class="space-add">
+                <.icon name="hero-square-2-stack" class="size-4" /> Frame
+              </Hakushi.Components.canvas_item>
+              <span class="space-hint">Drag from a card's side to another to join them.</span>
+              <.maximize_buttons />
+            </div>
+            <Hakushi.Components.canvas
+              id="board"
+              graph={@graph}
+              live={{Notebook.Issho, Notebook.Collaboration.room(@page)}}
+              user={user(assigns)}
+              on_change={Notebook.Boards.on_change(@page.id)}
+              new_node={&Notebook.Boards.new_node/2}
+              background={:dots}
+              grid={20}
+              snap
+              rules={[loops: false]}
+              class="board-canvas"
+              label={"The board of " <> @page.title}
+            >
+              <:node :let={node} type="title">
+                <div class="board-title">
+                  <strong>{node.data["text"]}</strong><span>{node.data["sub"]}</span>
+                </div>
+              </:node>
+              <:node :let={node} type="card">
+                <div class="board-card">
+                  <Hakushi.Components.handle kind={:both} side={:left} />
+                  <Hakushi.Components.handle kind={:both} side={:right} />
+                  <Hakushi.Components.handle kind={:both} side={:bottom} />
+                  <small>{node.data["kicker"]}</small>
+                  <p>{node.data["text"]}</p>
+                  <em :if={node.data["foot"]}>{node.data["foot"]}</em>
+                </div>
+              </:node>
+              <:node :let={node} type="note" resizable>
+                <div class="board-note" data-tone={node.data["tone"] || "ochre"}>
+                  <Hakushi.Components.handle kind={:both} side={:left} />
+                  <Hakushi.Components.handle kind={:both} side={:right} />
+                  {node.data["text"]}
+                </div>
+              </:node>
+              <:node :let={node} type="page">
+                <div class="board-page-card">
+                  <Hakushi.Components.handle kind={:both} side={:left} />
+                  <span class="eyebrow">{kind_name(node.data["kind"])} / {node.data["page"]}</span>
+                  <strong>{node.data["title"]}</strong>
+                  <.link navigate={~p"/pages/#{node.data["page"]}"}>Open ↗</.link>
+                </div>
+              </:node>
+              <:node :let={node} type="frame" group resizable>
+                <div class="board-frame-node">
+                  <span data-hakushi-drag>{node.data["title"]}</span>
+                </div>
+              </:node>
+            </Hakushi.Components.canvas>
+          </div>
+        </div>
+
+        <div
+          :if={@live_action in [:show, :edit] and @page.kind == "table"}
+          class="page-view page-space"
+        >
+          <.page_bar page={@page} grant={@grant} />
+          <div class="page-heading">
+            <p class="eyebrow">{kind_name(@page.kind)} · shared live</p>
+            <h1>{@page.title}</h1>
+            <p>{kind_hint(@page.kind)}</p>
+          </div>
+          <div
+            id="table-frame"
+            class="space-frame table-frame"
+            data-issho-anchor="table"
+            phx-hook=".Maximize"
+            phx-mounted={JS.ignore_attributes(["data-maximized"])}
+          >
+            <div class="space-tools">
+              <span class="space-hint">Edit a cell as in a spreadsheet; paste rows from one.</span>
+              <.maximize_buttons />
+            </div>
+            <Masu.Components.data_grid
+              {@grid}
+              issho={[instance: Notebook.Issho, room: Notebook.Collaboration.room(@page)]}
+              user={user(assigns)}
+              people={false}
+              scope={@current_scope}
+              label={"The table of " <> @page.title}
+              searchable
+              height="32rem"
+            />
+          </div>
+        </div>
+
+        <div :if={@live_action in [:show, :edit] and @page.kind == "text"} class="page-view">
+          <.page_bar page={@page} grant={@grant} />
           <div class="page-heading">
             <p class="eyebrow">Shared page</p>
             <h1>{@page.title}</h1>
@@ -516,6 +673,100 @@ defmodule NotebookWeb.NotebookLive do
     """
   end
 
+  # Maximize a board or a table to the window (Esc restores it), or to the
+  # whole screen: the .Maximize hook of the frame they are in.
+  defp maximize_buttons(assigns) do
+    ~H"""
+    <div class="space-size">
+      <button
+        type="button"
+        class="space-button"
+        data-space="maximize"
+        title="Maximize (Esc to restore)"
+      >
+        <.icon name="hero-arrows-pointing-out" class="space-grow size-4" />
+        <.icon name="hero-arrows-pointing-in" class="space-shrink size-4" />
+        <span class="space-grow">Maximize</span><span class="space-shrink">Restore</span>
+      </button>
+      <button type="button" class="space-button" data-space="fullscreen" title="Full screen">
+        <.icon name="hero-tv" class="size-4" /><span>Full screen</span>
+      </button>
+    </div>
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".Maximize">
+      // A board or a table of the page, maximized to the window or the
+      // screen, and back; the canvas or the grid takes the new size.
+      export default {
+        mounted() {
+          this.onClick = (event) => {
+            const button = event.target.closest("[data-space]")
+            if (!button || !this.el.contains(button)) return
+            if (button.dataset.space === "maximize") this.toggle()
+            else if (document.fullscreenElement) document.exitFullscreen()
+            else (this.el.requestFullscreen?.() ?? Promise.reject()).catch(() => this.toggle(true))
+          }
+          this.onKey = (event) => {
+            if (event.key === "Escape" && this.el.hasAttribute("data-maximized") && !document.fullscreenElement) this.toggle(false)
+          }
+          this.el.addEventListener("click", this.onClick)
+          document.addEventListener("keydown", this.onKey)
+          document.addEventListener("fullscreenchange", this.resized = () => window.dispatchEvent(new Event("resize")))
+        },
+        toggle(on = !this.el.hasAttribute("data-maximized")) {
+          this.el.toggleAttribute("data-maximized", on)
+          document.documentElement.classList.toggle("space-maximized", on)
+          requestAnimationFrame(() => window.dispatchEvent(new Event("resize")))
+        },
+        destroyed() {
+          document.removeEventListener("keydown", this.onKey)
+          document.removeEventListener("fullscreenchange", this.resized)
+          document.documentElement.classList.remove("space-maximized")
+        }
+      }
+    </script>
+    """
+  end
+
+  attr :page, Page, required: true
+  attr :grant, :map, required: true
+
+  # The top of a page: back to the pages, who is on it, the commands; and
+  # their pointers over the whole page.
+  defp page_bar(assigns) do
+    ~H"""
+    <div class="page-nav">
+      <.link navigate={~p"/"}>← All pages</.link>
+      <div class="page-nav-end">
+        <Issho.Components.people id="page-people" grant={@grant} label="On this page" />
+        <Jumon.Components.command_button id="page-commands" class="command-link" /><span>{kind_name(
+          @page.kind
+        )} / {@page.id}</span>
+      </div>
+    </div>
+    <Issho.Components.pointers id="page-pointers" grant={@grant} />
+    """
+  end
+
+  defp kinds do
+    [
+      {"text", "Text", "Words, written together"},
+      {"board", "Board", "Notes and arrows, on a canvas"},
+      {"table", "Table", "Rows of tasks, in a grid"}
+    ]
+  end
+
+  defp kind_name("board"), do: "BOARD"
+  defp kind_name("table"), do: "TABLE"
+  defp kind_name(_text), do: "PAGE"
+
+  defp kind_hint("board"),
+    do: "Notes and the arrows between them. Everyone here moves them together, agents too."
+
+  defp kind_hint("table"),
+    do:
+      "Rows everyone here edits together, agents too. Each change shows in the color of who made it."
+
+  defp kind_hint(_text), do: nil
+
   attr :form, Phoenix.HTML.Form, required: true
 
   # The page's dates. Each picker posts with the form, so the form's own
@@ -656,6 +907,9 @@ defmodule NotebookWeb.NotebookLive do
   defp format_name("markdown"), do: "Markdown"
   defp format_name(_text), do: "Plain text"
 
+  defp excerpt(%Page{kind: "board"}), do: "A board of notes and arrows, moved together."
+  defp excerpt(%Page{kind: "table"}), do: "A table of tasks, edited together."
+  defp excerpt(%Page{body: body}), do: excerpt(body)
   defp excerpt(nil), do: "A fresh page, ready for words."
 
   defp excerpt(%Kotoba.Content{text: text}) when text in [nil, ""],
@@ -716,8 +970,11 @@ defmodule NotebookWeb.NotebookLive do
 
   def handle_event("create", %{"page" => params}, socket) do
     case Pages.create(socket.assigns.current_scope, params) do
-      {:ok, page} ->
+      {:ok, %Page{kind: "text"} = page} ->
         {:noreply, push_navigate(socket, to: ~p"/pages/#{page.id}/edit")}
+
+      {:ok, page} ->
+        {:noreply, push_navigate(socket, to: ~p"/pages/#{page.id}")}
 
       {:error, changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
@@ -732,8 +989,8 @@ defmodule NotebookWeb.NotebookLive do
     with {:ok, revision} <- JSON.decode(json),
          {:ok, content} <-
            Kotoba.Collab.content(
-             Notebook.CollabSupervisor,
-             to_string(socket.assigns.page.id),
+             Notebook.Issho,
+             "#{Notebook.Collaboration.room(socket.assigns.page)}/body",
              revision
            ),
          {:ok, page} <-
@@ -769,14 +1026,6 @@ defmodule NotebookWeb.NotebookLive do
 
   def handle_event("kotoba:prompt", params, socket),
     do: {:noreply, Kotoba.Live.handle_prompt(socket, params, prompts())}
-
-  def handle_event("kotoba:collab_token", %{"id" => "body-editor", "document_id" => id}, socket) do
-    if socket.assigns.page && to_string(socket.assigns.page.id) == id do
-      {:reply, Kotoba.Collab.token(socket, id, user: user(socket), role: :write), socket}
-    else
-      {:reply, %{}, socket}
-    end
-  end
 
   defp handle_progress(:attachments, entry, socket) do
     if entry.done?,

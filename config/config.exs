@@ -73,6 +73,11 @@ config :tailwind,
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ]
 
+# Agents in the pages' rooms: who an MCP caller is (NotebookWeb.AgentAuth
+# signs them in as the account they work for), and the tables they may use.
+config :issho, Issho.MCP, instance: Notebook.Issho
+config :masu, Masu.Issho, grids: {Notebook.Grids, :for_agent}
+
 # Configure Elixir's Logger
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",

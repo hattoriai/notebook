@@ -28,6 +28,9 @@ import {Kotoba, registerCollaboration, highlightRenderedContent} from "kotoba"
 import {enableCollaboration} from "kotoba/collab"
 import {Koyomi} from "koyomi"
 import {Jumon} from "jumon"
+import {Hooks as IsshoHooks} from "issho"
+import {Hakushi} from "hakushi"
+import {Masu} from "masu"
 
 enableCollaboration(registerCollaboration)
 
@@ -35,7 +38,7 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, Kotoba, Koyomi, Jumon},
+  hooks: {...colocatedHooks, ...IsshoHooks, Kotoba, Koyomi, Jumon, Hakushi, Masu},
 })
 
 // Show progress bar on live navigation and form submits
