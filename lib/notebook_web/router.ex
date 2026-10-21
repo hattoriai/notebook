@@ -2,6 +2,7 @@ defmodule NotebookWeb.Router do
   use NotebookWeb, :router
 
   import NotebookWeb.UserAuth
+  import Sake.Router
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -15,6 +16,16 @@ defmodule NotebookWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+  end
+
+  # MCP clients, signed in by their person's token (the Agents page).
+  pipeline :agent do
+    plug NotebookWeb.AgentAuth
+  end
+
+  scope "/" do
+    pipe_through :agent
+    sake_endpoint("/mcp", server: NotebookWeb.MCP, secret: {NotebookWeb.AgentAuth, :secret, []})
   end
 
   scope "/", NotebookWeb do
@@ -31,6 +42,7 @@ defmodule NotebookWeb.Router do
       live "/pages/new", NotebookLive, :new
       live "/pages/:id", NotebookLive, :show
       live "/pages/:id/edit", NotebookLive, :edit
+      live "/agents", AgentsLive, :index
     end
 
     get "/uploads/kotoba/*key", Kotoba.Storage.Local.Plug, [at: "/uploads/kotoba"], alias: false

@@ -442,3 +442,71 @@ a.hattori-mark:hover::before { width: 36px; }
 .page-nav .command-link .jumon-button-label { flex: none; font: inherit; letter-spacing: normal; text-transform: none; color: inherit; }
 .command-trigger:focus-visible, .command-link:focus-visible { outline: none; box-shadow: var(--jumon-focus-ring); }
 @media (max-width: 650px) { .index-actions { align-self: flex-start; } .command-link .jumon-button-label { display: none; } }
+
+/*
+ * Issho's people and pointers, in Notebook's look: its ink, paper and
+ * type, set through Issho's custom properties (issho.css).
+ */
+:root {
+  --issho-font: ui-sans-serif, system-ui, sans-serif;
+  --issho-surface: var(--paper);
+  --issho-text: var(--ink);
+  --issho-line: var(--rule);
+  --issho-avatar-size: 30px;
+  --issho-overlap: 6px;
+  --issho-avatar-border: 2px solid var(--paper);
+  --issho-avatar-text: #fffdf8;
+  --issho-avatar-text-shadow: none;
+  --issho-avatar-font-weight: 700;
+  --issho-agent-radius: 8px;
+  --issho-badge-background: var(--accent);
+  --issho-badge-text: var(--paper);
+  --issho-pointer-radius: 3px;
+  --issho-pointer-text: #fffdf8;
+  --issho-pointer-shadow: 0 2px 6px rgb(33 31 28 / 0.18);
+  /* The writers' colors, the same as their cursors in the text. */
+  --issho-person-1: #a45537;
+  --issho-person-2: #3f6f8f;
+  --issho-person-3: #5d7f3a;
+  --issho-person-4: #8b4f86;
+  --issho-person-5: #b07a1f;
+  --issho-person-6: #2f7d74;
+  --issho-person-7: #9b3d4f;
+  --issho-person-8: #56608f;
+}
+.issho-avatar { letter-spacing: .02em; font-size: 11px; }
+
+/* A new page: what kind of page. */
+.page-kinds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; border: 0; padding: 0; margin: 0 0 28px; }
+.page-kinds legend { margin-bottom: 10px; }
+.page-kind { display: flex; gap: 12px; align-items: flex-start; padding: 16px; border: 1px solid var(--rule); background: #fcfbf7; cursor: pointer; transition: border-color .2s ease, background .2s ease; }
+.page-kind:hover { border-color: var(--ink); }
+.page-kind:has(input:checked) { border-color: var(--ink); background: var(--paper); box-shadow: inset 0 0 0 1px var(--ink); }
+.page-kind input { margin-top: 4px; accent-color: var(--accent); }
+.page-kind span { display: grid; gap: 4px; }
+.page-kind strong { font: 600 14px ui-sans-serif, system-ui, sans-serif; }
+.page-kind small { color: var(--muted); font-size: 13px; line-height: 1.4; }
+@media (max-width: 650px) { .page-kinds { grid-template-columns: 1fr; } }
+
+/* A board page: a canvas of notes, in a frame of the page. */
+.page-space .page-heading p { max-width: 38rem; }
+.board-frame, .table-frame { margin-top: 28px; border: 1px solid var(--rule); background: #fcfbf7; }
+.board-frame { height: 560px; display: flex; flex-direction: column; }
+.board-frame .hakushi { flex: 1; min-height: 0; }
+.board-tools { display: flex; align-items: center; gap: 16px; padding: 10px 14px; border-bottom: 1px solid var(--rule); font: 13px ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
+.board-tools .button { min-height: 34px; padding: 6px 14px; gap: 8px; }
+.note { position: relative; min-width: 180px; min-height: 92px; height: 100%; padding: 16px 18px; background: var(--note); color: var(--ink); box-shadow: 0 1px 0 rgb(33 31 28 / .08), 0 8px 20px -12px rgb(33 31 28 / .35); font: 16px/1.4 "Palatino Linotype", Palatino, Georgia, serif; }
+.note p { margin: 0; }
+
+/* A table page: a grid of rows, in the page's type. */
+.table-frame .masu { --masu-font: ui-sans-serif, system-ui, sans-serif; border: 0; }
+
+/* Connect an agent. */
+.agents-page .page-heading p { max-width: 40rem; }
+.agent-step { margin-top: 36px; }
+.agent-step h2 { font: 600 13px ui-sans-serif, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 0 0 12px; }
+.agent-step pre { margin: 0; padding: 16px 18px; background: var(--ink); color: var(--paper); font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-all; }
+.agent-step p { margin: 12px 0; color: var(--muted); }
+.agent-prompts { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
+.agent-prompts li { padding: 14px 18px; border-left: 3px solid var(--accent); background: #fcfbf7; }
+.agent-note { margin-top: 40px; font: 13px ui-sans-serif, system-ui, sans-serif; color: var(--muted); }

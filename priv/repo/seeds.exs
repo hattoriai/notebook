@@ -196,4 +196,31 @@ unless Notebook.Repo.get_by(Page, title: tour_title) do
     })
 end
 
+# A board and a table, for agents and people to work on together.
+unless Notebook.Repo.get_by(Page, title: "The forge, planned") do
+  {:ok, _board} =
+    Pages.create(Scope.for_user(hanzo), %{"title" => "The forge, planned", "kind" => "board"})
+end
+
+unless Notebook.Repo.get_by(Page, title: "Blades in progress") do
+  {:ok, table} =
+    Pages.create(Scope.for_user(hanzo), %{"title" => "Blades in progress", "kind" => "table"})
+
+  for {title, status, owner, days, points} <- [
+        {"Fold the steel", "done", "Hanzo", -3, 5},
+        {"Quench the blade", "doing", "Hanzo", 2, 3},
+        {"Polish the edge", "todo", "Masamune", 6, 8},
+        {"Wrap the handle", "todo", nil, 9, 2}
+      ] do
+    Notebook.Repo.insert!(%Notebook.Pages.Row{
+      page_id: table.id,
+      title: title,
+      status: status,
+      owner: owner,
+      due_on: Date.add(Date.utc_today(), days),
+      points: points
+    })
+  end
+end
+
 IO.puts("Hattori Hanzo can sign in as #{hanzo_email} with the password \"no more swords\".")

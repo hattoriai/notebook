@@ -31,11 +31,26 @@ defmodule Notebook.Collaboration do
   def document(_identity, "page:" <> rest) do
     case String.split(rest, "/") do
       [_id, "body"] -> Kotoba.Collab.document(store: {Notebook.CollabStore, Repo})
+      [id] -> board(id)
       _other -> {:error, :not_found}
     end
   end
 
   def document(_identity, _id), do: {:error, :not_found}
+
+  # A board page's canvas, when an agent opens it before anyone has it
+  # open: its saved graph, saved again with each change.
+  defp board(id) do
+    with {id, ""} <- Integer.parse(id),
+         %Pages.Page{kind: "board"} = page <- Pages.get(id) do
+      Hakushi.Issho.document(Notebook.Boards.graph(page),
+        on_change: Notebook.Boards.on_change(page.id),
+        canvas: "board"
+      )
+    else
+      _ -> {:error, :not_found}
+    end
+  end
 
   @doc "The page's room."
   def room(%Pages.Page{id: id}), do: "page:#{id}"
