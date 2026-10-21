@@ -2,6 +2,7 @@ defmodule NotebookWeb.NotebookLive do
   use NotebookWeb, :live_view
 
   alias Notebook.Pages
+  alias Phoenix.LiveView.JS
   alias Notebook.Pages.Page
 
   @impl true
@@ -401,21 +402,34 @@ defmodule NotebookWeb.NotebookLive do
         </div>
 
         <div
-          :if={@live_action in [:show, :edit] and @page.kind in ["board", "table"]}
+          :if={@live_action in [:show, :edit] and @page.kind == "board"}
           class="page-view page-space"
         >
           <.page_bar page={@page} grant={@grant} />
           <div class="page-heading">
-            <p class="eyebrow">{kind_name(@page.kind)} · shared live</p>
+            <p class="eyebrow">Board · shared live</p>
             <h1>{@page.title}</h1>
             <p>{kind_hint(@page.kind)}</p>
           </div>
-          <div :if={@page.kind == "board"} class="board-frame" data-issho-anchor="board">
-            <div class="board-tools">
-              <Hakushi.Components.canvas_item for="board" item="note" class="button">
-                + Note
+          <div
+            id="board-frame"
+            class="space-frame board-frame"
+            data-issho-anchor="board"
+            phx-hook=".Maximize"
+            phx-mounted={JS.ignore_attributes(["data-maximized"])}
+          >
+            <div class="space-tools">
+              <Hakushi.Components.canvas_item for="board" item="card" class="space-add">
+                <.icon name="hero-rectangle-stack" class="size-4" /> Card
               </Hakushi.Components.canvas_item>
-              <span>Drag a note's edge to another to join them. Double-click to add one.</span>
+              <Hakushi.Components.canvas_item for="board" item="note" class="space-add">
+                <.icon name="hero-pencil" class="size-4" /> Note
+              </Hakushi.Components.canvas_item>
+              <Hakushi.Components.canvas_item for="board" item="frame" class="space-add">
+                <.icon name="hero-square-2-stack" class="size-4" /> Frame
+              </Hakushi.Components.canvas_item>
+              <span class="space-hint">Drag from a card's side to another to join them.</span>
+              <.maximize_buttons />
             </div>
             <Hakushi.Components.canvas
               id="board"
@@ -425,18 +439,72 @@ defmodule NotebookWeb.NotebookLive do
               on_change={Notebook.Boards.on_change(@page.id)}
               new_node={&Notebook.Boards.new_node/2}
               background={:dots}
+              grid={20}
+              snap
+              rules={[loops: false]}
+              class="board-canvas"
               label={"The board of " <> @page.title}
             >
-              <:node :let={node} type="note" resizable>
-                <div class="note" style={"--note: #{node.data["color"] || "#f6e7a8"}"}>
-                  <Hakushi.Components.handle id="in" side={:left} label="Into this note" />
+              <:node :let={node} type="title">
+                <div class="board-title">
+                  <strong>{node.data["text"]}</strong><span>{node.data["sub"]}</span>
+                </div>
+              </:node>
+              <:node :let={node} type="card">
+                <div class="board-card">
+                  <Hakushi.Components.handle kind={:both} side={:left} />
+                  <Hakushi.Components.handle kind={:both} side={:right} />
+                  <Hakushi.Components.handle kind={:both} side={:bottom} />
+                  <small>{node.data["kicker"]}</small>
                   <p>{node.data["text"]}</p>
-                  <Hakushi.Components.handle id="out" side={:right} label="From this note" />
+                  <em :if={node.data["foot"]}>{node.data["foot"]}</em>
+                </div>
+              </:node>
+              <:node :let={node} type="note" resizable>
+                <div class="board-note" data-tone={node.data["tone"] || "ochre"}>
+                  <Hakushi.Components.handle kind={:both} side={:left} />
+                  <Hakushi.Components.handle kind={:both} side={:right} />
+                  {node.data["text"]}
+                </div>
+              </:node>
+              <:node :let={node} type="page">
+                <div class="board-page-card">
+                  <Hakushi.Components.handle kind={:both} side={:left} />
+                  <span class="eyebrow">{kind_name(node.data["kind"])} / {node.data["page"]}</span>
+                  <strong>{node.data["title"]}</strong>
+                  <.link navigate={~p"/pages/#{node.data["page"]}"}>Open ↗</.link>
+                </div>
+              </:node>
+              <:node :let={node} type="frame" group resizable>
+                <div class="board-frame-node">
+                  <span data-hakushi-drag>{node.data["title"]}</span>
                 </div>
               </:node>
             </Hakushi.Components.canvas>
           </div>
-          <div :if={@page.kind == "table"} class="table-frame" data-issho-anchor="table">
+        </div>
+
+        <div
+          :if={@live_action in [:show, :edit] and @page.kind == "table"}
+          class="page-view page-space"
+        >
+          <.page_bar page={@page} grant={@grant} />
+          <div class="page-heading">
+            <p class="eyebrow">{kind_name(@page.kind)} · shared live</p>
+            <h1>{@page.title}</h1>
+            <p>{kind_hint(@page.kind)}</p>
+          </div>
+          <div
+            id="table-frame"
+            class="space-frame table-frame"
+            data-issho-anchor="table"
+            phx-hook=".Maximize"
+            phx-mounted={JS.ignore_attributes(["data-maximized"])}
+          >
+            <div class="space-tools">
+              <span class="space-hint">Edit a cell as in a spreadsheet; paste rows from one.</span>
+              <.maximize_buttons />
+            </div>
             <Masu.Components.data_grid
               {@grid}
               issho={[instance: Notebook.Issho, room: Notebook.Collaboration.room(@page)]}
@@ -602,6 +670,59 @@ defmodule NotebookWeb.NotebookLive do
         <:icon :let={name}><.icon name={name} class="size-4" /></:icon>
       </Jumon.Components.command_palette>
     </div>
+    """
+  end
+
+  # Maximize a board or a table to the window (Esc restores it), or to the
+  # whole screen: the .Maximize hook of the frame they are in.
+  defp maximize_buttons(assigns) do
+    ~H"""
+    <div class="space-size">
+      <button
+        type="button"
+        class="space-button"
+        data-space="maximize"
+        title="Maximize (Esc to restore)"
+      >
+        <.icon name="hero-arrows-pointing-out" class="space-grow size-4" />
+        <.icon name="hero-arrows-pointing-in" class="space-shrink size-4" />
+        <span class="space-grow">Maximize</span><span class="space-shrink">Restore</span>
+      </button>
+      <button type="button" class="space-button" data-space="fullscreen" title="Full screen">
+        <.icon name="hero-tv" class="size-4" /><span>Full screen</span>
+      </button>
+    </div>
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".Maximize">
+      // A board or a table of the page, maximized to the window or the
+      // screen, and back; the canvas or the grid takes the new size.
+      export default {
+        mounted() {
+          this.onClick = (event) => {
+            const button = event.target.closest("[data-space]")
+            if (!button || !this.el.contains(button)) return
+            if (button.dataset.space === "maximize") this.toggle()
+            else if (document.fullscreenElement) document.exitFullscreen()
+            else (this.el.requestFullscreen?.() ?? Promise.reject()).catch(() => this.toggle(true))
+          }
+          this.onKey = (event) => {
+            if (event.key === "Escape" && this.el.hasAttribute("data-maximized") && !document.fullscreenElement) this.toggle(false)
+          }
+          this.el.addEventListener("click", this.onClick)
+          document.addEventListener("keydown", this.onKey)
+          document.addEventListener("fullscreenchange", this.resized = () => window.dispatchEvent(new Event("resize")))
+        },
+        toggle(on = !this.el.hasAttribute("data-maximized")) {
+          this.el.toggleAttribute("data-maximized", on)
+          document.documentElement.classList.toggle("space-maximized", on)
+          requestAnimationFrame(() => window.dispatchEvent(new Event("resize")))
+        },
+        destroyed() {
+          document.removeEventListener("keydown", this.onKey)
+          document.removeEventListener("fullscreenchange", this.resized)
+          document.documentElement.classList.remove("space-maximized")
+        }
+      }
+    </script>
     """
   end
 

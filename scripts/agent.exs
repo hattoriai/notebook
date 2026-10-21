@@ -31,35 +31,30 @@ IO.puts("Working on #{page["title"]} (#{page["kind"]}, #{page["room"]})")
 case kind do
   "board" ->
     canvas = page["use"]["canvas"]
-    {_, session} = call.(session, "set_status", %{"room" => page["room"], "status" => "Planning the forge"})
+    {_, session} = call.(session, "set_status", %{"room" => page["room"], "status" => "Planning the ceremony"})
 
     {ids, session} =
       Enum.reduce(
-        [{"Choose the steel", 0, 240}, {"Fold it, again and again", 260, 240}, {"Temper with clay", 520, 240}],
+        [{"Step 6", "Name the blade", 30, 640}, {"Step 7", "Present it at dawn", 280, 640}],
         {[], session},
-        fn {text, x, y}, {ids, session} ->
+        fn {kicker, text, x, y}, {ids, session} ->
           {%{"id" => id}, session} =
             call.(session, "add_node", %{
               "canvas" => canvas,
-              "type" => "note",
+              "type" => "card",
               "x" => x,
               "y" => y,
-              "data" => %{"text" => text, "color" => "#cfe3c3"}
+              "data" => %{"kicker" => kicker, "text" => text, "foot" => "Added by the agent"}
             })
 
           {ids ++ [id], session}
         end
       )
 
-    session =
-      ids
-      |> Enum.chunk_every(2, 1, :discard)
-      |> Enum.reduce(session, fn [a, b], session ->
-        {_, session} = call.(session, "connect_nodes", %{"canvas" => canvas, "source" => a, "target" => b})
-        session
-      end)
-
-    {_, _session} = call.(session, "move_node", %{"canvas" => canvas, "node" => List.last(ids), "x" => 560, "y" => 120})
+    [name, present] = ids
+    {_, session} = call.(session, "connect_nodes", %{"canvas" => canvas, "source" => "handle", "target" => name, "label" => "then"})
+    {_, session} = call.(session, "connect_nodes", %{"canvas" => canvas, "source" => name, "target" => present, "label" => "then"})
+    {_, _session} = call.(session, "move_node", %{"canvas" => canvas, "node" => present, "x" => 530, "y" => 640})
 
   "table" ->
     grid = page["use"]["grid"]
