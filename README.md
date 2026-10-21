@@ -52,10 +52,10 @@ mix run --no-start scripts/agent.exs "http://localhost:4000/mcp?token=…" board
 
 The sample pages (`mix setup`, or `mix run priv/repo/seeds.exs`) are **A tour of Notebook**, a text with every kind of block, photos from Unsplash, a gallery and a PDF; **The forge, planned**, a board; and **Blades in progress**, a table. Their author is Hattori Hanzo, a retired swordsmith who now makes pages: sign in as `hanzo@notebook.test` with the password `no more swords` to write as him.
 
-- Open a page in two browsers, as two people: each is in the page's list of people once, and their pointers move over the whole page, on the same part of the other's page whatever its size; a click rings. Over **Only for you** parts nothing is shared.
+- Open a page in two browsers, as two people: each is in the page's list of people once, and their pointers move over the whole page, on the same part of the other's page whatever its size; a click rings.
 - Make a **New page** of each kind. On a board, drag a **Card**, a **Note** or a **Frame** onto the paper, or double-click it; join cards from their sides, and the arrows say *then*; a page card opens its page. Cards snap to the paper's grid, and the controls zoom, fit, tidy up, undo and download the board. On a table, edit a cell as in a spreadsheet, paste rows from one, add and delete rows: the others see each change in the color of who made it, and a cell someone types in is theirs until they are done.
 - **Maximize** a board or a table to the window (Esc restores it), or **Full screen**.
-- Connect an agent (above) and watch it: in the list of people with *AI*, its status beside its name, its cursor, pointer or cell where it works, its changes as it makes them. Undo takes back your own last change on the page, whichever part you made it in.
+- Connect an agent (above) and watch it: in the list of people with *AI*, its status beside its name, its cursor, pointer or cell where it works, its changes as it makes them.
 
 - Select words to open the selection menu. The new-page editor uses Kotoba's default menu (`selection_menu`); the edit page brings its own Heroicons menu through `<.kotoba_selection_menu>`, with the Callout extension's command in it. Both get Notebook's ink style from `--kotoba-floating-*` properties in `app.css`.
 - Put the caret in a link to open, edit, or remove it from the link card. Alt+F10 moves the focus to the menu or the card.
