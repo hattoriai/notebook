@@ -23,7 +23,9 @@ defmodule NotebookWeb.Router do
     live_session :notebook_authenticated,
       on_mount: [
         {NotebookWeb.UserAuth, :require_authenticated},
-        {Jumon.Live, NotebookWeb.Commands}
+        {Jumon.Live, NotebookWeb.Commands},
+        Issho.Live,
+        Masu.Live
       ] do
       live "/", NotebookLive, :index
       live "/pages/new", NotebookLive, :new

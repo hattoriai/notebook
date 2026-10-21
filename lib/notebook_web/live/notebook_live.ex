@@ -179,7 +179,16 @@ defmodule NotebookWeb.NotebookLive do
         page: page,
         page_title: page.title,
         form: to_form(Pages.change(page)),
-        collab: Kotoba.Collab.token(socket, to_string(id), user: user(socket), role: :write),
+        # The page's room: its people and their pointers, listed and drawn
+        # once for the page, and its shared text.
+        grant: Issho.Live.grant(Notebook.Issho, user(socket), Notebook.Collaboration.room(page)),
+        collab:
+          Kotoba.Collab.token(Notebook.Issho, "#{Notebook.Collaboration.room(page)}/body",
+            user: user(socket),
+            role: :write,
+            people: false,
+            undo: :page
+          ),
         editing?: Map.has_key?(params, "edit")
       )
 
@@ -198,13 +207,14 @@ defmodule NotebookWeb.NotebookLive do
       page: nil,
       today: Koyomi.Rules.today(Page.review_rules()),
       form: to_form(Pages.change(%Page{})),
+      grant: nil,
       collab: nil
     )
   end
 
   defp user(socket) do
     account = socket.assigns.current_scope.user
-    %{id: account.id, name: socket.assigns.name, color: participant_color(account.id)}
+    %{id: to_string(account.id), name: socket.assigns.name, color: participant_color(account.id)}
   end
 
   # Each writer keeps one color, so that two cursors never look the same.
@@ -360,9 +370,11 @@ defmodule NotebookWeb.NotebookLive do
           <div class="page-nav">
             <.link navigate={~p"/"}>← All pages</.link>
             <div class="page-nav-end">
+              <Issho.Components.people id="page-people" grant={@grant} label="On this page" />
               <Jumon.Components.command_button id="page-commands" class="command-link" /><span>PAGE / {@page.id}</span>
             </div>
           </div>
+          <Issho.Components.pointers id="page-pointers" grant={@grant} />
           <div class="page-heading">
             <p class="eyebrow">Shared page</p>
             <h1>{@page.title}</h1>
@@ -732,8 +744,8 @@ defmodule NotebookWeb.NotebookLive do
     with {:ok, revision} <- JSON.decode(json),
          {:ok, content} <-
            Kotoba.Collab.content(
-             Notebook.CollabSupervisor,
-             to_string(socket.assigns.page.id),
+             Notebook.Issho,
+             "#{Notebook.Collaboration.room(socket.assigns.page)}/body",
              revision
            ),
          {:ok, page} <-
@@ -769,14 +781,6 @@ defmodule NotebookWeb.NotebookLive do
 
   def handle_event("kotoba:prompt", params, socket),
     do: {:noreply, Kotoba.Live.handle_prompt(socket, params, prompts())}
-
-  def handle_event("kotoba:collab_token", %{"id" => "body-editor", "document_id" => id}, socket) do
-    if socket.assigns.page && to_string(socket.assigns.page.id) == id do
-      {:reply, Kotoba.Collab.token(socket, id, user: user(socket), role: :write), socket}
-    else
-      {:reply, %{}, socket}
-    end
-  end
 
   defp handle_progress(:attachments, entry, socket) do
     if entry.done?,

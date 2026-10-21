@@ -15,7 +15,7 @@ defmodule NotebookWeb.Endpoint do
     websocket: [connect_info: [session: @session_options]],
     longpoll: [connect_info: [session: @session_options]]
 
-  socket "/kotoba/socket", NotebookWeb.CollabSocket, websocket: [max_frame_size: 1_000_000]
+  socket "/issho/socket", NotebookWeb.CollabSocket, websocket: [max_frame_size: 1_000_000]
 
   # Serve at "/" the static files from "priv/static" directory.
   #

@@ -12,8 +12,12 @@ defmodule Notebook.Application do
       Notebook.Repo,
       {DNSCluster, query: Application.get_env(:notebook, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Notebook.PubSub},
-      {Kotoba.Collab.Supervisor,
-       name: Notebook.CollabSupervisor, store: {Notebook.CollabStore, Notebook.Repo}},
+      # The pages' rooms: their people, their shared text and boards.
+      {Issho,
+       name: Notebook.Issho,
+       pubsub: Notebook.PubSub,
+       endpoint: NotebookWeb.Endpoint,
+       policy: Notebook.Collaboration},
       # Start a worker by calling: Notebook.Worker.start_link(arg)
       # {Notebook.Worker, arg},
       # Start to serve requests, typically the last entry
