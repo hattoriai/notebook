@@ -568,3 +568,6 @@ html.space-maximized { overflow: hidden; }
 .agent-prompts { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
 .agent-prompts li { padding: 14px 18px; border-left: 3px solid var(--accent); background: #fcfbf7; }
 .agent-note { margin-top: 40px; font: 13px ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
+
+/* An embedded table takes the height of its rows (up to its max_height); a board keeps the embed's. */
+.kotoba-embed[data-kind="table"] .kotoba-embed-slot { height: auto; }

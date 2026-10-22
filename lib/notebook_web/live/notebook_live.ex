@@ -218,7 +218,8 @@ defmodule NotebookWeb.NotebookLive do
 
   defp assign_kind(socket, page) do
     assign(socket,
-      boards: boards(),
+      boards: embeddable("board"),
+      tables: embeddable("table"),
       collab:
         Kotoba.Collab.token(Notebook.Issho, "#{Notebook.Collaboration.room(page)}/body",
           user: user(socket),
@@ -229,27 +230,37 @@ defmodule NotebookWeb.NotebookLive do
     )
   end
 
-  # The boards a text embeds, by their id as the document keeps it: each
-  # page and its graph, for the board that opens their room first.
-  defp boards do
+  # The boards and tables a text embeds, by their page's id as the document
+  # keeps it: each page, and its graph or its grid.
+  defp embeddable(kind) do
     for page <- Pages.list(),
-        page.kind == "board",
+        page.kind == kind,
         into: %{},
-        do: {to_string(page.id), %{page: page, graph: Notebook.Boards.graph(page)}}
+        do: {to_string(page.id), embeddable_page(page)}
   end
 
-  # A link to a board of the Notebook, pasted or dropped in a text, is the
-  # board itself.
-  defp resolve_board(url) do
+  defp embeddable_page(%Page{kind: "board"} = page),
+    do: %{page: page, graph: Notebook.Boards.graph(page)}
+
+  defp embeddable_page(%Page{kind: "table"} = page),
+    do: %{page: page, grid: Notebook.Grids.rows(page)}
+
+  # A link to a board or a table of the Notebook, pasted or dropped in a
+  # text, is the board or the table itself.
+  defp resolve_embed(url) do
     with %URI{host: host, path: "/pages/" <> id} <- URI.parse(url),
          true <- host in [nil, NotebookWeb.Endpoint.host()],
          {id, ""} <- Integer.parse(id),
-         %Page{kind: "board"} = page <- Pages.get(id) do
-      %{kind: "board", ref: to_string(page.id), title: page.title}
+         %Page{kind: kind} = page when kind in ["board", "table"] <- Pages.get(id) do
+      %{kind: kind, ref: to_string(page.id), title: page.title}
     else
       _other -> nil
     end
   end
+
+  defp embedded(assigns, "board"), do: assigns.boards
+  defp embedded(assigns, "table"), do: assigns.tables
+  defp embedded(_assigns, _kind), do: %{}
 
   # The person, as every part of the page knows them: the same key, name
   # and color in the text, the board, the table and the room's list.
@@ -332,6 +343,62 @@ defmodule NotebookWeb.NotebookLive do
         </div>
       </:node>
     </Hakushi.Components.canvas>
+    """
+  end
+
+  # A board or a table in a text (a Kotoba embed): the page's own, live in
+  # its room. The table is the table page's grid, under its name there: one
+  # grid, wherever it is.
+  attr :embed, :map, required: true
+  attr :found, :map, default: nil, doc: "the page and its graph or grid, or nil"
+  attr :user, :map, required: true
+  attr :scope, :any, required: true
+
+  defp embedded(%{found: nil} = assigns) do
+    ~H"""
+    <p class="embed-gone">{@embed.title}: this {@embed.kind} is gone.</p>
+    """
+  end
+
+  defp embedded(%{embed: %{kind: "board"}} = assigns) do
+    ~H"""
+    <Hakushi.Components.canvas_embed
+      title={@found.page.title}
+      subtitle="Board"
+      for={"board-" <> @embed.id}
+      readonly={@embed.readonly}
+      full={@embed.full}
+      on_full={@embed.toggle_full}
+    >
+      <.board
+        id={"board-" <> @embed.id}
+        page={@found.page}
+        graph={@found.graph}
+        user={@user}
+        embedded
+      />
+    </Hakushi.Components.canvas_embed>
+    """
+  end
+
+  defp embedded(%{embed: %{kind: "table"}} = assigns) do
+    ~H"""
+    <Masu.Components.data_grid
+      {@found.grid}
+      id={"table-" <> @embed.id}
+      issho={[
+        instance: Notebook.Issho,
+        room: Notebook.Collaboration.room(@found.page),
+        grid: "rows",
+        can: if(@embed.readonly, do: :read, else: :write)
+      ]}
+      user={@user}
+      scope={@scope}
+      label={"The table of " <> @found.page.title}
+      height={if @embed.full, do: "100%", else: "auto"}
+      max_height="24rem"
+      wheel={if @embed.full, do: :grid, else: :page}
+    />
     """
   end
 
@@ -639,7 +706,7 @@ defmodule NotebookWeb.NotebookLive do
             </div>
           </dl>
           <article :if={@live_action == :show} class="page-body">
-            <.kotoba_content content={@page.body} />
+            <.kotoba_content content={@page.body} embed={&Notebook.Embeds.render/2} />
           </article>
           <.form
             :if={@live_action == :edit}
@@ -706,38 +773,37 @@ defmodule NotebookWeb.NotebookLive do
           <.kotoba_embeds
             :if={@live_action == :edit}
             for="body-editor"
-            label="Board"
-            icon="canvas"
-            picker_title="Embed a board"
-            resolve={&resolve_board/1}
+            label="Embed"
+            icon="embed"
+            picker_title="Embed a board or a table"
+            resolve={&resolve_embed/1}
           >
             <:embed :let={embed}>
-              <Hakushi.Components.canvas_embed
-                :if={board = @boards[embed.ref]}
-                title={board.page.title}
-                subtitle="Board"
-                for={"board-" <> embed.id}
-                readonly={embed.readonly}
-                full={embed.full}
-                on_full={embed.toggle_full}
-              >
-                <.board
-                  id={"board-" <> embed.id}
-                  page={board.page}
-                  graph={board.graph}
-                  user={user(assigns)}
-                  embedded
-                />
-              </Hakushi.Components.canvas_embed>
-              <p :if={!@boards[embed.ref]} class="embed-gone">{embed.title}: this board is gone.</p>
+              <.embedded
+                embed={embed}
+                found={embedded(assigns, embed.kind)[embed.ref]}
+                user={user(assigns)}
+                scope={@current_scope}
+              />
             </:embed>
             <:picker>
+              <h3 :if={@boards != %{}}>Boards</h3>
               <.kotoba_embed_option
                 :for={{id, board} <- @boards}
-                phx-click="embed_board"
+                phx-click="embed_page"
                 phx-value-id={id}
+                phx-value-kind="board"
                 title={board.page.title}
-                about="A board, live in the text"
+                about="Notes and arrows, live in the text"
+              />
+              <h3 :if={@tables != %{}}>Tables</h3>
+              <.kotoba_embed_option
+                :for={{id, table} <- @tables}
+                phx-click="embed_page"
+                phx-value-id={id}
+                phx-value-kind="table"
+                title={table.page.title}
+                about="Rows of tasks, live in the text"
               />
             </:picker>
           </.kotoba_embeds>
@@ -980,7 +1046,7 @@ defmodule NotebookWeb.NotebookLive do
 
   defp copy_text(%{body: %Kotoba.Content{doc: doc}}, :markdown) do
     case Kotoba.Document.parse(doc) do
-      {:ok, parsed} -> Kotoba.Renderer.to_markdown(parsed)
+      {:ok, parsed} -> Kotoba.Renderer.to_markdown(parsed, embed: &Notebook.Embeds.render/2)
       {:error, _messages} -> ""
     end
   end
@@ -1006,10 +1072,10 @@ defmodule NotebookWeb.NotebookLive do
   end
 
   @impl true
-  def handle_event("embed_board", %{"id" => id}, socket) do
-    %{page: page} = Map.fetch!(socket.assigns.boards, id)
-
-    {:noreply, Kotoba.Live.insert_embed(socket, "body-editor", "board", id, title: page.title)}
+  def handle_event("embed_page", %{"id" => id, "kind" => kind}, socket)
+      when kind in ["board", "table"] do
+    %{page: page} = Map.fetch!(embedded(socket.assigns, kind), id)
+    {:noreply, Kotoba.Live.insert_embed(socket, "body-editor", kind, id, title: page.title)}
   end
 
   def handle_event("search", %{"query" => query}, socket),
