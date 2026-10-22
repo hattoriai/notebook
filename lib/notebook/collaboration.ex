@@ -30,7 +30,7 @@ defmodule Notebook.Collaboration do
   @impl true
   def document(_identity, "page:" <> rest) do
     case String.split(rest, "/") do
-      [_id, "body"] -> Kotoba.Collab.document(store: {Notebook.CollabStore, Repo})
+      [_id, "body"] -> Kotoba.Issho.document(store: {Notebook.CollabStore, Repo})
       [id] -> board(id)
       _other -> {:error, :not_found}
     end
