@@ -290,7 +290,7 @@ defmodule NotebookWeb.NotebookLive do
 
   defp board(assigns) do
     ~H"""
-    <Hakushi.Components.canvas
+    <.canvas
       id={@id}
       graph={@graph}
       live={{Notebook.Issho, Notebook.Collaboration.room(@page)}}
@@ -314,9 +314,9 @@ defmodule NotebookWeb.NotebookLive do
       </:node>
       <:node :let={node} type="card">
         <div class="board-card">
-          <Hakushi.Components.handle kind={:both} side={:left} />
-          <Hakushi.Components.handle kind={:both} side={:right} />
-          <Hakushi.Components.handle kind={:both} side={:bottom} />
+          <.handle kind={:both} side={:left} />
+          <.handle kind={:both} side={:right} />
+          <.handle kind={:both} side={:bottom} />
           <small>{node.data["kicker"]}</small>
           <p>{node.data["text"]}</p>
           <em :if={node.data["foot"]}>{node.data["foot"]}</em>
@@ -324,14 +324,14 @@ defmodule NotebookWeb.NotebookLive do
       </:node>
       <:node :let={node} type="note" resizable>
         <div class="board-note" data-tone={node.data["tone"] || "ochre"}>
-          <Hakushi.Components.handle kind={:both} side={:left} />
-          <Hakushi.Components.handle kind={:both} side={:right} />
+          <.handle kind={:both} side={:left} />
+          <.handle kind={:both} side={:right} />
           {node.data["text"]}
         </div>
       </:node>
       <:node :let={node} type="page">
         <div class="board-page-card">
-          <Hakushi.Components.handle kind={:both} side={:left} />
+          <.handle kind={:both} side={:left} />
           <span class="eyebrow">{kind_name(node.data["kind"])} / {node.data["page"]}</span>
           <strong>{node.data["title"]}</strong>
           <.link navigate={~p"/pages/#{node.data["page"]}"}>Open ↗</.link>
@@ -342,7 +342,7 @@ defmodule NotebookWeb.NotebookLive do
           <span data-hakushi-drag>{node.data["title"]}</span>
         </div>
       </:node>
-    </Hakushi.Components.canvas>
+    </.canvas>
     """
   end
 
@@ -362,7 +362,7 @@ defmodule NotebookWeb.NotebookLive do
 
   defp embedded(%{embed: %{kind: "board"}} = assigns) do
     ~H"""
-    <Hakushi.Components.canvas_embed
+    <.canvas_embed
       title={@found.page.title}
       subtitle="Board"
       for={"board-" <> @embed.id}
@@ -377,13 +377,13 @@ defmodule NotebookWeb.NotebookLive do
         user={@user}
         embedded
       />
-    </Hakushi.Components.canvas_embed>
+    </.canvas_embed>
     """
   end
 
   defp embedded(%{embed: %{kind: "table"}} = assigns) do
     ~H"""
-    <Masu.Components.data_grid
+    <.data_grid
       {@found.grid}
       id={"table-" <> @embed.id}
       issho={[
@@ -430,7 +430,7 @@ defmodule NotebookWeb.NotebookLive do
               />
             </form>
             <div class="index-actions">
-              <Jumon.Components.command_button id="index-commands" class="button command-trigger" />
+              <.command_button id="index-commands" class="button command-trigger" />
               <.link class="button button-primary" navigate={~p"/pages/new"}>New page
               <span aria-hidden="true">↗</span></.link>
             </div>
@@ -501,7 +501,7 @@ defmodule NotebookWeb.NotebookLive do
           <div class="page-nav">
             <.link navigate={~p"/"}>← All pages</.link>
             <div class="page-nav-end">
-              <Jumon.Components.command_button id="page-commands" class="command-link" /><span>NEW PAGE</span>
+              <.command_button id="page-commands" class="command-link" /><span>NEW PAGE</span>
             </div>
           </div>
           <div class="page-heading">
@@ -575,15 +575,15 @@ defmodule NotebookWeb.NotebookLive do
             phx-mounted={JS.ignore_attributes(["data-maximized"])}
           >
             <div class="space-tools">
-              <Hakushi.Components.canvas_item for="board" item="card" class="space-add">
+              <.canvas_item for="board" item="card" class="space-add">
                 <.icon name="hero-rectangle-stack" class="size-4" /> Card
-              </Hakushi.Components.canvas_item>
-              <Hakushi.Components.canvas_item for="board" item="note" class="space-add">
+              </.canvas_item>
+              <.canvas_item for="board" item="note" class="space-add">
                 <.icon name="hero-pencil" class="size-4" /> Note
-              </Hakushi.Components.canvas_item>
-              <Hakushi.Components.canvas_item for="board" item="frame" class="space-add">
+              </.canvas_item>
+              <.canvas_item for="board" item="frame" class="space-add">
                 <.icon name="hero-square-2-stack" class="size-4" /> Frame
-              </Hakushi.Components.canvas_item>
+              </.canvas_item>
               <span class="space-hint">Drag from a card's side to another to join them.</span>
               <.maximize_buttons />
             </div>
@@ -612,7 +612,7 @@ defmodule NotebookWeb.NotebookLive do
               <span class="space-hint">Edit a cell as in a spreadsheet; paste rows from one.</span>
               <.maximize_buttons />
             </div>
-            <Masu.Components.data_grid
+            <.data_grid
               {@grid}
               issho={[instance: Notebook.Issho, room: Notebook.Collaboration.room(@page)]}
               user={user(assigns)}
@@ -809,13 +809,13 @@ defmodule NotebookWeb.NotebookLive do
           </.kotoba_embeds>
         </div>
       </main>
-      <Jumon.Components.command_palette
+      <.command_palette
         jumon={@jumon}
         placeholder="Search pages, or type a command…"
         icons={~w(hero-document-text hero-pencil-square)}
       >
         <:icon :let={name}><.icon name={name} class="size-4" /></:icon>
-      </Jumon.Components.command_palette>
+      </.command_palette>
     </div>
     """
   end
@@ -883,13 +883,11 @@ defmodule NotebookWeb.NotebookLive do
     <div class="page-nav">
       <.link navigate={~p"/"}>← All pages</.link>
       <div class="page-nav-end">
-        <Issho.Components.people id="page-people" grant={@grant} label="On this page" />
-        <Jumon.Components.command_button id="page-commands" class="command-link" /><span>{kind_name(
-          @page.kind
-        )} / {@page.id}</span>
+        <.people id="page-people" grant={@grant} label="On this page" />
+        <.command_button id="page-commands" class="command-link" /><span>{kind_name(@page.kind)} / {@page.id}</span>
       </div>
     </div>
-    <Issho.Components.pointers id="page-pointers" grant={@grant} follow_agents="on_behalf" />
+    <.pointers id="page-pointers" grant={@grant} follow_agents="on_behalf" />
     """
   end
 
