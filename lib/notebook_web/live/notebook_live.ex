@@ -204,29 +204,28 @@ defmodule NotebookWeb.NotebookLive do
       today: Koyomi.Rules.today(Page.review_rules()),
       form: to_form(Pages.change(%Page{})),
       grant: nil,
-      collab: nil
+      issho: nil
     )
   end
 
   # What the page is: its shared text, its board, or its table, each a part
   # of the page's room.
   defp assign_kind(socket, %Page{kind: "board"} = page),
-    do: assign(socket, collab: nil, graph: Notebook.Boards.graph(page))
+    do: assign(socket, issho: nil, graph: Notebook.Boards.graph(page))
 
   defp assign_kind(socket, %Page{kind: "table"} = page),
-    do: assign(socket, collab: nil, grid: Notebook.Grids.rows(page))
+    do: assign(socket, issho: nil, grid: Notebook.Grids.rows(page))
 
   defp assign_kind(socket, page) do
     assign(socket,
       boards: embeddable("board"),
       tables: embeddable("table"),
-      collab:
-        Kotoba.Collab.token(Notebook.Issho, "#{Notebook.Collaboration.room(page)}/body",
-          user: user(socket),
-          role: :write,
-          people: false,
-          undo: :page
-        )
+      issho: [
+        instance: Notebook.Issho,
+        document: "#{Notebook.Collaboration.room(page)}/body",
+        people: false,
+        undo: :page
+      ]
     )
   end
 
@@ -293,7 +292,7 @@ defmodule NotebookWeb.NotebookLive do
     <.canvas
       id={@id}
       graph={@graph}
-      live={{Notebook.Issho, Notebook.Collaboration.room(@page)}}
+      issho={[instance: Notebook.Issho, document: Notebook.Collaboration.room(@page)]}
       user={@user}
       on_change={Notebook.Boards.on_change(@page.id)}
       new_node={&Notebook.Boards.new_node/2}
@@ -388,8 +387,7 @@ defmodule NotebookWeb.NotebookLive do
       id={"table-" <> @embed.id}
       issho={[
         instance: Notebook.Issho,
-        room: Notebook.Collaboration.room(@found.page),
-        grid: "rows",
+        document: Notebook.Collaboration.room(@found.page) <> "/rows",
         can: if(@embed.readonly, do: :read, else: :write)
       ]}
       user={@user}
@@ -614,9 +612,12 @@ defmodule NotebookWeb.NotebookLive do
             </div>
             <.data_grid
               {@grid}
-              issho={[instance: Notebook.Issho, room: Notebook.Collaboration.room(@page)]}
+              issho={[
+                instance: Notebook.Issho,
+                document: Notebook.Collaboration.room(@page) <> "/rows",
+                people: false
+              ]}
               user={user(assigns)}
-              people={false}
               scope={@current_scope}
               label={"The table of " <> @page.title}
               searchable
@@ -730,7 +731,8 @@ defmodule NotebookWeb.NotebookLive do
               field={@form[:body]}
               id="body-editor"
               label="Body"
-              collab={@collab}
+              issho={@issho}
+              user={user(assigns)}
               uploads={@uploads.attachments}
               prompts={@prompts}
               extensions={[~p"/assets/kotoba/extensions/callout.js"]}
