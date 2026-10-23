@@ -83,7 +83,7 @@ defmodule NotebookWeb do
       import NotebookWeb.CoreComponents
       import Kotoba.Components
       import Koyomi.Components
-      import Issho.Components, only: [people: 1, pointers: 1]
+      import Issho.Components, only: [people: 1, pointers: 1, comments: 1, agents: 1]
       import Hakushi.Components, only: [canvas: 1, canvas_embed: 1, canvas_item: 1, handle: 1]
       import Masu.Components, only: [data_grid: 1]
       import Jumon.Components, only: [command_button: 1, command_palette: 1]

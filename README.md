@@ -4,7 +4,7 @@ A shared notebook where people and agents work together, live: a Phoenix app bui
 
 ## Run locally
 
-Notebook uses the published Issho, Kotoba, Hakushi, Masu, Koyomi and Jumon from Hex, as your app would. With Elixir 1.18 or later (`.tool-versions` pins the versions used here):
+Notebook uses the published Kotoba, Hakushi, Masu, Koyomi and Jumon from Hex, as your app would, and Issho's main branch until Issho 0.4.0 is on Hex (`mix.exs`, the `issho` alias in `config/config.exs`, and Issho's style sheet in `app.css`). With Elixir 1.18 or later (`.tool-versions` pins the versions used here):
 
 ```sh
 mix setup
@@ -42,7 +42,8 @@ The sample pages (`mix setup`, or `mix run priv/repo/seeds.exs`) are **A tour of
 - Open a page in two browsers, as two people: each is in the page's list of people once, and their pointers move over the whole page, on the same part of the other's page whatever its size; a click rings.
 - Make a **New page** of each kind. On a board, drag a **Card**, a **Note** or a **Frame** onto the paper, or double-click it; join cards from their sides, and the arrows say *then*; a page card opens its page. Cards snap to the paper's grid, and the controls zoom, fit, tidy up, undo and download the board. On a table, edit a cell as in a spreadsheet, paste rows from one, add and delete rows: the others see each change in the color of who made it, and a cell someone types in is theirs until they are done.
 - **Maximize** a board or a table to the window (Esc restores it), or **Full screen**.
-- Connect an agent (above) and watch it: in the list of people with *AI*, its status beside its name, its cursor, pointer or cell where it works, its changes as it makes them.
+- Connect an agent (above) and watch it: in the list of people with *AI*, its status beside its name, its cursor, pointer or cell where it works, its changes as it makes them. When it says what it is doing (a task and its steps), the page shows it under its bar, with **Pause**, **Resume** and **Stop** for you.
+- **Comments**, in the page's bar, opens the page's threads. Select words in a text, a card on a board or a cell in a table, then comment: the thread is on what you selected, and a mark on the page opens it. Type `@` to mention someone, or someone's agent ("Ada's agent"): an agent that is not connected finds it in its inbox when it next is, and answers in the thread.
 
 - Select words to open the selection menu. The new-page editor uses Kotoba's default menu (`selection_menu`); the edit page brings its own Heroicons menu through `<.kotoba_selection_menu>`, with the Callout extension's command in it. Both get Notebook's ink style from `--kotoba-floating-*` properties in `app.css`.
 - Put the caret in a link to open, edit, or remove it from the link card. Alt+F10 moves the focus to the menu or the card.

@@ -9,14 +9,30 @@ defmodule NotebookWeb.MCP do
   use Issho.MCP,
     name: "notebook",
     version: "0.1.0",
-    instructions: """
-      The Notebook is a shared notebook of pages that people edit live. A page
-      is a text (Kotoba), a board of notes and arrows (Hakushi) or a table of
-      rows (Masu). Call list_pages first: it gives each page's room and the
-      name its tools take. You are in the room with the people: they see your
-      cursor, selection or pointer, and your changes as you make them. Say
-      what you do with set_status, and work as a person would: select before
-      you format, type where the caret is, move a note by dragging it.
-    """,
+    instructions:
+      """
+        The Notebook is a shared notebook of pages that people edit live. A page
+        is a text (Kotoba), a board of notes and arrows (Hakushi) or a table of
+        rows (Masu). Call list_pages first: it gives each page's room and the
+        name its tools take. You are in the room with the people: they see your
+        cursor, selection or pointer, and your changes as you make them. Say
+        what you do with set_status, and work as a person would: select before
+        you format, type where the caret is, move a note by dragging it.
+      """ <> Issho.MCP.instructions(),
     tools: Notebook.Tools.all()
+
+  @doc """
+  Who an MCP caller is in the pages' rooms: the agent of the person whose
+  token it connected with, named for its client ("Claude Code"). One
+  agent per person, whatever its client, so that people mention it by
+  one name ("Ada's agent") and it finds what they said in one inbox.
+  """
+  def agent(%Sake.Context{scope: %Notebook.Accounts.User{} = user} = ctx) do
+    client = ctx.client_info || %{}
+    name = client["title"] || client["name"] || "Agent"
+    {%{id: agent_key(user), name: name, kind: :agent}, on_behalf_of: user}
+  end
+
+  @doc "The key of a person's agent in the rooms."
+  def agent_key(%Notebook.Accounts.User{id: id}), do: "agent:#{id}"
 end

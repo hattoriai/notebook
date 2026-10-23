@@ -184,9 +184,11 @@ defmodule NotebookWeb.NotebookLive do
         # The page's room: its people and their pointers, listed and drawn
         # once for the page, whatever it is.
         grant: Issho.Live.grant(Notebook.Issho, user(socket), Notebook.Collaboration.room(page)),
-        editing?: Map.has_key?(params, "edit")
+        editing?: Map.has_key?(params, "edit"),
+        mentionable: mentionable(socket)
       )
       |> assign_kind(page)
+      |> join_room(page)
 
     allow_upload(socket, :attachments,
       accept: ~w(.png .jpg .jpeg .gif .webp .pdf .mp4 .webm),
@@ -206,6 +208,34 @@ defmodule NotebookWeb.NotebookLive do
       grant: nil,
       issho: nil
     )
+  end
+
+  # The LiveView is in the page's room too, for its comments.
+  defp join_room(socket, page) do
+    if connected?(socket),
+      do:
+        {:ok, _} =
+          Issho.Live.join(Notebook.Issho, user(socket), Notebook.Collaboration.room(page))
+
+    socket
+  end
+
+  # Whom a comment may mention, though they are not on the page: every
+  # account, and each one's agent, which finds it in its inbox.
+  defp mentionable(socket) do
+    me = socket.assigns.current_scope.user.id
+
+    Enum.flat_map(Notebook.Accounts.list_users(), fn account ->
+      agent = %{
+        key: NotebookWeb.MCP.agent_key(account),
+        name: if(account.id == me, do: "My agent", else: account.name <> "'s agent"),
+        kind: "agent"
+      }
+
+      person = %{key: to_string(account.id), name: account.name}
+
+      [person, agent]
+    end)
   end
 
   # What the page is: its shared text, its board, or its table, each a part
@@ -811,6 +841,11 @@ defmodule NotebookWeb.NotebookLive do
           </.kotoba_embeds>
         </div>
       </main>
+      <.comments_drawer
+        :if={@live_action in [:show, :edit] and @page != nil}
+        page={@page}
+        mentionable={@mentionable}
+      />
       <.command_palette
         jumon={@jumon}
         placeholder="Search pages, or type a command…"
@@ -886,11 +921,93 @@ defmodule NotebookWeb.NotebookLive do
       <.link navigate={~p"/"}>← All pages</.link>
       <div class="page-nav-end">
         <.people id="page-people" grant={@grant} label="On this page" />
+        <button
+          id="comments-toggle"
+          type="button"
+          class="command-link comments-toggle"
+          aria-controls="comments-drawer"
+          phx-click={toggle_comments()}
+        >
+          <.icon name="hero-chat-bubble-left-right" class="size-4" />Comments
+        </button>
         <.command_button id="page-commands" class="command-link" /><span>{kind_name(@page.kind)} / {@page.id}</span>
       </div>
     </div>
+    <.agents id="page-agents" grant={@grant} class="page-agents" />
     <.pointers id="page-pointers" grant={@grant} follow_agents="on_behalf" />
     """
+  end
+
+  attr :page, Page, required: true
+  attr :mentionable, :list, required: true
+
+  # The page's threads of comments, in a drawer at the side: on what one
+  # selected in its text, board or table, or on the page. A thread's mark
+  # on the page opens it.
+  defp comments_drawer(assigns) do
+    ~H"""
+    <aside
+      id="comments-drawer"
+      class="comments-drawer"
+      aria-label="Comments"
+      phx-hook=".CommentsDrawer"
+      phx-mounted={JS.ignore_attributes(["data-open"])}
+    >
+      <div class="comments-drawer-head">
+        <span>Comments</span>
+        <button
+          type="button"
+          class="command-link"
+          phx-click={toggle_comments()}
+          aria-label="Close comments"
+        >
+          <.icon name="hero-x-mark" class="size-4" />
+        </button>
+      </div>
+      <.comments
+        id="page-comments"
+        room={Notebook.Collaboration.room(@page)}
+        mentionable={@mentionable}
+      >
+        <:place :let={%{place: place, default: default}}>{place_words(place, default)}</:place>
+      </.comments>
+    </aside>
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".CommentsDrawer">
+      // A thread's mark on the page opens the drawer at it; Escape closes it.
+      export default {
+        mounted() {
+          this.open = (event) => {
+            if (event.target.closest(".issho-comment-mark")) this.el.dataset.open = "true"
+          }
+          this.close = (event) => {
+            if (event.key === "Escape" && this.el.dataset.open && !event.target.closest(".issho-mention-list")) {
+              delete this.el.dataset.open
+            }
+          }
+          document.addEventListener("click", this.open)
+          this.el.addEventListener("keydown", this.close)
+        },
+        destroyed() {
+          document.removeEventListener("click", this.open)
+        }
+      }
+    </script>
+    """
+  end
+
+  defp toggle_comments,
+    do: JS.toggle_attribute({"data-open", "true"}, to: "#comments-drawer")
+
+  # Where a thread is, in the words of the page.
+  defp place_words(nil, default), do: default
+
+  defp place_words(%{"doc" => doc}, default) do
+    cond do
+      String.ends_with?(doc, "/body") -> "In the text"
+      String.ends_with?(doc, "/rows") -> "In the table"
+      String.starts_with?(doc, "page:") -> "On the board"
+      true -> default
+    end
   end
 
   defp kinds do
