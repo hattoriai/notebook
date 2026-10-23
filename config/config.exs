@@ -45,7 +45,9 @@ config :esbuild,
   version: "0.25.4",
   notebook: [
     args:
-      ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
+      # --alias:issho: until Issho 0.4.0 is on Hex, its TypeScript sources
+      # (a git dependency has no built files).
+      ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=. --alias:issho=../deps/issho/assets/src/index.ts),
     cd: Path.expand("../assets", __DIR__),
     env: %{
       "NODE_PATH" => [

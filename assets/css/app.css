@@ -3,7 +3,8 @@
 
 @import "tailwindcss" source(none);
 @import "phoenix-colocated/notebook/colocated.css";
-@import "../../deps/issho/priv/static/issho.css";
+/* Until Issho 0.4.0 is on Hex: its sources (priv/static/issho.css in the package). */
+@import "../../deps/issho/assets/css/issho.css";
 @import "../../deps/kotoba/priv/static/kotoba.css";
 @import "../../deps/hakushi/priv/static/hakushi.css";
 @import "../../deps/masu/priv/static/masu.css";
