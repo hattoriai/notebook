@@ -12,12 +12,14 @@ defmodule Notebook.Application do
       Notebook.Repo,
       {DNSCluster, query: Application.get_env(:notebook, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Notebook.PubSub},
-      # The pages' rooms: their people, their shared text and boards.
+      # The pages' rooms: their people, their shared text and boards, and
+      # Issho's own documents (comments, inboxes) in the database.
       {Issho,
        name: Notebook.Issho,
        pubsub: Notebook.PubSub,
        endpoint: NotebookWeb.Endpoint,
-       policy: Notebook.Collaboration},
+       policy: Notebook.Collaboration,
+       store: {Notebook.IsshoStore, Notebook.Repo}},
       # MCP for agents (/mcp): its streams and tasks, on every node.
       {Sake, secret_key_base: {NotebookWeb.AgentAuth, :secret, []}, pubsub: Notebook.PubSub},
       # Start a worker by calling: Notebook.Worker.start_link(arg)

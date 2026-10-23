@@ -572,3 +572,29 @@ html.space-maximized { overflow: hidden; }
 
 /* An embedded table takes the height of its rows (up to its max_height); a board keeps the embed's. */
 .kotoba-embed[data-kind="table"] .kotoba-embed-slot { height: auto; }
+
+/*
+ * A page's comments, in a drawer at the side, and its agents at work under
+ * its bar: Issho's panels in Notebook's paper, ink and accent.
+ */
+:root {
+  --issho-muted: var(--muted);
+  --issho-fill: #efeadf;
+  --issho-accent: var(--accent);
+  --issho-accent-text: var(--paper);
+  --issho-radius: 4px;
+  --issho-shadow: 0 1px 0 rgb(33 31 28 / .04);
+  --issho-shadow-raised: 0 10px 30px rgb(33 31 28 / .14);
+  --issho-focus-ring: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--accent);
+  --issho-comments-font-size: 13.5px;
+}
+.comments-toggle { gap: 6px; }
+.comments-drawer { position: fixed; inset: 0 0 0 auto; z-index: 50; display: flex; flex-direction: column; gap: 18px; width: min(420px, 100vw); padding: 26px 26px 32px; overflow-y: auto; background: #fcfbf7; border-left: 1px solid var(--rule); box-shadow: -18px 0 40px rgb(33 31 28 / .08); transform: translateX(104%); visibility: hidden; transition: transform .28s cubic-bezier(.2, .8, .2, 1), visibility 0s linear .28s; }
+.comments-drawer[data-open] { transform: none; visibility: visible; transition: transform .28s cubic-bezier(.2, .8, .2, 1); }
+.comments-drawer-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--rule); }
+.comments-drawer-head > span { font: 600 10px/1.4 ui-sans-serif, system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
+/* The drawer's head names it: Issho's title stays for screen readers. */
+.comments-drawer .issho-comments-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.comments-drawer .issho-comments-header { justify-content: flex-start; }
+.page-agents { margin-top: 18px; }
+@media (prefers-reduced-motion: reduce) { .comments-drawer, .comments-drawer[data-open] { transition: none; } }

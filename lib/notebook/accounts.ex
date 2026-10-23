@@ -10,6 +10,9 @@ defmodule Notebook.Accounts do
 
   ## Database getters
 
+  @doc "Every account, by name: the people of the notebook."
+  def list_users, do: Repo.all(from u in User, order_by: u.name)
+
   @doc """
   Gets a user by email.
 

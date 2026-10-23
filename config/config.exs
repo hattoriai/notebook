@@ -44,9 +44,9 @@ config :phoenix_live_view,
 config :esbuild,
   version: "0.25.4",
   notebook: [
+    # --alias:issho: until Issho 0.4.0 is on Hex, its TypeScript sources
+    # (a git dependency has no built files).
     args:
-      # --alias:issho: until Issho 0.4.0 is on Hex, its TypeScript sources
-      # (a git dependency has no built files).
       ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=. --alias:issho=../deps/issho/assets/src/index.ts),
     cd: Path.expand("../assets", __DIR__),
     env: %{
@@ -77,7 +77,7 @@ config :tailwind,
 
 # Agents in the pages' rooms: who an MCP caller is (NotebookWeb.AgentAuth
 # signs them in as the account they work for), and the tables they may use.
-config :issho, Issho.MCP, instance: Notebook.Issho
+config :issho, Issho.MCP, instance: Notebook.Issho, agent: {NotebookWeb.MCP, :agent}
 config :masu, Masu.Issho, grids: {Notebook.Grids, :for_agent}
 
 # Configure Elixir's Logger
