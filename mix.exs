@@ -76,7 +76,10 @@ defmodule Notebook.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
-      {:issho, "~> 0.4.2"},
+      # Issho's main, until a release after 0.4.2: the libraries that take it
+      # (Kotoba, Hakushi, Masu, Narabe, Fude) take this one. Its browser
+      # client is built from its sources (`mix notebook.issho`).
+      {:issho, github: "hattoriai/issho", branch: "main", override: true},
       {:kotoba, "~> 0.8"},
       {:hakushi, "~> 0.6"},
       {:masu, "~> 0.7"},
@@ -119,11 +122,13 @@ defmodule Notebook.MixProject do
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": [
         "compile",
+        "notebook.issho",
         "esbuild kotoba_extensions",
         "tailwind notebook",
         "esbuild notebook"
       ],
       "assets.deploy": [
+        "notebook.issho",
         "tailwind notebook --minify",
         "esbuild kotoba_extensions --minify",
         "esbuild notebook --minify",
