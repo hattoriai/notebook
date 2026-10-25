@@ -1486,8 +1486,12 @@ defmodule NotebookWeb.NotebookLive do
   defp toggle_comments,
     do: JS.toggle_attribute({"data-open", "true"}, to: "#comments-drawer")
 
-  # Where the person asked: the block of their selection in the body, in
-  # its words (Issho.Place's label).
+  # Where the person asked, in its words (Issho.Place's label): their
+  # selection in the body (a Kotoba place: the answer replaces it), else its
+  # block (the answer goes after it).
+  defp asked_place(document, %{selection: %{"anchor" => _, "focus" => _} = selection, text: text}),
+       do: %{"doc" => document, "at" => selection, "label" => text}
+
   defp asked_place(document, %{block: block, text: text}) when is_binary(block),
     do: %{"doc" => document, "at" => %{"node" => block}, "label" => text}
 
@@ -1909,7 +1913,12 @@ defmodule NotebookWeb.NotebookLive do
         {:noreply, put_flash(socket, :error, "Connect an agent first, on the Agents page.")}
 
       _agents ->
-        asking = %{text: params["text"] || "", block: get_in(params, ["place", "id"])}
+        asking = %{
+          text: params["text"] || "",
+          block: get_in(params, ["place", "id"]),
+          selection: get_in(params, ["place", "selection"])
+        }
+
         {:noreply, assign(socket, asking: asking)}
     end
   end
