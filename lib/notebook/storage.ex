@@ -13,8 +13,8 @@ defmodule Notebook.Storage do
   new files go to the store chosen, the others are copied to it as a job
   (`start_transfer/2`), and until then are served from where they were.
 
-  The bucket's secret is kept encrypted with the notebook's
-  `secret_key_base`.
+  The bucket's secret is one of the notebook's secrets
+  (`Notebook.Secrets`), encrypted by `Notebook.Vault`.
   """
   import Ecto.Changeset, except: [change: 2]
 
@@ -23,6 +23,8 @@ defmodule Notebook.Storage do
   alias Notebook.Storage.{Config, Setting}
 
   @topic "storage"
+  # The bucket's secret is the notebook's (Notebook.Secrets), not the settings'.
+  @secret "storage.secret_access_key"
   @prefix "/uploads/kotoba"
 
   @providers [
@@ -129,6 +131,9 @@ defmodule Notebook.Storage do
          {:ok, config} <- apply_action(changeset, :save),
          config = %{config | secret_access_key: config.secret_access_key || secret(stored)},
          :ok <- try_bucket(config, changeset) do
+      if present?(attrs_secret(attrs)),
+        do: Notebook.Secrets.put(@secret, config.secret_access_key)
+
       value =
         stored
         |> Map.merge(dump(config))
@@ -227,7 +232,7 @@ defmodule Notebook.Storage do
         bucket?(config, stored) ->
           Storehouse.S3
 
-        # A bucket whose secret no longer opens (`secret_key_base` changed):
+        # A bucket whose secret no longer opens (its vault key is gone):
         # the disk, until an admin gives the secret again.
         true ->
           require Logger
@@ -455,12 +460,7 @@ defmodule Notebook.Storage do
   end
 
   defp dump(%Config{} = config) do
-    fields = Map.new(@fields, &{&1, Map.fetch!(config, String.to_existing_atom(&1))})
-
-    case config.secret_access_key do
-      secret when is_binary(secret) and secret != "" -> Map.put(fields, "secret", encrypt(secret))
-      _none -> fields
-    end
+    Map.new(@fields, &{&1, Map.fetch!(config, String.to_existing_atom(&1))})
   end
 
   defp bucket?(config, stored),
@@ -480,19 +480,9 @@ defmodule Notebook.Storage do
     end)
   end
 
-  defp secret(%{"secret" => token}) when is_binary(token) do
-    case Plug.Crypto.decrypt(secret_key_base(), "notebook storage", token, max_age: :infinity) do
-      {:ok, secret} -> secret
-      {:error, _reason} -> nil
-    end
-  end
+  defp secret(_stored), do: Notebook.Secrets.get(@secret)
 
-  defp secret(_stored), do: nil
-
-  defp encrypt(secret), do: Plug.Crypto.encrypt(secret_key_base(), "notebook storage", secret)
-
-  defp secret_key_base,
-    do: Application.fetch_env!(:notebook, NotebookWeb.Endpoint)[:secret_key_base]
+  defp attrs_secret(attrs), do: attrs["secret_access_key"] || attrs[:secret_access_key]
 
   defp present?(value), do: is_binary(value) and String.trim(value) != ""
 end

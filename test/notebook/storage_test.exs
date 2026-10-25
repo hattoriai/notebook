@@ -85,6 +85,8 @@ defmodule Notebook.StorageTest do
 
     stored = Repo.get!(Storage.Setting, "storage").value
     refute inspect(stored) =~ "no-more-swords"
+    # The secret is the notebook's, encrypted by its vault.
+    assert Notebook.Secrets.get("storage.secret_access_key") == "no-more-swords"
 
     # A save without the secret keeps it.
     assert {:ok, %{secret?: true}} =

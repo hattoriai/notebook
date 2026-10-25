@@ -45,6 +45,11 @@ defmodule Notebook.MixProject do
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
       {:ecto_sqlite3, "~> 0.25"},
+      # The notebook's secrets (a bucket's key, and those to come), encrypted
+      # in the database with keys that rotate. Only AES-GCM and the Binary
+      # type: hex.audit's advisories for cloak 1.1.4 (AES-CTR) and cloak_ecto
+      # 1.3.0 (the PBKDF2 field) are of parts the notebook does not use.
+      {:cloak_ecto, "~> 1.3"},
       {:swoosh, "~> 1.18"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
