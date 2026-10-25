@@ -385,6 +385,7 @@ defmodule NotebookWeb.SpaceLive do
 
   defp kind_name("board"), do: "BOARD"
   defp kind_name("table"), do: "TABLE"
+  defp kind_name("database"), do: "DATABASE"
   defp kind_name(_text), do: "PAGE"
 
   defp role_name(role), do: String.capitalize(role)

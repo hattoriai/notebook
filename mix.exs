@@ -80,6 +80,8 @@ defmodule Notebook.MixProject do
       {:fude, "~> 0.8"},
       {:jumon, "~> 0.2"},
       {:storehouse, "~> 0.2"},
+      # The fix of hattoriai/cardbox#3 (a grid's "me" by actor_id/1), until 0.1.1.
+      {:cardbox, github: "hattoriai/cardbox", ref: "0812c6de2572832663b4dfc178b46e0f59f21145"},
       {:sekisho, "~> 0.1.1"},
       {:narabe, "~> 0.2"},
       {:tz, "~> 0.28"}

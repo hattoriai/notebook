@@ -482,6 +482,193 @@ text.(
   %{}
 )
 
+# Databases (Cardbox): records with fields, seen as a table, a board, a
+# calendar and a chart. The forge keeps its commissions; Hanzo keeps what
+# he reads.
+alias Notebook.Cardbox, as: Box
+
+database = fn scope, title, space, folder, fields, records ->
+  page =
+    Notebook.Repo.get_by(Page, title: title) ||
+      elem(
+        Pages.create(scope, %{
+          "title" => title,
+          "kind" => "database",
+          "space_id" => space.id,
+          "folder_id" => folder && folder.id,
+          "fields" => fields
+        }),
+        1
+      )
+
+  collection = Notebook.Databases.collection(page)
+
+  if Box.count(collection) == {:ok, 0} do
+    for values <- records, do: {:ok, _} = Box.insert(collection, values, actor: scope)
+  end
+
+  {page, collection}
+end
+
+masamune_id = "user:#{masamune.id}"
+hanzo_id = "user:#{hanzo.id}"
+today = Date.utc_today()
+
+{_commissions, commissions} =
+  database.(
+    hanzo_scope,
+    "Commissions",
+    forge,
+    nil,
+    [
+      %{name: "Blade", type: "text"},
+      %{name: "Client", type: "text"},
+      %{
+        name: "Status",
+        type: "status",
+        options: %{
+          choices: [
+            %{name: "Asked", group: "todo", color: "gray"},
+            %{name: "Forging", group: "doing", color: "orange"},
+            %{name: "Polishing", group: "doing", color: "yellow"},
+            %{name: "Delivered", group: "done", color: "green"}
+          ]
+        }
+      },
+      %{name: "Smith", type: "person"},
+      %{name: "Due", type: "date"},
+      %{name: "Price", type: "number", options: %{format: "currency", currency: "JPY"}},
+      %{
+        name: "Kind",
+        type: "select",
+        options: %{
+          choices: [
+            %{name: "Katana", color: "red"},
+            %{name: "Tantō", color: "blue"},
+            %{name: "Wakizashi", color: "purple"},
+            %{name: "Restoration", color: "brown"}
+          ]
+        }
+      }
+    ],
+    [
+      %{
+        "Blade" => "The museum's last blade",
+        "Client" => "Kyoto National Museum",
+        "Status" => "Forging",
+        "Smith" => hanzo_id,
+        "Due" => Date.add(today, 21),
+        "Price" => 0,
+        "Kind" => "Katana"
+      },
+      %{
+        "Blade" => "A tantō for a wedding",
+        "Client" => "The Ōta family",
+        "Status" => "Polishing",
+        "Smith" => masamune_id,
+        "Due" => Date.add(today, 5),
+        "Price" => 380_000,
+        "Kind" => "Tantō"
+      },
+      %{
+        "Blade" => "Grandfather's wakizashi",
+        "Client" => "Mr. Sato",
+        "Status" => "Asked",
+        "Smith" => masamune_id,
+        "Due" => Date.add(today, 40),
+        "Price" => 220_000,
+        "Kind" => "Restoration"
+      },
+      %{
+        "Blade" => "A pair for the dojo",
+        "Client" => "Kōbukan dojo",
+        "Status" => "Asked",
+        "Smith" => hanzo_id,
+        "Due" => Date.add(today, 60),
+        "Price" => 900_000,
+        "Kind" => "Wakizashi"
+      },
+      %{
+        "Blade" => "The rain blade",
+        "Client" => "A collector in Osaka",
+        "Status" => "Delivered",
+        "Smith" => masamune_id,
+        "Due" => Date.add(today, -12),
+        "Price" => 1_200_000,
+        "Kind" => "Katana"
+      },
+      %{
+        "Blade" => "A letter opener, at last",
+        "Client" => "Yuki's tea house",
+        "Status" => "Delivered",
+        "Smith" => hanzo_id,
+        "Due" => Date.add(today, -3),
+        "Price" => 0,
+        "Kind" => "Tantō"
+      }
+    ]
+  )
+
+# The chart counts by status; the commissions' worth is their price.
+unless Enum.any?(Box.list_views(commissions), &(&1.name == "Worth by status")) do
+  {:ok, _} =
+    Box.save_view(
+      commissions,
+      %{
+        name: "Worth by status",
+        type: "chart",
+        options: %{kind: "bar", x: "Status", y: %{sum: "Price"}, color: "Kind"}
+      },
+      actor: hanzo_scope
+    )
+end
+
+database.(
+  hanzo_scope,
+  "Reading list",
+  Spaces.private!(hanzo),
+  nil,
+  [
+    %{name: "Title", type: "text"},
+    %{name: "Author", type: "text"},
+    %{
+      name: "Status",
+      type: "status",
+      options: %{
+        choices: [
+          %{name: "To read", group: "todo"},
+          %{name: "Reading", group: "doing"},
+          %{name: "Read", group: "done"}
+        ]
+      }
+    },
+    %{name: "Rating", type: "number", options: %{format: "integer"}},
+    %{name: "Finished", type: "date"}
+  ],
+  [
+    %{
+      "Title" => "Bushido, the Soul of Japan",
+      "Author" => "Inazō Nitobe",
+      "Status" => "Read",
+      "Rating" => 4,
+      "Finished" => Date.add(today, -30)
+    },
+    %{"Title" => "The Book of Five Rings", "Author" => "Miyamoto Musashi", "Status" => "Reading"},
+    %{
+      "Title" => "In Praise of Shadows",
+      "Author" => "Jun'ichirō Tanizaki",
+      "Status" => "To read"
+    },
+    %{
+      "Title" => "The Unfettered Mind",
+      "Author" => "Takuan Sōhō",
+      "Status" => "Read",
+      "Rating" => 5,
+      "Finished" => Date.add(today, -9)
+    }
+  ]
+)
+
 IO.puts("""
 Sign in as one of them:
   Hattori Hanzo      #{hanzo_email}   no more swords
