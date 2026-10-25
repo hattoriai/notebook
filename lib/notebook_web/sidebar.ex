@@ -49,10 +49,14 @@ defmodule NotebookWeb.Sidebar do
   defp handle_move(_event, _params, socket), do: {:cont, socket}
 
   @doc "Loads the person's tree again, after a change this LiveView made."
-  def assign_tree(socket), do: assign(socket, :tree, Spaces.tree(socket.assigns.current_scope))
+  def assign_tree(socket) do
+    scope = socket.assigns.current_scope
+    assign(socket, tree: Spaces.tree(scope), shared: Notebook.Sharing.shared_with(scope))
+  end
 
   attr :tree, :list, required: true
   attr :chime, :any, default: nil, doc: "the person's notifications (`Chime.Live`), for the Inbox"
+  attr :shared, :list, default: [], doc: "the pages shared with the person outside their spaces"
 
   attr :current, :any,
     default: nil,
@@ -122,6 +126,23 @@ defmodule NotebookWeb.Sidebar do
           <:item :let={item}><.tree_item item={item} current={@current} /></:item>
         </.tree>
         <p :if={node.items == []} class="sidebar-empty">No pages yet</p>
+      </section>
+
+      <section :if={@shared != []} class="sidebar-space sidebar-shared" aria-label="Shared with you">
+        <div class="sidebar-space-head">
+          <span class="sidebar-space-name"><.icon name="hero-share" class="size-4" />Shared with you</span>
+        </div>
+        <ul class="sidebar-shared-list">
+          <li :for={page <- @shared}>
+            <.link
+              navigate={~p"/pages/#{page.id}"}
+              class={["sidebar-link", @current == {:page, page.id} && "is-current"]}
+            >
+              <.icon name={page_icon(page.kind)} class="size-4" />
+              <span class="sidebar-shared-title">{page.title}</span>
+            </.link>
+          </li>
+        </ul>
       </section>
 
       <div class="sidebar-bottom">

@@ -31,4 +31,10 @@ defmodule Notebook.Permissions do
   def actor(%Scope{user: user}), do: user
   def actor(%User{} = user), do: user
   def actor(nil), do: nil
+
+  # The links its person followed: a page or a folder shared with anyone
+  # who has the link (`Notebook.Sharing`).
+  @impl Sekisho
+  def link_tokens(%Scope{link_tokens: tokens}), do: tokens
+  def link_tokens(_scope), do: []
 end

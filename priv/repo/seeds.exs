@@ -751,6 +751,26 @@ if Issho.Comments.threads(Notebook.Issho, blade_room) == {:ok, []} do
   )
 end
 
+# Sharing (Sekisho's grants): Yuki shares her autumn menu with Masamune,
+# who is not of the Tea house, to comment on; Hanzo shares his reading
+# list with Yuki; and the forge's plan has a link anyone signed in may
+# follow, to read. A link's token shows once: the seeds print it.
+alias Notebook.Sharing
+
+share = fn scope, title, user, role ->
+  page = Notebook.Repo.get_by!(Page, title: title)
+  {:ok, %{people: people}} = Sharing.access(scope, page)
+
+  unless Enum.any?(people, &(&1.user.id == user.id)),
+    do: {:ok, _} = Sharing.share(scope, page, user, role)
+end
+
+share.(yuki_scope, "Autumn menu", masamune, "commenter")
+share.(hanzo_scope, "Reading list", yuki, "viewer")
+
+forge_plan = Notebook.Repo.get_by!(Page, title: "The forge, planned")
+{:ok, plan_token} = Sharing.link(hanzo_scope, forge_plan, "viewer")
+
 # What notifies of all this is done before the script ends; Hanzo has
 # read Yuki's invitation to the Tea house already.
 Notebook.Notifications.settle()
@@ -764,4 +784,7 @@ Sign in as one of them:
   Hattori Hanzo      #{hanzo_email}   no more swords
   Okazaki Masamune   masamune@notebook.test   the sharpest pen
   Yuki Hattori       yuki@notebook.test   my first page
+
+Anyone signed in may read The forge, planned with its link:
+  #{Sharing.url(forge_plan, plan_token)}
 """)

@@ -300,6 +300,9 @@ defmodule NotebookWeb.NotebookLive do
         page: page,
         page_title: page.title,
         can_edit?: Pages.allowed?(scope, :edit, page),
+        can_share?: Notebook.Sharing.can_share?(scope, page),
+        in_space?: Notebook.Spaces.allowed?(scope, :read, page.space),
+        sharing?: false,
         form: to_form(Pages.change(page)),
         # The page's room: its people and their pointers, listed and drawn
         # once for the page, whatever it is.
@@ -446,12 +449,16 @@ defmodule NotebookWeb.NotebookLive do
   # and color in the text, the board, the table and the room's list.
   defp user(%{assigns: assigns}), do: user(assigns)
 
-  defp user(%{current_scope: %{user: account}}),
-    do: %{
+  defp user(%{current_scope: %{user: account, link_tokens: links}}) do
+    person = %{
       id: to_string(account.id),
       name: account.name,
       color: Notebook.Accounts.User.color(account)
     }
+
+    # The links they followed go with them, signed, to the page's room.
+    if links == [], do: person, else: Issho.Identity.new(person, claims: %{links: links})
+  end
 
   defp prompts(scope) do
     [
@@ -599,8 +606,16 @@ defmodule NotebookWeb.NotebookLive do
     assigns = assign(assigns, :prompts, prompts(assigns.current_scope))
 
     ~H"""
+    <.live_component
+      :if={assigns[:sharing?] && assigns[:page]}
+      module={NotebookWeb.ShareComponent}
+      id="share-dialog"
+      resource={@page}
+      space={@page.space}
+      scope={@current_scope}
+    />
     <div class="notebook-shell notebook-with-sidebar">
-      <.sidebar tree={@tree} chime={@chime} current={current(assigns)} />
+      <.sidebar tree={@tree} chime={@chime} shared={@shared} current={current(assigns)} />
       <main class="notebook-main">
         <div class="flash-area"><Layouts.flash_group flash={@flash} /></div>
 
@@ -764,7 +779,13 @@ defmodule NotebookWeb.NotebookLive do
           :if={@live_action in [:show, :edit] and @page.kind == "board"}
           class="page-view page-space"
         >
-          <.page_bar page={@page} grant={@grant} can_edit?={@can_edit?} />
+          <.page_bar
+            page={@page}
+            grant={@grant}
+            can_edit?={@can_edit?}
+            can_share?={@can_share?}
+            in_space?={@in_space?}
+          />
           <div class="page-heading">
             <p class="eyebrow">Board · shared live</p>
             <h1>{@page.title}</h1>
@@ -798,7 +819,13 @@ defmodule NotebookWeb.NotebookLive do
           :if={@live_action in [:show, :edit] and @page.kind == "database"}
           class="page-view page-space"
         >
-          <.page_bar page={@page} grant={@grant} can_edit?={@can_edit?} />
+          <.page_bar
+            page={@page}
+            grant={@grant}
+            can_edit?={@can_edit?}
+            can_share?={@can_share?}
+            in_space?={@in_space?}
+          />
           <div class="page-heading">
             <p class="eyebrow">Database · shared live</p>
             <h1>{@page.title}</h1>
@@ -907,7 +934,13 @@ defmodule NotebookWeb.NotebookLive do
           :if={@live_action in [:show, :edit] and @page.kind == "table"}
           class="page-view page-space"
         >
-          <.page_bar page={@page} grant={@grant} can_edit?={@can_edit?} />
+          <.page_bar
+            page={@page}
+            grant={@grant}
+            can_edit?={@can_edit?}
+            can_share?={@can_share?}
+            in_space?={@in_space?}
+          />
           <div class="page-heading">
             <p class="eyebrow">{kind_name(@page.kind)} · shared live</p>
             <h1>{@page.title}</h1>
@@ -941,7 +974,13 @@ defmodule NotebookWeb.NotebookLive do
         </div>
 
         <div :if={@live_action in [:show, :edit] and @page.kind == "text"} class="page-view">
-          <.page_bar page={@page} grant={@grant} can_edit?={@can_edit?} />
+          <.page_bar
+            page={@page}
+            grant={@grant}
+            can_edit?={@can_edit?}
+            can_share?={@can_share?}
+            in_space?={@in_space?}
+          />
           <div class="page-heading">
             <p class="eyebrow">Shared page</p>
             <h1>{@page.title}</h1>
@@ -1281,13 +1320,15 @@ defmodule NotebookWeb.NotebookLive do
   attr :page, Page, required: true
   attr :grant, :map, required: true
   attr :can_edit?, :boolean, default: false
+  attr :can_share?, :boolean, default: false
+  attr :in_space?, :boolean, default: true
 
   # The top of a page: where it is, who is on it, the commands; and
   # their pointers over the whole page.
   defp page_bar(assigns) do
     ~H"""
     <div class="page-nav">
-      <nav class="breadcrumb" aria-label="Where this page is">
+      <nav :if={@in_space?} class="breadcrumb" aria-label="Where this page is">
         <.link navigate={~p"/spaces/#{@page.space_id}"}>{@page.space.name}</.link>
         <span :if={@page.folder} aria-hidden="true">/</span>
         <.link
@@ -1297,8 +1338,20 @@ defmodule NotebookWeb.NotebookLive do
           {@page.folder.name}
         </.link>
       </nav>
+      <nav :if={not @in_space?} class="breadcrumb" aria-label="Where this page is">
+        <span><.icon name="hero-share" class="size-3.5" /> Shared with you</span>
+      </nav>
       <div class="page-nav-end">
         <.people id="page-people" grant={@grant} label="On this page" />
+        <button
+          :if={@can_share?}
+          id="share-open"
+          type="button"
+          class="command-link"
+          phx-click="share_open"
+        >
+          <.icon name="hero-user-plus" class="size-4" />Share
+        </button>
         <button
           id="comments-toggle"
           type="button"
@@ -1706,6 +1759,12 @@ defmodule NotebookWeb.NotebookLive do
   end
 
   def handle_event("restore", _params, socket), do: {:noreply, restore_page(socket)}
+
+  # The Share dialog (NotebookWeb.ShareComponent).
+  def handle_event("share_open", _params, socket), do: {:noreply, assign(socket, sharing?: true)}
+
+  def handle_event("share_close", _params, socket),
+    do: {:noreply, assign(socket, sharing?: false)}
 
   # A database's views, fields, board moves and calendar days.
   def handle_event("db_view", %{"id" => id}, socket),

@@ -18,6 +18,9 @@ defmodule NotebookWeb.SpaceLive do
 
   # The tree is the sidebar's, loaded again when anything in it changes,
   # so the folders and pages on screen are its part for the space.
+  defp with_node(%{live_action: :folder, in_space?: false} = assigns),
+    do: assign(assigns, :node, assigns.shared_node)
+
   defp with_node(%{live_action: action} = assigns) when action in [:show, :folder] do
     node = Enum.find(assigns.tree, &(&1.space.id == assigns.space.id))
     assign(assigns, :node, folder_node(node, assigns.folder))
@@ -40,26 +43,55 @@ defmodule NotebookWeb.SpaceLive do
     )
   end
 
+  # A space its members read; a folder in it, those it is shared with too
+  # (`Notebook.Sharing`), who see its pages, without the space around it.
   defp load(socket, %{"id" => id} = params) do
     scope = socket.assigns.current_scope
-    space = Spaces.get!(scope, id)
     folder = params["folder_id"] && Spaces.get_folder!(scope, params["folder_id"])
 
-    if folder && folder.space_id != space.id, do: raise(Ecto.NoResultsError, queryable: Space)
+    {space, in_space?} =
+      case folder do
+        nil ->
+          {Spaces.get!(scope, id), true}
+
+        folder ->
+          {Notebook.Repo.get!(Space, folder.space_id),
+           Spaces.allowed?(scope, :read, %Space{id: folder.space_id})}
+      end
+
+    if to_string(space.id) != to_string(id), do: raise(Ecto.NoResultsError, queryable: Space)
 
     socket
     |> assign(
       loaded: params,
       space: space,
       folder: folder,
-      parent: folder && folder.parent_id && Spaces.get_folder!(scope, folder.parent_id),
+      parent:
+        in_space? && folder && folder.parent_id && Spaces.get_folder!(scope, folder.parent_id),
       can_edit?: Spaces.allowed?(scope, :edit, space),
       can_manage?: Spaces.allowed?(scope, :manage, space),
-      members: Spaces.members(space),
+      in_space?: in_space?,
+      shared_node: if(in_space?, do: nil, else: shared_node(scope, folder)),
+      members: if(in_space?, do: Spaces.members(space), else: []),
       page_title: if(folder, do: folder.name, else: space.name),
       form: to_form(Spaces.change(space))
     )
     |> load_members()
+  end
+
+  # A folder shared with someone outside its space: its pages and folders
+  # they may read.
+  defp shared_node(scope, folder) do
+    import Ecto.Query
+
+    pages =
+      Notebook.Pages.Page
+      |> Notebook.Permissions.where_allowed(scope, :read)
+      |> where([p], p.folder_id == ^folder.id and is_nil(p.archived_at))
+      |> order_by([p], asc: p.position)
+      |> Notebook.Repo.all()
+
+    %{folder: folder, folders: [], pages: pages}
   end
 
   # The part of the space's tree on screen: the space's top, or a folder.
@@ -91,8 +123,16 @@ defmodule NotebookWeb.SpaceLive do
     assigns = with_node(assigns)
 
     ~H"""
+    <.live_component
+      :if={assigns[:sharing?] && assigns[:folder]}
+      module={NotebookWeb.ShareComponent}
+      id="share-dialog"
+      resource={@folder}
+      space={@space}
+      scope={@current_scope}
+    />
     <div class="notebook-shell notebook-with-sidebar">
-      <.sidebar tree={@tree} chime={@chime} current={current(assigns)} />
+      <.sidebar tree={@tree} chime={@chime} shared={@shared} current={current(assigns)} />
       <main class="notebook-main">
         <div class="flash-area"><Layouts.flash_group flash={@flash} /></div>
 
@@ -138,7 +178,8 @@ defmodule NotebookWeb.SpaceLive do
         <div :if={@live_action in [:show, :folder]} class="space-view">
           <div class="page-nav">
             <nav class="breadcrumb" aria-label="Where this is">
-              <.link navigate={~p"/spaces/#{@space.id}"}>{@space.name}</.link>
+              <.link :if={@in_space?} navigate={~p"/spaces/#{@space.id}"}>{@space.name}</.link>
+              <span :if={not @in_space?}><.icon name="hero-share" class="size-3.5" /> Shared with you</span>
               <span :if={@parent} aria-hidden="true">/</span>
               <.link :if={@parent} navigate={~p"/spaces/#{@space.id}/folders/#{@parent.id}"}>
                 {@parent.name}
@@ -212,6 +253,15 @@ defmodule NotebookWeb.SpaceLive do
             </button>
             <button
               :if={@folder && @can_edit?}
+              id="share-open"
+              type="button"
+              class="copy-action"
+              phx-click="share_open"
+            >
+              <.icon name="hero-user-plus" class="size-4" /> Share
+            </button>
+            <button
+              :if={@folder && @can_edit?}
               type="button"
               class="copy-action"
               phx-click="delete_folder"
@@ -277,7 +327,8 @@ defmodule NotebookWeb.SpaceLive do
         <div :if={@live_action == :members} class="space-view">
           <div class="page-nav">
             <nav class="breadcrumb" aria-label="Where this is">
-              <.link navigate={~p"/spaces/#{@space.id}"}>{@space.name}</.link>
+              <.link :if={@in_space?} navigate={~p"/spaces/#{@space.id}"}>{@space.name}</.link>
+              <span :if={not @in_space?}><.icon name="hero-share" class="size-3.5" /> Shared with you</span>
               <span aria-hidden="true">/</span>
               <span>Members</span>
             </nav>
@@ -414,6 +465,12 @@ defmodule NotebookWeb.SpaceLive do
         {:noreply, assign(socket, form: to_form(changeset))}
     end
   end
+
+  # The Share dialog of a folder (NotebookWeb.ShareComponent).
+  def handle_event("share_open", _params, socket), do: {:noreply, assign(socket, sharing?: true)}
+
+  def handle_event("share_close", _params, socket),
+    do: {:noreply, assign(socket, sharing?: false)}
 
   def handle_event("new_folder", _params, socket),
     do: {:noreply, assign(socket, folder_form: to_form(%{"name" => ""}, as: :folder))}

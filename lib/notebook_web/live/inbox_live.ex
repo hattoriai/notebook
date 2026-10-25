@@ -107,7 +107,7 @@ defmodule NotebookWeb.InboxLive do
   def render(assigns) do
     ~H"""
     <div class="notebook-shell notebook-with-sidebar">
-      <.sidebar tree={@tree} chime={@chime} current={:inbox} />
+      <.sidebar tree={@tree} chime={@chime} shared={@shared} current={:inbox} />
       <main class="notebook-main">
         <div class="flash-area"><Layouts.flash_group flash={@flash} /></div>
         <div class="inbox-view">
