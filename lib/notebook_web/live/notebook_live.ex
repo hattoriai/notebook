@@ -1556,15 +1556,23 @@ defmodule NotebookWeb.NotebookLive do
     """
   end
 
-  # Where a thread is, in the words of the page.
+  # Where a thread is, in the words of the page, and what, when its
+  # component says it (Issho.Place's label): In the text: “Fold it”.
   defp place_words(nil, default), do: default
 
-  defp place_words(%{"doc" => doc}, default) do
-    cond do
-      String.ends_with?(doc, "/body") -> "In the text"
-      String.ends_with?(doc, "/rows") -> "In the table"
-      String.starts_with?(doc, "page:") -> "On the board"
-      true -> default
+  defp place_words(%{"doc" => doc} = place, default) do
+    where =
+      cond do
+        String.ends_with?(doc, "/body") -> "In the text"
+        String.ends_with?(doc, "/rows") -> "In the table"
+        String.starts_with?(doc, "page:") -> "On the board"
+        true -> nil
+      end
+
+    case {where, place["label"]} do
+      {nil, _label} -> default
+      {where, label} when is_binary(label) and label != "" -> "#{where}: “#{label}”"
+      {where, _label} -> where
     end
   end
 
