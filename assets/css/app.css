@@ -572,6 +572,13 @@ html.space-maximized { overflow: hidden; }
 .agent-prompts { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
 .agent-prompts li { padding: 14px 18px; border-left: 3px solid var(--accent); background: #fcfbf7; }
 .agent-note { margin-top: 40px; font: 13px ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
+/* Off limits to agents: a page's mark, and its row in the Share dialog. */
+.agents-closed { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border: 1px solid var(--rule); border-radius: 999px; color: var(--muted); font: 600 11px ui-sans-serif, system-ui, sans-serif; letter-spacing: .02em; white-space: nowrap; }
+.share-avatar.is-agent { background: #f1e3d9; color: var(--accent); }
+.share-avatar.is-agent.is-closed { background: #ebe5d8; color: var(--muted); }
+.share-agents select:disabled { opacity: .6; cursor: not-allowed; }
+.copy-action.is-closed-to-agents { color: var(--accent); }
+
 /* A person's agents: each connected with its name and token, its token
    shown once. */
 .agent-connected { margin-top: 30px; padding: 22px 24px; border: 1px solid #c9d6b8; background: #f2f5ec; }
@@ -823,7 +830,7 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 .share-dialog select { padding: 7px 28px 7px 10px; border: 1px solid var(--rule); border-radius: 8px; background-color: #fff; color: var(--ink); font: inherit; }
 .share-dialog h3 { margin: 16px 0 6px; font: 600 10.5px/1.4 ui-sans-serif, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
 .share-people { list-style: none; margin: 0; padding: 0; }
-.share-people li, .share-link { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+.share-people li, .share-link, .share-agents { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); }
 .share-avatar { flex: none; display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; background: #e8e0d2; font: 600 11px ui-sans-serif, system-ui, sans-serif; letter-spacing: .03em; }
 .share-avatar.is-space { background: #e6ead9; color: #4d5a37; }
 .share-avatar.is-link { background: #f1e3d9; color: var(--accent); }

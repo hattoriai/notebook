@@ -13,6 +13,10 @@ defmodule Notebook.Accounts.User do
     field :confirmed_at, :utc_datetime
     # Who keeps the notebook's own settings (its storage): its first person.
     field :admin, :boolean, default: false
+    # The person as their agent: what Notebook.Permissions asks for an
+    # agent (`Scope.for_agent/2`), which may do what they may, but not on
+    # what is off limits to agents.
+    field :as_agent, :boolean, virtual: true, default: false
     field :authenticated_at, :utc_datetime, virtual: true
 
     timestamps(type: :utc_datetime)

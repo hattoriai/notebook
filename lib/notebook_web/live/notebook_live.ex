@@ -309,7 +309,7 @@ defmodule NotebookWeb.NotebookLive do
         # once for the page, whatever it is.
         grant: Issho.Live.grant(Notebook.Issho, user(socket), Notebook.Collaboration.room(page)),
         editing?: Map.has_key?(params, "edit"),
-        mentionable: mentionable(socket)
+        mentionable: mentionable(page)
       )
       |> assign_kind(page)
       |> join_room(page)
@@ -350,13 +350,17 @@ defmodule NotebookWeb.NotebookLive do
 
   # Whom a comment may mention, though they are not on the page: every
   # account, and every agent that may work, which finds it in its inbox.
-  defp mentionable(_socket) do
+  defp mentionable(page) do
     people = Enum.map(Notebook.Accounts.list_users(), &%{key: to_string(&1.id), name: &1.name})
 
+    # No agent on a page off limits to agents: none would read what it says.
     agents =
-      Enum.map(Notebook.Agents.active(), fn agent ->
-        %{key: Notebook.Agents.key(agent), name: agent.name, kind: "agent"}
-      end)
+      if Pages.closed_to_agents?(page),
+        do: [],
+        else:
+          Enum.map(Notebook.Agents.active(), fn agent ->
+            %{key: Notebook.Agents.key(agent), name: agent.name, kind: "agent"}
+          end)
 
     people ++ agents
   end
@@ -1349,6 +1353,14 @@ defmodule NotebookWeb.NotebookLive do
         <span><.icon name="hero-share" class="size-3.5" /> Shared with you</span>
       </nav>
       <div class="page-nav-end">
+        <span
+          :if={Pages.closed_to_agents?(@page)}
+          class="agents-closed"
+          id="agents-closed"
+          title="No agent reads this page, finds it or joins it"
+        >
+          <.icon name="hero-no-symbol" class="size-3.5" /> No agents
+        </span>
         <.people id="page-people" grant={@grant} label="On this page" />
         <button
           :if={@can_share?}
@@ -1892,6 +1904,9 @@ defmodule NotebookWeb.NotebookLive do
   end
 
   # Published, or taken back, from its dialog: the page's bar says so.
+  def handle_info({:agents_changed, %Page{} = page}, socket),
+    do: {:noreply, assign(socket, page: page, mentionable: mentionable(page))}
+
   def handle_info({:published, %Page{} = published}, %{assigns: %{page: page}} = socket),
     do:
       {:noreply,

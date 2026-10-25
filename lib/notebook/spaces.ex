@@ -106,6 +106,16 @@ defmodule Notebook.Spaces do
 
   def update(_scope, %Space{}, _attrs), do: {:error, :fixed}
 
+  @doc """
+  Closes a space to agents, with every page in it, or opens it again: its
+  admins may, a Private space's person too.
+  """
+  def set_closed_to_agents(scope, %Space{} = space, closed?) when is_boolean(closed?) do
+    with :ok <- Permissions.authorize(scope, :manage, space) do
+      space |> Ecto.Changeset.change(closed_to_agents: closed?) |> Repo.update() |> changed()
+    end
+  end
+
   def change(space, attrs \\ %{}), do: Space.changeset(space, attrs)
 
   @doc "Whether the scope may do what the permission says in the space."

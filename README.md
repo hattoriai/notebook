@@ -31,6 +31,8 @@ For Codex, `codex mcp add notebook --url "…"`, or the same URL in `~/.codex/co
 - “In *Blades in progress*, give every task without an owner to Masamune.”
 - Select some words in a page, then: “Rewrite what I have selected in *A tour of Notebook*, plainer.”
 
+A page or a space can be **off limits to agents**: from a page's **Share** dialog (its editors), or a space's page (its admins, a Private space's person too). People still work there; no agent reads it, finds it in a list or a search, is mentioned there or joins its room, and one already in the room is refused at its next step. It is one rule of the permissions (`deny/2` in the page, folder and space policies, for a person's scope as their agent), so the rooms, the tools, the search and the inboxes all answer it alike. A page off limits says **No agents** in its bar.
+
 Your agent may do what you may: it lists the pages you may read, makes pages in your Private space (or a space you edit), and joins only the rooms you may join. It has every tool of the pages (`Notebook.Tools`): the Notebook's own (`list_pages`, `create_page`, and `read_database`, `add_records` and `update_records` for databases), Issho's for rooms, and those of Kotoba, Hakushi and Masu, which act on what a person has selected too. With no agent at hand, `scripts/agent.exs` is an MCP client that works on the sample pages:
 
 ```sh
