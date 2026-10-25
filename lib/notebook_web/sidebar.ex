@@ -84,6 +84,7 @@ defmodule NotebookWeb.Sidebar do
         title="Hide the sidebar (⌘\\)"
       >
         <.panel_icon />
+        <.icon name="hero-x-mark" class="size-6 sidebar-x" />
       </button>
       <div class="sidebar-top">
         <.link navigate={~p"/"} class={["sidebar-link", @current == :home && "is-current"]}>

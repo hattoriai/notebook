@@ -854,16 +854,16 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 
 /* A phone, or a narrow window. The sidebar is a drawer, whole: its menu
    button sits at the top bar's start, and it slides over the page until
-   the person goes somewhere, taps beside it or presses Escape. Nothing
-   is wider than the screen: the page's bar wraps, and the dialogs, the
-   board's tools and Home's actions fit. */
-.sidebar-backdrop { display: none; }
+   the person goes somewhere, taps beside it or presses Escape; on a phone
+   it takes the whole screen. Nothing is wider than the screen: the page's
+   bar wraps, and the board's tools and Home's actions fit. */
+.sidebar-backdrop, .sidebar-x { display: none; }
 @media (max-width: 900px) {
   .notebook-with-sidebar { flex-direction: column; }
   body:has(.sidebar) .auth-topbar { padding-left: calc(clamp(16px, 5vw, 88px) + 44px); }
   .sidebar-show, html[data-sidebar="hidden"] .sidebar-show { position: absolute; top: 19px; left: clamp(16px, 5vw, 88px); z-index: 40; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 0; border-radius: 8px; background: none; color: var(--ink); box-shadow: none; cursor: pointer; }
   html[data-drawer] .sidebar-show { background: #e8e0d2; }
-  .sidebar, html[data-sidebar="hidden"] .sidebar { position: fixed; top: 0; bottom: 0; left: 0; z-index: 70; display: flex; width: min(86vw, 320px); height: 100dvh; max-height: 100dvh; padding: 22px 18px 24px; border-right: 1px solid var(--rule); background: var(--paper); box-shadow: 24px 0 48px -28px rgba(35, 38, 34, .45); transform: translateX(-105%); visibility: hidden; transition: transform .22s ease, visibility 0s linear .22s; }
+  .sidebar, html[data-sidebar="hidden"] .sidebar { position: fixed; top: 0; left: 0; z-index: 70; display: flex; width: min(86vw, 320px); height: 100dvh; max-height: 100dvh; padding: 22px 18px 24px; border-right: 1px solid var(--rule); background: var(--paper); box-shadow: 24px 0 48px -28px rgba(35, 38, 34, .45); transform: translateX(-105%); visibility: hidden; transition: transform .22s ease, visibility 0s linear .22s; }
   html[data-drawer] .sidebar { transform: none; visibility: visible; transition: transform .22s ease; }
   .sidebar-hide { opacity: 1; top: 20px; }
   .sidebar-add { opacity: 1; }
@@ -877,17 +877,59 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
   .auth-topbar { padding-right: 16px; }
   body:has(.sidebar) .auth-topbar { padding-left: calc(16px + 44px); }
   .sidebar-show, html[data-sidebar="hidden"] .sidebar-show { left: 16px; }
+  /* The whole screen, in a thumb's sizes, closed by its ✕. */
+  .sidebar, html[data-sidebar="hidden"] .sidebar { width: 100vw; padding: 20px 16px calc(24px + env(safe-area-inset-bottom)); border-right: 0; box-shadow: none; font-size: 15.5px; }
+  .sidebar-hide { top: 16px; right: 12px; width: 40px; height: 40px; color: var(--ink); }
+  .sidebar-hide > svg { display: none; }
+  .sidebar-hide .sidebar-x { display: inline-block; }
+  .sidebar-top { padding-right: 48px; }
+  .sidebar-link { padding: 10px 10px; }
+  .sidebar .narabe-tree { --narabe-font-size: 15.5px; --narabe-row-height: 42px; }
+  .sidebar-space-name { font-size: 11.5px; }
+  .sidebar-add { width: 36px; height: 36px; }
+  .sidebar-backdrop { display: none; }
   .page-nav { flex-wrap: wrap; row-gap: 12px; }
   .page-nav .breadcrumb { flex: 1 1 100%; }
   .page-nav-end { flex-wrap: wrap; gap: 8px 16px; }
   .page-nav-end > span { display: none; }
   .index-actions { flex-wrap: wrap; }
-  .share-backdrop { padding: 10vh 12px 12px; }
-  .share-dialog { max-height: 84vh; padding: 18px 16px 20px; }
-  .share-invite { flex-wrap: wrap; }
-  .share-invite select:first-child { flex: 1 1 100%; }
   .space-tools { flex-wrap: wrap; row-gap: 4px; }
   .space-hint { display: none; }
   .space-frame { max-width: 100%; }
 }
-@media (prefers-reduced-motion: reduce) { .sidebar, .sidebar-backdrop { transition: none !important; } }
+
+/* On a phone, what opens over the page rises from the bottom as a sheet,
+   in a thumb's reach: the Share and Publish dialogs, the notifications,
+   the account and database menus, the comments and the command palette.
+   A tap above a sheet closes it. */
+@keyframes sheet-up { from { transform: translateY(100%); } }
+@keyframes sheet-fade { from { opacity: 0; } }
+@media (max-width: 760px) {
+  .share-backdrop, .comments-drawer, .topbar-bell-panel, .account-menu-panel, .database-menu-panel, .jumon-panel { --sheet-radius: 18px; }
+  .share-dialog, .comments-drawer, .topbar-bell-panel, .account-menu-panel, .database-menu-panel, .jumon-panel { position: fixed; top: auto; right: 0; bottom: 0; left: 0; width: auto; min-width: 0; max-width: none; max-height: 88dvh; margin: 0; overflow-y: auto; border: 0; border-radius: var(--sheet-radius) var(--sheet-radius) 0 0; box-shadow: 0 -18px 48px -20px rgba(35, 38, 34, .4); padding-bottom: env(safe-area-inset-bottom); animation: sheet-up .26s cubic-bezier(.2, .8, .2, 1); }
+  /* The grip: a sheet's sign. */
+  .share-dialog::before, .comments-drawer::before, .topbar-bell-panel::before, .account-menu-panel::before, .database-menu-panel::before { content: ""; display: block; flex: none; width: 38px; height: 4px; margin: -6px auto 12px; border-radius: 999px; background: #d6cfbe; }
+  /* The scrim behind a sheet: the Share dialog has its own; the others are
+     drawn by what opens them, so that a tap on it closes them. */
+  .share-backdrop { place-items: end stretch; padding: 0; animation: sheet-fade .2s ease; }
+  .share-dialog { padding: 18px 18px calc(22px + env(safe-area-inset-bottom)); }
+  .share-invite { flex-wrap: wrap; }
+  .share-invite select:first-child { flex: 1 1 100%; }
+  .topbar-bell:has(.topbar-bell-panel)::before, .account-menu[open] > summary::before, .database-menu[open] > summary::before { content: ""; position: fixed; inset: 0; z-index: 60; background: rgba(35, 38, 34, .28); animation: sheet-fade .2s ease; cursor: default; }
+  .topbar-bell:has(.topbar-bell-panel) { z-index: 75; }
+  .topbar-bell-panel, .account-menu-panel, .database-menu-panel { z-index: 61; padding-top: 18px; }
+  .topbar-bell-panel { display: flex; flex-direction: column; }
+  .topbar-bell-panel .chime-feed { max-height: none; }
+  .account-menu-panel { padding: 18px 16px calc(16px + env(safe-area-inset-bottom)); font-size: 15px; }
+  .account-menu-panel a { padding: 12px 8px; }
+  .database-menu-panel { padding: 18px 10px calc(12px + env(safe-area-inset-bottom)); }
+  .database-menu-panel button { padding: 13px 12px; font-size: 15px; }
+  /* The comments: a tall sheet, over the page, down and away when closed. */
+  .comments-drawer { height: 88dvh; padding: 18px 18px calc(24px + env(safe-area-inset-bottom)); transform: translateY(104%); animation: none; }
+  .comments-drawer[data-open] { transform: none; }
+  /* The palette: a tall sheet, its field at the top, clear of the keyboard. */
+  .jumon-dialog[open] { padding: 0; }
+  .jumon-panel { height: calc(100dvh - 56px); max-height: none; overflow: hidden; transform-origin: 50% 100%; }
+  .jumon-list { max-height: none; flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .sidebar, .sidebar-backdrop, .share-dialog, .share-backdrop, .topbar-bell-panel, .account-menu-panel, .database-menu-panel, .jumon-panel, .comments-drawer { transition: none !important; animation: none !important; } }
