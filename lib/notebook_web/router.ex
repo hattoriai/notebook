@@ -36,12 +36,18 @@ defmodule NotebookWeb.Router do
         {NotebookWeb.UserAuth, :require_authenticated},
         {Jumon.Live, NotebookWeb.Commands},
         Issho.Live,
-        Masu.Live
+        Masu.Live,
+        NotebookWeb.Sidebar
       ] do
       live "/", NotebookLive, :index
       live "/pages/new", NotebookLive, :new
       live "/pages/:id", NotebookLive, :show
       live "/pages/:id/edit", NotebookLive, :edit
+      live "/spaces/new", SpaceLive, :new
+      live "/spaces/:id", SpaceLive, :show
+      live "/spaces/:id/folders/:folder_id", SpaceLive, :folder
+      live "/spaces/:id/members", SpaceLive, :members
+      live "/archive", ArchiveLive, :index
       live "/agents", AgentsLive, :index
     end
 

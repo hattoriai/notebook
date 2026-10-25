@@ -12,7 +12,7 @@ defmodule Notebook.CollabStore do
   @impl true
   def load(repo, id) do
     page_id = Notebook.Collaboration.page_id(id)
-    page = if page_id, do: Pages.get(page_id)
+    page = if page_id, do: Pages.fetch(page_id)
 
     case {page, repo.get(Draft, id)} do
       {nil, _} -> {:error, :not_found}

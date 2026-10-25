@@ -1,50 +1,162 @@
 defmodule Notebook.Pages do
   @moduledoc """
-  The pages of the notebook. Notebook is one shared space: every signed-in
-  account reads and edits every page. A page keeps the account that made it
-  as its author.
+  The notebook's pages. A page is in a space, and maybe in one of its
+  folders; what a person may do with it is their role in its space
+  (`Notebook.Permissions`), and an agent may do what its person may.
+  Every function that reads or writes a page for someone takes their
+  scope first.
   """
   import Ecto.Query
   alias Notebook.Accounts.Scope
   alias Notebook.Pages.Page
+  alias Notebook.Permissions
   alias Notebook.Repo
+  alias Notebook.Spaces
+  alias Notebook.Spaces.{Folder, Space}
 
-  def list(query \\ "") do
-    search = "%" <> String.trim(query) <> "%"
+  @doc """
+  The pages the scope may read, the last changed first.
+
+    * `:search` - words of a title or a text.
+    * `:space_id` - only the pages of a space.
+    * `:archived` - the archived pages instead of the others.
+  """
+  def list(scope, opts \\ []) do
+    search = "%" <> String.trim(opts[:search] || "") <> "%"
 
     from(d in Page,
       where:
         like(d.title, ^search) or
           fragment("coalesce(json_extract(?, '$.text'), '') LIKE ?", d.body, ^search),
       order_by: [desc: d.updated_at],
-      preload: :author
+      preload: [:author, :space]
     )
+    |> archived(opts[:archived] || false)
+    |> in_space(opts[:space_id])
+    |> Permissions.where_allowed(scope, :read)
     |> Repo.all()
   end
 
-  def get!(id), do: Page |> Repo.get!(id) |> Repo.preload(:author)
-  def get(id), do: Repo.get(Page, id)
-  def change(page, attrs \\ %{}), do: Page.changeset(page, attrs)
-  @doc "Creates a page with the scope's user as its author."
-  def create(%Scope{user: user}, attrs) do
-    %Page{author_id: user.id}
-    |> Page.changeset(attrs)
-    |> Repo.insert()
-    |> case do
-      {:ok, page} -> {:ok, Repo.preload(page, :author)}
-      error -> error
+  defp archived(query, true), do: where(query, [p], not is_nil(p.archived_at))
+  defp archived(query, false), do: where(query, [p], is_nil(p.archived_at))
+
+  defp in_space(query, nil), do: query
+  defp in_space(query, id), do: where(query, [p], p.space_id == ^id)
+
+  @doc "A page the scope may read, or raises (a 404 for a page they may not read)."
+  def get!(scope, id) do
+    page = Page |> Repo.get!(id) |> Repo.preload([:author, :space, :folder])
+    Permissions.authorize!(scope, :read, page)
+    page
+  end
+
+  @doc "A page the scope may read, or nil."
+  def get(scope, id) do
+    with %Page{} = page <- Repo.get(Page, id),
+         true <- Permissions.allowed?(scope, :read, page) do
+      Repo.preload(page, [:author, :space, :folder])
+    else
+      _ -> nil
     end
   end
 
-  def update(page, attrs) do
-    with {:ok, page} <- page |> Page.changeset(attrs) |> Repo.update(),
-         do: {:ok, Repo.preload(page, :author, force: true)}
+  @doc """
+  A page by its id, for no one: for the app's own processes (the shared
+  text's store, a room's board), after they checked who asks.
+  """
+  def fetch(id), do: Repo.get(Page, id)
+
+  @doc "Whether the scope may do what the permission says with the page."
+  def allowed?(scope, permission, page), do: Permissions.allowed?(scope, permission, page)
+
+  def change(page, attrs \\ %{}), do: Page.changeset(page, attrs)
+
+  @doc """
+  Makes a page with the scope's person as its author, in the space of
+  `"space_id"` (General when not given) and the folder of `"folder_id"`.
+  The space's editors may.
+  """
+  def create(%Scope{user: user} = scope, attrs) do
+    attrs = Map.new(attrs, fn {key, value} -> {to_string(key), value} end)
+
+    with {:ok, space} <- space_of(attrs["space_id"]),
+         {:ok, folder_id} <- folder_in(attrs["folder_id"], space),
+         :ok <- Permissions.authorize(scope, :edit, space),
+         {:ok, page} <-
+           %Page{author_id: user.id, space_id: space.id, folder_id: folder_id}
+           |> Page.changeset(attrs)
+           |> Repo.insert() do
+      Spaces.tree_changed()
+      {:ok, Repo.preload(page, [:author, :space, :folder])}
+    end
   end
 
-  def publish(page, content) do
-    page
-    |> Ecto.Changeset.change(body: content)
-    |> Repo.update()
+  defp space_of(id) when id in [nil, ""], do: {:ok, Spaces.general!()}
+
+  defp space_of(id) do
+    case Repo.get(Space, id) do
+      %Space{} = space -> {:ok, space}
+      nil -> {:error, :not_found}
+    end
+  end
+
+  defp folder_in(id, _space) when id in [nil, ""], do: {:ok, nil}
+
+  defp folder_in(id, %Space{id: space_id}) do
+    case Repo.get(Folder, id) do
+      %Folder{space_id: ^space_id, id: id} -> {:ok, id}
+      _other -> {:error, :not_found}
+    end
+  end
+
+  @doc "Changes a page: its space's editors may."
+  def update(scope, page, attrs) do
+    with :ok <- Permissions.authorize(scope, :edit, page),
+         {:ok, updated} <- page |> Page.changeset(attrs) |> Repo.update() do
+      if updated.title != page.title, do: Spaces.tree_changed()
+      {:ok, Repo.preload(updated, [:author, :space, :folder], force: true)}
+    end
+  end
+
+  @doc "Publishes the accepted content of a page's shared text: its editors may."
+  def publish(scope, page, content) do
+    with :ok <- Permissions.authorize(scope, :edit, page) do
+      page
+      |> Ecto.Changeset.change(body: content)
+      |> Repo.update()
+    end
+  end
+
+  @doc "Archives a page: it leaves the sidebar and the lists, and keeps its words."
+  def archive(scope, page), do: set_archived(scope, page, DateTime.utc_now(:second))
+
+  @doc "Brings an archived page back."
+  def restore(scope, page), do: set_archived(scope, page, nil)
+
+  defp set_archived(scope, page, at) do
+    with :ok <- Permissions.authorize(scope, :edit, page),
+         {:ok, page} <- page |> Ecto.Changeset.change(archived_at: at) |> Repo.update() do
+      Spaces.tree_changed()
+      {:ok, Repo.preload(page, [:author, :space, :folder], force: true)}
+    end
+  end
+
+  @doc """
+  Moves a page to a space, and to one of its folders or none. The scope
+  edits the page where it is, and the space it goes to.
+  """
+  def move(scope, page, space_id, folder_id \\ nil) do
+    with {:ok, space} <- space_of(space_id),
+         {:ok, folder_id} <- folder_in(folder_id, space),
+         :ok <- Permissions.authorize(scope, :edit, page),
+         :ok <- Permissions.authorize(scope, :edit, space),
+         {:ok, page} <-
+           page
+           |> Ecto.Changeset.change(space_id: space.id, folder_id: folder_id)
+           |> Repo.update() do
+      Spaces.tree_changed()
+      {:ok, Repo.preload(page, [:author, :space, :folder], force: true)}
+    end
   end
 
   @doc """
@@ -109,21 +221,33 @@ defmodule Notebook.Pages do
   every hour from 10:00 to 16:00 on weekdays, with the hours that another
   page's review takes disabled.
   """
-  def review_slots(%Date.Range{first: first, last: last} = range, except_id \\ nil) do
+  def review_slots(scope, %Date.Range{first: first, last: last} = range, except_id \\ nil) do
     zone = time_zone()
     starts = first |> DateTime.new!(~T[00:00:00], zone) |> DateTime.shift_zone!("Etc/UTC")
 
     ends =
       last |> Date.add(1) |> DateTime.new!(~T[00:00:00], zone) |> DateTime.shift_zone!("Etc/UTC")
 
-    taken =
-      from(p in Page,
-        where: p.review_at >= ^starts and p.review_at < ^ends,
-        select: {p.review_at, p.title}
-      )
+    # Another page's review takes its hour, whoever may read it; only a
+    # page the scope may read says which it is.
+    reviews =
+      from(p in Page, where: p.review_at >= ^starts and p.review_at < ^ends)
       |> exclude_page(except_id)
+
+    readable =
+      reviews
+      |> Permissions.where_allowed(scope, :read)
+      |> select([p], p.id)
       |> Repo.all()
-      |> Map.new(fn {at, title} -> {DateTime.to_naive(local(at)), title} end)
+      |> MapSet.new()
+
+    taken =
+      reviews
+      |> select([p], {p.id, p.review_at, p.title})
+      |> Repo.all()
+      |> Map.new(fn {id, at, title} ->
+        {DateTime.to_naive(local(at)), if(MapSet.member?(readable, id), do: title)}
+      end)
 
     for day <- range, Date.day_of_week(day) in 1..5, into: %{} do
       slots =
@@ -131,6 +255,7 @@ defmodule Notebook.Pages do
           time = Time.new!(hour, 0, 0)
 
           case Map.fetch(taken, NaiveDateTime.new!(day, time)) do
+            {:ok, nil} -> %{time: time, label: "Taken", disabled: true}
             {:ok, title} -> %{time: time, label: "Taken: #{title}", disabled: true}
             :error -> %{time: time}
           end
@@ -150,8 +275,8 @@ defmodule Notebook.Pages do
   @doc "An instant on the notebook's wall clock."
   def local(%DateTime{} = at), do: DateTime.shift_zone!(at, time_zone())
 
-  def mentions(query) do
-    list(query)
+  def mentions(scope, query) do
+    list(scope, search: query)
     |> Enum.take(20)
     |> Enum.map(&%{id: &1.id, label: &1.title, hint: "Page"})
   end

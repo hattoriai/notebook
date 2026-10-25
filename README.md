@@ -1,6 +1,6 @@
 # Notebook
 
-A shared notebook where people and agents work together, live: a Phoenix app built on [Issho](https://github.com/hattoriai/issho), collaboration for Phoenix, and the libraries on it. A page is a text (Kotoba), a board of cards and arrows (Hakushi) or a table of tasks (Masu), and each page is an Issho room: everyone on it is listed once, their pointers move over the whole page, and their changes land as they make them. Connect Claude Code or Codex, and your agent works on the pages beside you: its cursor in the text, its pointer on the board, its cell in the table. Pages are stored in SQLite, each page's dates are picked with Koyomi, and Jumon's command palette (⌘K) finds pages and runs the notebook's actions.
+A shared notebook where people and agents work together, live: a Phoenix app built on [Issho](https://github.com/hattoriai/issho), collaboration for Phoenix, and the libraries on it. A page is a text (Kotoba), a board of cards and arrows (Hakushi) or a table of tasks (Masu), and each page is an Issho room: everyone on it is listed once, their pointers move over the whole page, and their changes land as they make them. Connect Claude Code or Codex, and your agent works on the pages beside you: its cursor in the text, its pointer on the board, its cell in the table. Pages live in spaces (everyone's General, each person's Private space, and team spaces with members and roles), in shallow folders, and who may read, comment on or edit each one is [Sekisho](https://github.com/hattoriai/sekisho)'s: the same rules answer the pages, their rooms and the agents. Pages are stored in SQLite, each page's dates are picked with Koyomi, and Jumon's command palette (⌘K) finds pages and runs the notebook's actions.
 
 ## Run locally
 
@@ -11,7 +11,7 @@ mix setup
 mix phx.server
 ```
 
-Open <http://localhost:4000>, create an account with a name, email, and password, and start a page. Signup logs you in immediately; no email service is needed. To see live collaboration, register a second account in another browser profile and open the same page in both.
+Open <http://localhost:4000>, create an account with a name, email, and password, and start a page. Signup logs you in immediately; no email service is needed: a new account is in General, with a Private space of its own. To see live collaboration, register a second account in another browser profile and open the same page in both, or sign in as two of the sample people (below).
 
 `mix setup` creates `tmp/notebook_dev.db`, runs the migrations and adds the sample pages. Attachments go to `tmp/uploads`. Set `NOTEBOOK_DATABASE` to use a different SQLite file. Both paths are ignored by Git.
 
@@ -29,7 +29,7 @@ For Codex, `codex mcp add notebook --url "…"`, or the same URL in `~/.codex/co
 - “In *Blades in progress*, give every task without an owner to Masamune.”
 - Select some words in a page, then: “Rewrite what I have selected in *A tour of Notebook*, plainer.”
 
-It has every tool of the pages (`Notebook.Tools`): the Notebook's own (`list_pages`, `create_page`), Issho's for rooms, and those of Kotoba, Hakushi and Masu, which act on what a person has selected too. With no agent at hand, `scripts/agent.exs` is an MCP client that works on the sample pages:
+Your agent may do what you may: it lists the pages you may read, makes pages in your Private space (or a space you edit), and joins only the rooms you may join. It has every tool of the pages (`Notebook.Tools`): the Notebook's own (`list_pages`, `create_page`), Issho's for rooms, and those of Kotoba, Hakushi and Masu, which act on what a person has selected too. With no agent at hand, `scripts/agent.exs` is an MCP client that works on the sample pages:
 
 ```sh
 mix run --no-start scripts/agent.exs "http://localhost:4000/mcp?token=…" board "The forge, planned"
@@ -37,7 +37,18 @@ mix run --no-start scripts/agent.exs "http://localhost:4000/mcp?token=…" board
 
 ## What to try
 
-The sample pages (`mix setup`, or `mix run priv/repo/seeds.exs`) are **A tour of Notebook**, a text with every kind of block, photos from Unsplash, a gallery and a PDF; **The forge, planned**, a board; and **Blades in progress**, a table. Their author is Hattori Hanzo, a retired swordsmith who now makes pages: sign in as `hanzo@notebook.test` with the password `no more swords` to write as him.
+The sample pages (`mix setup`, or `mix run priv/repo/seeds.exs`) are **A tour of Notebook**, a text with every kind of block, photos from Unsplash, a gallery and a PDF; **The forge, planned**, a board; and **Blades in progress**, a table. Their author is Hattori Hanzo, a retired swordsmith who now makes pages, and he is not alone:
+
+| Who | Email | Password | In |
+| --- | --- | --- | --- |
+| Hattori Hanzo | `hanzo@notebook.test` | `no more swords` | admin of *The forge*, editor of *Tea house*, a journal in his Private space |
+| Okazaki Masamune, an old friend who still makes blades | `masamune@notebook.test` | `the sharpest pen` | editor of *The forge* |
+| Yuki Hattori, his last apprentice, who now keeps a tea house | `yuki@notebook.test` | `my first page` | commenter in *The forge*, admin of *Tea house* |
+
+- The sidebar has the spaces you are in, their folders and their pages; it changes for everyone as pages are made, renamed, moved or archived. Sign in as Yuki and Hanzo's Private pages are not there, nor anywhere else: not in a list, a search, a mention or an agent's `list_pages`.
+- Open a space for its folders and pages. An editor makes pages and folders (two levels deep at most), an admin renames the space and manages its **Members**: viewer, commenter, editor, admin. Make your own with **New space**.
+- On a page, ⌘K has **Move to…** (a space you edit, and its folders) and **Archive this page**. An archived page leaves the sidebar and the lists for the **Archive**, where it can be restored. *Sword orders, 1998* is archived already.
+- As Yuki in *The forge*, a page reads and takes comments, and does not open for editing.
 
 - Open a page in two browsers, as two people: each is in the page's list of people once, and their pointers move over the whole page, on the same part of the other's page whatever its size; a click rings.
 - Make a **New page** of each kind. On a board, drag a **Card**, a **Note** or a **Frame** onto the paper, or double-click it; join cards from their sides, and the arrows say *then*; a page card opens its page. Cards snap to the paper's grid, and the controls zoom, fit, tidy up, undo and download the board. On a table, edit a cell as in a spreadsheet, paste rows from one, add and delete rows: the others see each change in the color of who made it, and a cell someone types in is theirs until they are done.

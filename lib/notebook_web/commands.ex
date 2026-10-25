@@ -47,29 +47,31 @@ defmodule NotebookWeb.Commands do
     ]
   end
 
-  # The pages, searched by their title and their words. With an empty box,
-  # the pages changed last.
+  # The pages the person may read, searched by their title and their
+  # words. With an empty box, the pages changed last.
   @impl true
-  def sources(_socket) do
-    [pages: [label: "Pages", search: &search_pages/1, min_length: 0]]
+  def sources(socket) do
+    scope = socket.assigns.current_scope
+    [pages: [label: "Pages", search: &search_pages(scope, &1), min_length: 0]]
   end
 
   @impl true
   def history_key(socket), do: socket.assigns.current_scope.user.id
 
-  defp search_pages(""), do: Pages.list() |> Enum.take(5) |> Enum.map(&page_action/1)
+  defp search_pages(scope, ""),
+    do: scope |> Pages.list() |> Enum.take(5) |> Enum.map(&page_action/1)
 
   # The titles are ranked as the palette ranks its actions, so that a typo
   # still finds a page ("notebok"); then the pages whose words have the
   # query. The notebook is small enough to rank every title.
-  defp search_pages(query) do
+  defp search_pages(scope, query) do
     by_title =
-      Pages.list()
+      Pages.list(scope)
       |> Enum.map(&page_action/1)
       |> Jumon.Match.rank(query)
       |> Enum.map(fn {action, _result} -> action end)
 
-    by_words = query |> Pages.list() |> Enum.map(&page_action/1)
+    by_words = scope |> Pages.list(search: query) |> Enum.map(&page_action/1)
 
     (by_title ++ by_words) |> Enum.uniq_by(& &1.id) |> Enum.take(8)
   end
@@ -89,9 +91,12 @@ defmodule NotebookWeb.Commands do
   end
 
   defp page_subtitle(%{due_on: %Date{} = due} = page),
-    do: "Due #{Calendar.strftime(due, "%-d %b")} · #{author(page)}"
+    do: "Due #{Calendar.strftime(due, "%-d %b")} · #{where(page)}"
 
-  defp page_subtitle(page), do: author(page)
+  defp page_subtitle(page), do: where(page)
+
+  defp where(%{space: %{name: space}} = page), do: "#{space} · #{author(page)}"
+  defp where(page), do: author(page)
 
   defp author(%{author: %{name: name}}), do: name
   defp author(_page), do: "Notebook"

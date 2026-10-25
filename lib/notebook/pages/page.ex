@@ -17,6 +17,11 @@ defmodule Notebook.Pages.Page do
     field :board, :map
     has_many :rows, Notebook.Pages.Row
     belongs_to :author, Notebook.Accounts.User
+    # Where the page is: a space, and maybe one of its folders. An archived
+    # page leaves the sidebar and the lists, and comes back when restored.
+    belongs_to :space, Notebook.Spaces.Space
+    belongs_to :folder, Notebook.Spaces.Folder
+    field :archived_at, :utc_datetime
     timestamps(type: :utc_datetime)
   end
 

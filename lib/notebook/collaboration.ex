@@ -1,8 +1,10 @@
 defmodule Notebook.Collaboration do
   @moduledoc """
   Who may be in a page's room, and what its shared documents are (Issho's
-  policy). Notebook is one shared space: every account may join, read
-  and write every page, and agents act for the account they work for.
+  policy). A person may do in a page's room what their role in its space
+  lets them (`Notebook.Permissions`): a viewer joins and reads, a
+  commenter also comments, an editor also writes. An agent may do what
+  the person it works for may.
 
   A page is the room `"page:<id>"`: its text is the document
   `"page:<id>/body"` (Kotoba), its board the room's own document (a
@@ -11,14 +13,15 @@ defmodule Notebook.Collaboration do
   """
   @behaviour Issho.Policy
 
-  alias Notebook.Accounts.User
-  alias Notebook.{Pages, Repo}
+  alias Notebook.Accounts.{Scope, User}
+  alias Notebook.{Pages, Permissions, Repo}
 
   @impl true
-  def authorize(%Issho.Identity{} = identity, "page:" <> id, _action) do
-    with {:ok, _user} <- account(identity),
+  def authorize(%Issho.Identity{} = identity, "page:" <> id, action) do
+    with {:ok, user} <- account(identity),
          {page_id, ""} <- Integer.parse(id),
-         %Pages.Page{} <- Pages.get(page_id) do
+         %Pages.Page{} = page <- Pages.fetch(page_id),
+         true <- Permissions.allowed?(Scope.for_user(user), permission(action), page) do
       :ok
     else
       _ -> {:error, :forbidden}
@@ -26,6 +29,11 @@ defmodule Notebook.Collaboration do
   end
 
   def authorize(_identity, _room, _action), do: {:error, :forbidden}
+
+  # What each of the room's actions takes on the page.
+  defp permission(action) when action in [:join, :read], do: :read
+  defp permission(:comment), do: :comment
+  defp permission(action) when action in [:write, :lock, :interrupt], do: :edit
 
   @impl true
   def document(_identity, "page:" <> rest) do
@@ -42,7 +50,7 @@ defmodule Notebook.Collaboration do
   # open: its saved graph, saved again with each change.
   defp board(id) do
     with {id, ""} <- Integer.parse(id),
-         %Pages.Page{kind: "board"} = page <- Pages.get(id) do
+         %Pages.Page{kind: "board"} = page <- Pages.fetch(id) do
       Hakushi.Issho.document(Notebook.Boards.graph(page),
         on_change: Notebook.Boards.on_change(page.id),
         canvas: "board"

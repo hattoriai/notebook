@@ -196,15 +196,95 @@ unless Notebook.Repo.get_by(Page, title: tour_title) do
     })
 end
 
+# Hanzo is not alone. Masamune, an old friend from the forges of Sagami,
+# still makes blades; Yuki, Hanzo's last apprentice, now keeps a tea house.
+# Sign in as either of them too, to see the notebook from their side.
+person = fn name, email, password ->
+  Accounts.get_user_by_email(email) ||
+    (
+      {:ok, user} = Accounts.register_user(%{name: name, email: email, password: password})
+      user
+    )
+end
+
+masamune = person.("Okazaki Masamune", "masamune@notebook.test", "the sharpest pen")
+yuki = person.("Yuki Hattori", "yuki@notebook.test", "my first page")
+
+alias Notebook.Spaces
+alias Notebook.Spaces.{Folder, Space}
+
+hanzo_scope = Scope.for_user(hanzo)
+yuki_scope = Scope.for_user(yuki)
+
+# A team space, made once by its first admin, with its people and roles.
+team = fn scope, name, description, members ->
+  space =
+    Notebook.Repo.get_by(Space, kind: "team", name: name) ||
+      elem(Spaces.create_team(scope, %{name: name, description: description}), 1)
+
+  for {user, role} <- members, user.id != scope.user.id do
+    Spaces.add_member(scope, space, user, role)
+  end
+
+  space
+end
+
+folder = fn scope, space, name, parent ->
+  Notebook.Repo.get_by(Folder, space_id: space.id, name: name) ||
+    elem(Spaces.create_folder(scope, space, %{name: name}, parent), 1)
+end
+
+# A text page from Markdown, made once (by its title).
+text = fn scope, title, space, folder, markdown, attrs ->
+  Notebook.Repo.get_by(Page, title: title) ||
+    elem(
+      Pages.create(
+        scope,
+        Map.merge(
+          %{
+            "title" => title,
+            "space_id" => space.id,
+            "folder_id" => folder && folder.id,
+            "body" => Kotoba.Content.from_markdown(markdown)
+          },
+          attrs
+        )
+      ),
+      1
+    )
+end
+
+# The forge: Hanzo's old workshop, as a team. Masamune edits; Yuki may
+# read and comment, as an apprentice does.
+forge =
+  team.(hanzo_scope, "The forge", "Where the last blades are planned and made.", [
+    {masamune, "editor"},
+    {yuki, "commenter"}
+  ])
+
+plans = folder.(hanzo_scope, forge, "Plans", nil)
+in_progress = folder.(hanzo_scope, forge, "In progress", nil)
+ceremonies = folder.(hanzo_scope, forge, "Ceremonies", plans)
+
 # A board and a table, for agents and people to work on together.
 unless Notebook.Repo.get_by(Page, title: "The forge, planned") do
   {:ok, _board} =
-    Pages.create(Scope.for_user(hanzo), %{"title" => "The forge, planned", "kind" => "board"})
+    Pages.create(hanzo_scope, %{
+      "title" => "The forge, planned",
+      "kind" => "board",
+      "space_id" => forge.id,
+      "folder_id" => plans.id
+    })
 end
 
 unless Notebook.Repo.get_by(Page, title: "Blades in progress") do
   {:ok, table} =
-    Pages.create(Scope.for_user(hanzo), %{"title" => "Blades in progress", "kind" => "table"})
+    Pages.create(hanzo_scope, %{
+      "title" => "Blades in progress",
+      "kind" => "table",
+      "space_id" => forge.id,
+      "folder_id" => in_progress.id
+    })
 
   for {title, status, owner, days, points} <- [
         {"Fold the steel", "done", "Hanzo", -3, 5},
@@ -223,4 +303,148 @@ unless Notebook.Repo.get_by(Page, title: "Blades in progress") do
   end
 end
 
-IO.puts("Hattori Hanzo can sign in as #{hanzo_email} with the password \"no more swords\".")
+text.(
+  hanzo_scope,
+  "The last blade",
+  forge,
+  plans,
+  """
+  One more sword, and then no more. Not for a warrior: for the museum in Kyoto, so that people who never held steel can see what thirteen folds look like.
+
+  ## What it needs
+
+  - Tamahagane from the last smelt, the good half
+  - Masamune's eye for the curve
+  - Yuki at the bellows, one more time
+
+  > A blade is finished when there is nothing left to take away.
+  """,
+  %{"due_on" => Date.add(Date.utc_today(), 21)}
+)
+
+text.(
+  hanzo_scope,
+  "The naming of the blade",
+  forge,
+  ceremonies,
+  """
+  The blade is named on the morning it leaves. Everyone who worked on it writes one word on a card; the words go in the box; the youngest draws one.
+
+  1. Clean the forge, all of it
+  2. Tea, the strong one
+  3. The words, the box, the draw
+  4. The name, cut into the tang
+  """,
+  %{}
+)
+
+text.(
+  Scope.for_user(masamune),
+  "Notes on the curve",
+  forge,
+  in_progress,
+  """
+  Hanzo likes a deep **sori**. I like it shallow. We will meet in the middle, as we have for forty years, and he will say it was his idea.
+
+  | Part | Hanzo | Me |
+  | --- | --- | --- |
+  | Curve | deep | shallow |
+  | Hamon | wild | straight |
+  | Tea | strong | stronger |
+  """,
+  %{}
+)
+
+# A page that has done its work: archived, out of the sidebar, never lost.
+old_orders =
+  text.(
+    hanzo_scope,
+    "Sword orders, 1998",
+    forge,
+    nil,
+    """
+    Twelve orders this year. The last one from a man who wanted a sword to hang over his television. I said no. That was when I began to think about pages.
+    """,
+    %{}
+  )
+
+unless old_orders.archived_at, do: Pages.archive(hanzo_scope, old_orders)
+
+# The tea house: Yuki's own space now. Hanzo edits; he insists on the menu.
+tea_house =
+  team.(
+    yuki_scope,
+    "Tea house",
+    "Yuki's tea house by the river: the menu, the guests, the garden.",
+    [
+      {hanzo, "editor"}
+    ]
+  )
+
+menu = folder.(yuki_scope, tea_house, "Menu", nil)
+
+text.(
+  yuki_scope,
+  "Autumn menu",
+  tea_house,
+  menu,
+  """
+  ## Teas
+
+  - **Hōjicha**, roasted, for the evenings
+  - **Genmaicha**, for guests who are hungry and too polite to say so
+  - **Gyokuro**, only when Master Hanzo is not looking at the price
+
+  ## Sweets
+
+  - Chestnut yōkan
+  - Persimmon, dried by the window since September
+  """,
+  %{}
+)
+
+text.(
+  yuki_scope,
+  "The garden, by the season",
+  tea_house,
+  nil,
+  """
+  The maple by the gate turns first. Then the one by the water. Guests ask which is older; neither of us knows.
+  """,
+  %{"revisit" => "FREQ=MONTHLY"}
+)
+
+# Hanzo's Private space: his alone, and his agent's.
+hanzo_private = Spaces.private!(hanzo)
+journal = folder.(hanzo_scope, hanzo_private, "Journal", nil)
+
+text.(
+  hanzo_scope,
+  "Day one without steel",
+  hanzo_private,
+  journal,
+  """
+  Woke at four, as always. Lit nothing. Sat with the cold forge and a cup of tea until the sun came through the shutters.
+
+  *Wrote a page instead.* It was not very good. Neither was my first sword.
+  """,
+  %{}
+)
+
+text.(
+  hanzo_scope,
+  "Letters I never sent",
+  hanzo_private,
+  nil,
+  """
+  To Masamune: you were right about the curve. You will never read this.
+  """,
+  %{}
+)
+
+IO.puts("""
+Sign in as one of them:
+  Hattori Hanzo      #{hanzo_email}   no more swords
+  Okazaki Masamune   masamune@notebook.test   the sharpest pen
+  Yuki Hattori       yuki@notebook.test   my first page
+""")
