@@ -1,10 +1,10 @@
 defmodule NotebookWeb.MCP do
   @moduledoc """
   The Notebook for MCP clients (Claude Code, Codex, any other): every tool
-  of the pages, at `/mcp`. A client connects with its person's token (the
-  Agents page), and works on their behalf: in the pages' rooms it is an
-  agent named for the client, the people see it, and the rooms' policy
-  says what it may do.
+  of the pages, at `/mcp`. A client connects with an agent's token (the
+  Agents page), and works on its person's behalf: in the pages' rooms it is an
+  agent of its own, by the name its person gave it, the people see it,
+  and the rooms' policy says what it may do.
   """
   use Issho.MCP,
     name: "notebook",
@@ -22,17 +22,14 @@ defmodule NotebookWeb.MCP do
     tools: Notebook.Tools.all()
 
   @doc """
-  Who an MCP caller is in the pages' rooms: the agent of the person whose
-  token it connected with, named for its client ("Claude Code"). One
-  agent per person, whatever its client, so that people mention it by
-  one name ("Ada's agent") and it finds what they said in one inbox.
+  Who an MCP caller is in the pages' rooms: the agent whose token it
+  connected with (`Notebook.Agents`), by its own key and the name its
+  person gave it, acting on behalf of that person. The rooms' policy and
+  the tools treat it as they treat its person; people see, mention and
+  pause it by its name.
   """
-  def agent(%Sake.Context{scope: %Notebook.Accounts.User{} = user} = ctx) do
-    client = ctx.client_info || %{}
-    name = client["title"] || client["name"] || "Agent"
-    {%{id: agent_key(user), name: name, kind: :agent}, on_behalf_of: user}
-  end
-
-  @doc "The key of a person's agent in the rooms."
-  def agent_key(%Notebook.Accounts.User{id: id}), do: "agent:#{id}"
+  def agent(%Sake.Context{
+        scope: %Notebook.Agents.Agent{user: %Notebook.Accounts.User{} = user} = agent
+      }),
+      do: {%{id: Notebook.Agents.key(agent), name: agent.name, kind: :agent}, on_behalf_of: user}
 end

@@ -1,20 +1,13 @@
 defmodule NotebookWeb.AgentAuth do
   @moduledoc """
-  Signs an MCP client in as the person whose token it brings, from the
-  Agents page: `Authorization: Bearer <token>`, or `?token=` in the URL
-  (for clients that take only a URL). The person is the client's
-  principal (`sake_scope`): its agent acts on their behalf.
+  Signs an MCP client in as the agent whose token it brings, made on the
+  Agents page (`Notebook.Agents`): `Authorization: Bearer <token>`, or
+  `?token=` in the URL (for clients that take only a URL). The agent,
+  with its person, is the client's principal (`sake_scope`): it acts on
+  their behalf.
   """
   @behaviour Plug
   import Plug.Conn
-
-  alias Notebook.Accounts.User
-  alias Notebook.Repo
-
-  @salt "notebook agent"
-
-  @doc "A person's token for their agents. It lasts until the app's secret changes."
-  def token(%User{id: id}), do: Phoenix.Token.sign(NotebookWeb.Endpoint, @salt, id)
 
   @doc false
   # The secret of MCP sessions: of the endpoint's.
@@ -26,14 +19,16 @@ defmodule NotebookWeb.AgentAuth do
   @impl true
   def call(conn, _opts) do
     with token when is_binary(token) <- token_of(conn),
-         {:ok, id} <- Phoenix.Token.verify(NotebookWeb.Endpoint, @salt, token, max_age: :infinity),
-         %User{} = user <- Repo.get(User, id) do
-      assign(conn, :sake_scope, user)
+         {:ok, agent} <- Notebook.Agents.authenticate(token) do
+      assign(conn, :sake_scope, agent)
     else
       _ ->
         conn
         |> put_resp_content_type("application/json")
-        |> send_resp(401, ~s({"error":"Bring your token from the Notebook's Agents page."}))
+        |> send_resp(
+          401,
+          ~s({"error":"Connect this agent on the Notebook's Agents page, and bring the token it gives. A token revoked or past its end works no more."})
+        )
         |> halt()
     end
   end

@@ -349,21 +349,16 @@ defmodule NotebookWeb.NotebookLive do
   end
 
   # Whom a comment may mention, though they are not on the page: every
-  # account, and each one's agent, which finds it in its inbox.
-  defp mentionable(socket) do
-    me = socket.assigns.current_scope.user.id
+  # account, and every agent that may work, which finds it in its inbox.
+  defp mentionable(_socket) do
+    people = Enum.map(Notebook.Accounts.list_users(), &%{key: to_string(&1.id), name: &1.name})
 
-    Enum.flat_map(Notebook.Accounts.list_users(), fn account ->
-      agent = %{
-        key: NotebookWeb.MCP.agent_key(account),
-        name: if(account.id == me, do: "My agent", else: account.name <> "'s agent"),
-        kind: "agent"
-      }
+    agents =
+      Enum.map(Notebook.Agents.active(), fn agent ->
+        %{key: Notebook.Agents.key(agent), name: agent.name, kind: "agent"}
+      end)
 
-      person = %{key: to_string(account.id), name: account.name}
-
-      [person, agent]
-    end)
+    people ++ agents
   end
 
   # What the page is: its shared text, its board, or its table, each a part

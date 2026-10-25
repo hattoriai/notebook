@@ -19,7 +19,7 @@ Open <http://localhost:4000>, create an account with a name, email, and password
 
 ## Connect an agent
 
-Open **Agents** (`/agents`): it has the command that connects your agent to the Notebook, with your token in it. For Claude Code:
+Open **Agents** (`/agents`) and connect an agent: give it the name people will see ("Hanzo's agent") and how long its token lasts (30 days, 90, a year, or no end). Each agent has its own identity: in a page's room it is itself (`agent:<id>`), acting on your behalf, so people see, mention and pause it by its name, and you can connect several. Its token is shown once, in the command that connects it; the Notebook keeps only a hash, and **Revoke** stops it at once. For Claude Code:
 
 ```sh
 claude mcp add --transport http notebook "http://localhost:4000/mcp?token=…"
