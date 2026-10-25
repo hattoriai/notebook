@@ -85,9 +85,7 @@ defmodule Notebook.MixProject do
       # 0.7.0 (labels on places, and what takes Issho's main). Their browser
       # clients are built from their sources (`mix notebook.libraries`).
       {:issho, github: "hattoriai/issho", branch: "main", override: true},
-      # A suggestion that replaces a selection is in hattoriai/kotoba#83: main once it merges.
-      {:kotoba,
-       github: "hattoriai/kotoba", branch: "claude/kotoba-suggestion-selection", override: true},
+      {:kotoba, github: "hattoriai/kotoba", branch: "main", override: true},
       {:hakushi, github: "hattoriai/hakushi", branch: "main", override: true},
       {:masu, github: "hattoriai/masu", branch: "main", override: true},
       {:sake, "~> 0.4.4"},
