@@ -82,7 +82,8 @@ defmodule Notebook.MixProject do
       # Issho's main, until a release after 0.4.2: the libraries that take it
       # (Kotoba, Hakushi, Masu, Narabe, Fude) take this one. Its browser
       # client is built from its sources (`mix notebook.issho`).
-      {:issho, github: "hattoriai/issho", branch: "main", override: true},
+      # Its requests to an agent are in hattoriai/issho#53: main once it merges.
+      {:issho, github: "hattoriai/issho", branch: "claude/issho-ask", override: true},
       {:kotoba, "~> 0.8"},
       {:hakushi, "~> 0.6"},
       {:masu, "~> 0.7"},

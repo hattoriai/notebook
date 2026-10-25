@@ -1072,3 +1072,10 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
   .jumon-list { max-height: none; flex: 1; }
 }
 @media (prefers-reduced-motion: reduce) { .sidebar, .sidebar-backdrop, .share-dialog, .share-backdrop, .topbar-bell-panel, .account-menu-panel, .database-menu-panel, .jumon-panel, .comments-drawer { transition: none !important; animation: none !important; } }
+
+/* Ask my agent: what the person selected, and what they ask of it. */
+.ask-selection { margin: 0 0 14px; padding: 10px 14px; border-left: 3px solid var(--accent); background: #f3efe6; color: var(--ink); font: 15px/1.5 Georgia, serif; max-height: 9em; overflow: auto; }
+.ask-form { display: grid; gap: 8px; }
+.ask-form textarea, .ask-form select { width: 100%; padding: 10px 12px; border: 1px solid var(--rule); background: #fff; font: 15px/1.45 ui-sans-serif, system-ui, sans-serif; }
+.ask-form .button { justify-self: end; }
+.ask-hint { margin: 0; color: var(--muted); font: 12.5px ui-sans-serif, system-ui, sans-serif; }
