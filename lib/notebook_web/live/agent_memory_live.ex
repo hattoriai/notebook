@@ -231,16 +231,14 @@ defmodule NotebookWeb.AgentMemoryLive do
               </header>
               <p :if={@sources != []} class="memory-sources" id="memory-sources">
                 Learned on
-                <%= for {source, i} <- Enum.with_index(@sources) do %>
-                  <span :if={i > 0}>, </span><.link
-                    :if={source.title}
-                    navigate={~p"/pages/#{source.id}"}
-                  >{source.title}</.link><em :if={is_nil(source.title)}>a page you may no longer read</em>
-                <% end %>
+                <span :for={{source, i} <- Enum.with_index(@sources)}>{if i > 0, do: ", "}<.link
+                  :if={source.title}
+                  navigate={~p"/pages/#{source.id}"}
+                >{source.title}</.link><em :if={is_nil(source.title)}>a page you may no longer read</em></span>
               </p>
               <div :if={MapSet.member?(@hidden, @file.path)} class="memory-hidden" id="memory-hidden">
                 <.icon name="hero-eye-slash" class="size-4" />
-                <span>
+                <span class="memory-hidden-text">
                   Hidden from {@agent.name}: it was learned on a page {@agent.name} may no longer read, so
                   what it learned there stays there.
                 </span>
