@@ -74,6 +74,7 @@ defmodule NotebookWeb.Router do
       live "/archive", ArchiveLive, :index
       live "/inbox", InboxLive, :index
       live "/agents", AgentsLive, :index
+      live "/agents/:id", AgentMemoryLive, :show
     end
   end
 

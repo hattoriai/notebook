@@ -9,6 +9,8 @@ defmodule Notebook.Agents.Agent do
   schema "agents" do
     belongs_to :user, Notebook.Accounts.User
     field :name, :string
+    # What its person tells it to be: its /memories/self.md (Notebook.Memory).
+    field :instructions, :string, default: ""
     field :token_hash, :binary, redact: true
     field :token_hint, :string
     field :expires_at, :utc_datetime
@@ -20,9 +22,10 @@ defmodule Notebook.Agents.Agent do
   @doc false
   def changeset(agent, attrs) do
     agent
-    |> cast(attrs, [:name])
+    |> cast(attrs, [:name, :instructions])
     |> update_change(:name, &(&1 |> String.replace(~r/\s+/u, " ") |> String.trim()))
     |> validate_required([:name], message: "give it a name people will see")
     |> validate_length(:name, max: 60)
+    |> validate_length(:instructions, max: 8_000)
   end
 end

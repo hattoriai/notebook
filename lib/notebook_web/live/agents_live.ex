@@ -142,6 +142,9 @@ defmodule NotebookWeb.AgentsLive do
                     · connected {date(agent.inserted_at)} · {seen(agent)} · {ends(agent)}
                   </small>
                 </div>
+                <.link navigate={~p"/agents/#{agent.id}"} class="agent-memory-link">
+                  <.icon name="hero-book-open" class="size-4" /> Memory
+                </.link>
                 <button
                   type="button"
                   class="agent-revoke"

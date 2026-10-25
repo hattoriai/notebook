@@ -3,13 +3,13 @@ defmodule Notebook.Tools do
   What an agent can do in the Notebook, however it connects: the tools
   of the pages' rooms (Issho's), of their parts (Kotoba's text, Hakushi's
   board, Masu's table, Fude's charts), and the Notebook's own: to find the
-  pages, to make one, and to read and write a database's records
-  (`Notebook.Tools.Databases`).
+  pages, to make one, to read and write a database's records
+  (`Notebook.Tools.Databases`), and its own memory (`Notebook.Tools.Memory`).
   """
 
   @doc "Every tool of the Notebook, for MCP (NotebookWeb.MCP) or an app's own model."
   def all do
-    [Notebook.Tools.ListPages, Notebook.Tools.CreatePage] ++
+    [Notebook.Tools.ListPages, Notebook.Tools.CreatePage, Notebook.Tools.Memory] ++
       [Notebook.Tools.ReadDatabase, Notebook.Tools.AddRecords, Notebook.Tools.UpdateRecords] ++
       Issho.Tools.room() ++
       Kotoba.Issho.tools() ++ Hakushi.Issho.tools() ++ Masu.Issho.tools() ++ Fude.Issho.tools()
