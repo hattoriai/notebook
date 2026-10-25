@@ -22,6 +22,8 @@ defmodule Notebook.Pages.Page do
     belongs_to :space, Notebook.Spaces.Space
     belongs_to :folder, Notebook.Spaces.Folder
     field :archived_at, :utc_datetime
+    # Its place among its siblings, folders and pages alike (Narabe).
+    field :position, :string
     timestamps(type: :utc_datetime)
   end
 

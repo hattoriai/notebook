@@ -81,6 +81,7 @@ defmodule Notebook.MixProject do
       {:koyomi, "~> 0.1.2"},
       {:jumon, "~> 0.1.1"},
       {:sekisho, "~> 0.1.1"},
+      {:narabe, "~> 0.2"},
       {:tz, "~> 0.28"}
     ]
   end

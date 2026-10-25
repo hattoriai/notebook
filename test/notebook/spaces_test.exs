@@ -117,6 +117,68 @@ defmodule Notebook.SpacesTest do
     assert id == loose.id
   end
 
+  test "a space's tree keeps the order people leave it in, new pages last", %{scope: scope} do
+    {:ok, forge} = Spaces.create_team(scope, %{name: "The forge"})
+    {:ok, plans} = Spaces.create_folder(scope, forge, %{name: "Plans"})
+    {:ok, a} = Pages.create(scope, %{"title" => "Zebra", "space_id" => forge.id})
+    {:ok, b} = Pages.create(scope, %{"title" => "Apple", "space_id" => forge.id})
+
+    titles = fn ->
+      node = Enum.find(Spaces.tree(scope), &(&1.space.id == forge.id))
+
+      for item <- node.items,
+          is_nil(item.parent_id),
+          do: Map.get(item.record, :title) || item.record.name
+    end
+
+    assert titles.() == ["Plans", "Zebra", "Apple"]
+
+    {:ok, _} =
+      Spaces.move(scope, forge, %Narabe.Move{
+        ids: ["page:#{b.id}"],
+        parent: nil,
+        before: "folder:#{plans.id}"
+      })
+
+    assert titles.() == ["Apple", "Plans", "Zebra"]
+
+    {:ok, _} = Pages.move(scope, a, forge.id, plans.id)
+
+    {:ok, c} =
+      Pages.create(scope, %{"title" => "Middle", "space_id" => forge.id, "folder_id" => plans.id})
+
+    node = Enum.find(Spaces.tree(scope), &(&1.space.id == forge.id))
+    assert [%{folder: %{name: "Plans"}, pages: [%{id: first}, %{id: last}]}] = node.folders
+    assert {first, last} == {a.id, c.id}
+  end
+
+  test "a move in a space's tree keeps folders two levels deep, and is its editors'", %{
+    scope: scope,
+    yuki: yuki,
+    yuki_scope: yuki_scope
+  } do
+    {:ok, forge} = Spaces.create_team(scope, %{name: "The forge"})
+    {:ok, _} = Spaces.add_member(scope, forge, yuki, "commenter")
+    {:ok, plans} = Spaces.create_folder(scope, forge, %{name: "Plans"})
+    {:ok, inner} = Spaces.create_folder(scope, forge, %{name: "Inner"}, plans)
+    {:ok, other} = Spaces.create_folder(scope, forge, %{name: "Other"})
+    {:ok, page} = Pages.create(scope, %{"title" => "A page", "space_id" => forge.id})
+
+    move = fn scope, id, parent ->
+      Spaces.move(scope, forge, %Narabe.Move{ids: [id], parent: parent})
+    end
+
+    # A folder that holds folders stays at the top; a folder in a folder holds no folder.
+    assert {:error, :too_deep} = move.(scope, "folder:#{plans.id}", "folder:#{other.id}")
+    assert {:error, :too_deep} = move.(scope, "folder:#{other.id}", "folder:#{inner.id}")
+    assert {:ok, _} = move.(scope, "folder:#{other.id}", "folder:#{plans.id}")
+    # A page holds nothing.
+    assert {:error, :not_accepted} = move.(scope, "folder:#{inner.id}", "page:#{page.id}")
+
+    assert {:error, %Sekisho.Denied{}} =
+             move.(yuki_scope, "page:#{page.id}", "folder:#{plans.id}")
+  end
+
   test "a change to the tree tells its subscribers", %{scope: scope} do
     Spaces.subscribe_tree()
     {:ok, _forge} = Spaces.create_team(scope, %{name: "The forge"})

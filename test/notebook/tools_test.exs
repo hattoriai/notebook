@@ -26,7 +26,9 @@ defmodule Notebook.ToolsTest do
   defp ctx(user) do
     Issho.Tool.Context.new(
       Notebook.Issho,
-      %{id: "agent:#{user.id}", name: "Claude Code", kind: :agent}, on_behalf_of: user)
+      %{id: "agent:#{user.id}", name: "Claude Code", kind: :agent},
+      on_behalf_of: user
+    )
   end
 
   test "an agent lists the pages its person may read, with their space", %{

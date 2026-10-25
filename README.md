@@ -4,7 +4,7 @@ A shared notebook where people and agents work together, live: a Phoenix app bui
 
 ## Run locally
 
-Notebook uses the published Kotoba, Hakushi, Masu, Koyomi and Jumon from Hex, as your app would, and Issho's main branch until Issho 0.4.0 is on Hex (`mix.exs`, the `issho` alias in `config/config.exs`, and Issho's style sheet in `app.css`). With Elixir 1.18 or later (`.tool-versions` pins the versions used here):
+Notebook uses the published Kotoba, Hakushi, Masu, Koyomi, Jumon, Sekisho and Narabe from Hex, as your app would, and Issho's main branch until Issho 0.4.0 is on Hex (`mix.exs`, the `issho` alias in `config/config.exs`, and Issho's style sheet in `app.css`). With Elixir 1.18 or later (`.tool-versions` pins the versions used here):
 
 ```sh
 mix setup
@@ -45,7 +45,7 @@ The sample pages (`mix setup`, or `mix run priv/repo/seeds.exs`) are **A tour of
 | Okazaki Masamune, an old friend who still makes blades | `masamune@notebook.test` | `the sharpest pen` | editor of *The forge* |
 | Yuki Hattori, his last apprentice, who now keeps a tea house | `yuki@notebook.test` | `my first page` | commenter in *The forge*, admin of *Tea house* |
 
-- The sidebar has the spaces you are in, their folders and their pages; it changes for everyone as pages are made, renamed, moved or archived. Sign in as Yuki and Hanzo's Private pages are not there, nor anywhere else: not in a list, a search, a mention or an agent's `list_pages`.
+- The sidebar has the spaces you are in, their folders and their pages; it changes for everyone as pages are made, renamed, moved or archived. Each space is a [Narabe](https://github.com/hattoriai/narabe) tree of two tables, folders and pages (`Narabe.Ecto.Mixed`): an editor drags a page or a folder by its grip, or moves it from the keyboard (Space, the arrows, Space), within and across folders, and the order stays as they leave it, for everyone. Sign in as Yuki and Hanzo's Private pages are not there, nor anywhere else: not in a list, a search, a mention or an agent's `list_pages`.
 - Open a space for its folders and pages. An editor makes pages and folders (two levels deep at most), an admin renames the space and manages its **Members**: viewer, commenter, editor, admin. Make your own with **New space**.
 - On a page, ⌘K has **Move to…** (a space you edit, and its folders) and **Archive this page**. An archived page leaves the sidebar and the lists for the **Archive**, where it can be restored. *Sword orders, 1998* is archived already.
 - As Yuki in *The forge*, a page reads and takes comments, and does not open for editing.
