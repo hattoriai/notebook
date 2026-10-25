@@ -26,7 +26,7 @@ defmodule Notebook.PagesDatesTest do
         "revisit" => "FREQ=WEEKLY;BYDAY=MO"
       })
 
-    page = Pages.get!(page.id)
+    page = Pages.get!(scope, page.id)
     assert page.due_on == ~D[2027-03-12]
     assert page.covers == Date.range(~D[2027-03-15], ~D[2027-03-19])
     assert page.review_at == ~U[2027-03-10 14:00:00Z]
@@ -99,7 +99,7 @@ defmodule Notebook.PagesDatesTest do
     {:ok, other} =
       Pages.create(scope, %{"title" => "Budget", "review_at" => "2027-03-15T11:00:00Z"})
 
-    slots = Pages.review_slots(Date.range(~D[2027-03-13], ~D[2027-03-15]))
+    slots = Pages.review_slots(scope, Date.range(~D[2027-03-13], ~D[2027-03-15]))
     refute Map.has_key?(slots, ~D[2027-03-13])
     refute Map.has_key?(slots, ~D[2027-03-14])
 
@@ -109,7 +109,7 @@ defmodule Notebook.PagesDatesTest do
     assert monday[:title] == "6 free times"
 
     # A page's own review does not take its slot.
-    slots = Pages.review_slots(Date.range(~D[2027-03-15], ~D[2027-03-15]), other.id)
+    slots = Pages.review_slots(scope, Date.range(~D[2027-03-15], ~D[2027-03-15]), other.id)
     refute Enum.any?(slots[~D[2027-03-15]][:slots], &Map.get(&1, :disabled))
   end
 end

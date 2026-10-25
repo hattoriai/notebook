@@ -14,9 +14,15 @@ defmodule NotebookWeb.NotebookLive do
       socket
       |> assign(name: name, search: "", day: nil, page_title: "Notebook")
       |> load_page(params)
-      |> page_actions()
 
-    {:ok, socket}
+    if socket.assigns.live_action == :edit and not socket.assigns.can_edit? do
+      {:ok,
+       socket
+       |> put_flash(:error, "You may read this page, not edit it.")
+       |> push_navigate(to: ~p"/pages/#{socket.assigns.page.id}")}
+    else
+      {:ok, page_actions(socket)}
+    end
   end
 
   # The command palette's actions of what this LiveView shows; the actions
@@ -52,28 +58,9 @@ defmodule NotebookWeb.NotebookLive do
   end
 
   defp page_actions(%{assigns: %{live_action: :show, page: page}} = socket) do
-    Jumon.Live.put_actions(socket, [
-      Jumon.action(:edit_page, "Edit together",
-        section: page.title,
-        icon: "hero-pencil-square",
-        shortcut: "e",
-        navigate: ~p"/pages/#{page.id}/edit"
-      ),
-      Jumon.action(:rename_page, "Rename this page…",
-        section: page.title,
-        icon: "hero-pencil",
-        args: [title: [type: :text, placeholder: page.title, max_length: 160]],
-        run: &rename_page/2
-      ),
-      Jumon.action(:due_page, "Set the due date…",
-        section: page.title,
-        icon: "hero-flag",
-        keywords: ~w(deadline date),
-        args: [
-          due: [label: "Due", options: due_options(Koyomi.Rules.today(Page.review_rules()), page)]
-        ],
-        run: &set_due/2
-      ),
+    scope = socket.assigns.current_scope
+
+    reading = [
       Jumon.action(:copy_link, "Copy link",
         section: page.title,
         icon: "hero-link",
@@ -82,9 +69,69 @@ defmodule NotebookWeb.NotebookLive do
       Jumon.action(:copy_markdown, "Copy Markdown",
         section: page.title,
         icon: "hero-clipboard-document",
-        copy: copy_text(page, :markdown)
+        copy: copy_text(page, :markdown, scope)
       )
-    ])
+    ]
+
+    editing =
+      if socket.assigns.can_edit? do
+        [
+          Jumon.action(:edit_page, "Edit together",
+            section: page.title,
+            icon: "hero-pencil-square",
+            shortcut: "e",
+            navigate: ~p"/pages/#{page.id}/edit"
+          ),
+          Jumon.action(:rename_page, "Rename this page…",
+            section: page.title,
+            icon: "hero-pencil",
+            args: [title: [type: :text, placeholder: page.title, max_length: 160]],
+            run: &rename_page/2
+          ),
+          Jumon.action(:due_page, "Set the due date…",
+            section: page.title,
+            icon: "hero-flag",
+            keywords: ~w(deadline date),
+            args: [
+              due: [
+                label: "Due",
+                options: due_options(Koyomi.Rules.today(Page.review_rules()), page)
+              ]
+            ],
+            run: &set_due/2
+          ),
+          Jumon.action(:move_page, "Move to…",
+            section: page.title,
+            icon: "hero-arrow-right-circle",
+            keywords: ~w(space folder file),
+            children:
+              for {label, space_id, folder_id} <- places(scope) do
+                Jumon.action("move-#{space_id}-#{folder_id}", label,
+                  icon: if(folder_id, do: "hero-folder", else: "hero-squares-2x2"),
+                  run: &move_page(&1, space_id, folder_id)
+                )
+              end
+          ),
+          if page.archived_at do
+            Jumon.action(:restore_page, "Restore this page",
+              section: page.title,
+              icon: "hero-arrow-uturn-left",
+              run: &restore_page/1
+            )
+          else
+            Jumon.action(:archive_page, "Archive this page",
+              section: page.title,
+              icon: "hero-archive-box",
+              keywords: ~w(delete remove hide),
+              run: &archive_page/1
+            )
+          end
+        ]
+      else
+        []
+      end
+
+    Jumon.Live.put_actions(socket, editing ++ reading)
   end
 
   defp page_actions(%{assigns: %{live_action: :edit, page: page}} = socket) do
@@ -153,8 +200,78 @@ defmodule NotebookWeb.NotebookLive do
 
   defp set_due(%{due: day}, socket), do: update_page(socket, %{"due_on" => day}, "Due date set")
 
+  defp move_page(socket, space_id, folder_id) do
+    case Pages.move(socket.assigns.current_scope, socket.assigns.page, space_id, folder_id) do
+      {:ok, page} ->
+        socket
+        |> assign(page: page)
+        |> page_actions()
+        |> put_flash(:info, "Moved to #{place_name(page)}")
+
+      {:error, _reason} ->
+        {:error, "You may not move this page there.", socket}
+    end
+  end
+
+  defp archive_page(socket) do
+    {:ok, page} = Pages.archive(socket.assigns.current_scope, socket.assigns.page)
+
+    socket
+    |> assign(page: page)
+    |> page_actions()
+    |> put_flash(:info, "Archived. It stays in the Archive until you restore it.")
+  end
+
+  defp restore_page(socket) do
+    {:ok, page} = Pages.restore(socket.assigns.current_scope, socket.assigns.page)
+
+    socket
+    |> assign(page: page)
+    |> page_actions()
+    |> put_flash(:info, "Restored to #{place_name(page)}")
+  end
+
+  # Where a page is, in words: its space, and its folder.
+  defp place_name(%Page{space: space, folder: nil}), do: space.name
+  defp place_name(%Page{space: space, folder: folder}), do: "#{space.name} / #{folder.name}"
+
+  # The spaces the person may make pages in, and their folders: where a
+  # page may go, as {label, space id, folder id}.
+  defp places(scope) do
+    for %{space: space} = node <- Notebook.Spaces.tree(scope),
+        Notebook.Spaces.allowed?(scope, :edit, space),
+        place <- [{space.name, space.id, nil} | folder_places(space, node.folders)],
+        do: place
+  end
+
+  defp folder_places(space, folders) do
+    Enum.flat_map(folders, fn %{folder: folder, folders: children} ->
+      [
+        {"#{space.name} / #{folder.name}", space.id, folder.id}
+        | Enum.map(
+            children,
+            &{"#{space.name} / #{folder.name} / #{&1.folder.name}", space.id, &1.folder.id}
+          )
+      ]
+    end)
+  end
+
+  # The space and folder a new page goes in: the ones in the address
+  # (`?space=&folder=`), else the person's Private space.
+  defp place_param(params, scope) do
+    places = places(scope)
+    space = params["space"] && String.to_integer(params["space"])
+    folder = params["folder"] && String.to_integer(params["folder"])
+
+    Enum.find(places, fn {_label, s, f} -> s == space and f == folder end) ||
+      Enum.find(places, fn {_label, s, f} -> s == space and is_nil(f) end) ||
+      {"Private", Notebook.Spaces.private!(scope.user).id, nil}
+  rescue
+    ArgumentError -> {"Private", Notebook.Spaces.private!(scope.user).id, nil}
+  end
+
   defp update_page(socket, attrs, message) do
-    case Pages.update(socket.assigns.page, attrs) do
+    case Pages.update(socket.assigns.current_scope, socket.assigns.page, attrs) do
       {:ok, page} ->
         socket
         |> assign(page: page, page_title: page.title, form: to_form(Pages.change(page)))
@@ -173,13 +290,15 @@ defmodule NotebookWeb.NotebookLive do
   end
 
   defp load_page(socket, %{"id" => id} = params) do
-    page = Pages.get!(id)
+    scope = socket.assigns.current_scope
+    page = Pages.get!(scope, id)
 
     socket =
       socket
       |> assign(
         page: page,
         page_title: page.title,
+        can_edit?: Pages.allowed?(scope, :edit, page),
         form: to_form(Pages.change(page)),
         # The page's room: its people and their pointers, listed and drawn
         # once for the page, whatever it is.
@@ -199,9 +318,13 @@ defmodule NotebookWeb.NotebookLive do
     )
   end
 
-  defp load_page(socket, _params) do
+  defp load_page(socket, params) do
+    scope = socket.assigns.current_scope
+
     assign(socket,
-      pages: Pages.list(),
+      pages: Pages.list(scope),
+      places: places(scope),
+      place: place_param(params, scope),
       page: nil,
       today: Koyomi.Rules.today(Page.review_rules()),
       form: to_form(Pages.change(%Page{})),
@@ -248,8 +371,8 @@ defmodule NotebookWeb.NotebookLive do
 
   defp assign_kind(socket, page) do
     assign(socket,
-      boards: embeddable("board"),
-      tables: embeddable("table"),
+      boards: embeddable(socket.assigns.current_scope, "board"),
+      tables: embeddable(socket.assigns.current_scope, "table"),
       issho: [
         instance: Notebook.Issho,
         document: "#{Notebook.Collaboration.room(page)}/body",
@@ -261,8 +384,8 @@ defmodule NotebookWeb.NotebookLive do
 
   # The boards and tables a text embeds, by their page's id as the document
   # keeps it: each page, and its graph or its grid.
-  defp embeddable(kind) do
-    for page <- Pages.list(),
+  defp embeddable(scope, kind) do
+    for page <- Pages.list(scope),
         page.kind == kind,
         into: %{},
         do: {to_string(page.id), embeddable_page(page)}
@@ -276,11 +399,11 @@ defmodule NotebookWeb.NotebookLive do
 
   # A link to a board or a table of the Notebook, pasted or dropped in a
   # text, is the board or the table itself.
-  defp resolve_embed(url) do
+  defp resolve_embed(scope, url) do
     with %URI{host: host, path: "/pages/" <> id} <- URI.parse(url),
          true <- host in [nil, NotebookWeb.Endpoint.host()],
          {id, ""} <- Integer.parse(id),
-         %Page{kind: kind} = page when kind in ["board", "table"] <- Pages.get(id) do
+         %Page{kind: kind} = page when kind in ["board", "table"] <- Pages.get(scope, id) do
       %{kind: kind, ref: to_string(page.id), title: page.title}
     else
       _other -> nil
@@ -302,10 +425,10 @@ defmodule NotebookWeb.NotebookLive do
       color: Notebook.Accounts.User.color(account)
     }
 
-  defp prompts do
+  defp prompts(scope) do
     [
       {"@", :people, [search: &Notebook.People.search/1, label: "People", spaces: true]},
-      {"#", :pages, [search: &Pages.mentions/1, label: "Pages", spaces: true]}
+      {"#", :pages, [search: &Pages.mentions(scope, &1), label: "Pages", spaces: true]}
     ]
   end
 
@@ -432,10 +555,11 @@ defmodule NotebookWeb.NotebookLive do
 
   @impl true
   def render(assigns) do
-    assigns = assign(assigns, :prompts, prompts())
+    assigns = assign(assigns, :prompts, prompts(assigns.current_scope))
 
     ~H"""
-    <div class="notebook-shell">
+    <div class="notebook-shell notebook-with-sidebar">
+      <.sidebar tree={@tree} current={current(assigns)} />
       <main class="notebook-main">
         <div class="flash-area"><Layouts.flash_group flash={@flash} /></div>
 
@@ -527,7 +651,7 @@ defmodule NotebookWeb.NotebookLive do
 
         <div :if={@live_action == :new} class="page-view">
           <div class="page-nav">
-            <.link navigate={~p"/"}>← All pages</.link>
+            <.link navigate={~p"/"}>← Home</.link>
             <div class="page-nav-end">
               <.command_button id="page-commands" class="command-link" /><span>NEW PAGE</span>
             </div>
@@ -542,6 +666,16 @@ defmodule NotebookWeb.NotebookLive do
             phx-submit="create"
             class="page-form"
           >
+            <label for="page_place" class="field-label">In</label>
+            <select id="page_place" name="page[place]" class="page-place">
+              <option
+                :for={{label, space_id, folder_id} <- @places}
+                value={"#{space_id}:#{folder_id}"}
+                selected={{label, space_id, folder_id} == @place}
+              >
+                {label}
+              </option>
+            </select>
             <fieldset class="page-kinds">
               <legend class="field-label">A page of</legend>
               <label :for={{kind, name, hint} <- kinds()} class="page-kind">
@@ -589,7 +723,7 @@ defmodule NotebookWeb.NotebookLive do
           :if={@live_action in [:show, :edit] and @page.kind == "board"}
           class="page-view page-space"
         >
-          <.page_bar page={@page} grant={@grant} />
+          <.page_bar page={@page} grant={@grant} can_edit?={@can_edit?} />
           <div class="page-heading">
             <p class="eyebrow">Board · shared live</p>
             <h1>{@page.title}</h1>
@@ -623,7 +757,7 @@ defmodule NotebookWeb.NotebookLive do
           :if={@live_action in [:show, :edit] and @page.kind == "table"}
           class="page-view page-space"
         >
-          <.page_bar page={@page} grant={@grant} />
+          <.page_bar page={@page} grant={@grant} can_edit?={@can_edit?} />
           <div class="page-heading">
             <p class="eyebrow">{kind_name(@page.kind)} · shared live</p>
             <h1>{@page.title}</h1>
@@ -657,7 +791,7 @@ defmodule NotebookWeb.NotebookLive do
         </div>
 
         <div :if={@live_action in [:show, :edit] and @page.kind == "text"} class="page-view">
-          <.page_bar page={@page} grant={@grant} />
+          <.page_bar page={@page} grant={@grant} can_edit?={@can_edit?} />
           <div class="page-heading">
             <p class="eyebrow">Shared page</p>
             <h1>{@page.title}</h1>
@@ -671,6 +805,7 @@ defmodule NotebookWeb.NotebookLive do
           </div>
           <div :if={@live_action == :show} class="reader-actions">
             <.link
+              :if={@can_edit?}
               class="button button-primary"
               navigate={~p"/pages/#{@page.id}/edit"}
               data-issho-anchor="edit-together"
@@ -683,7 +818,7 @@ defmodule NotebookWeb.NotebookLive do
               class="copy-action"
               phx-hook=".Copy"
               data-format={format}
-              data-copy={copy_text(@page, format)}
+              data-copy={copy_text(@page, format, @current_scope)}
             >
               <.icon name="hero-clipboard-document" class="copy-icon size-4" />
               <.icon name="hero-check" class="copied-icon size-4" />
@@ -737,7 +872,7 @@ defmodule NotebookWeb.NotebookLive do
             </div>
           </dl>
           <article :if={@live_action == :show} class="page-body">
-            <.kotoba_content content={@page.body} embed={&Notebook.Embeds.render/2} />
+            <.kotoba_content content={@page.body} embed={Notebook.Embeds.renderer(@current_scope)} />
           </article>
           <.form
             :if={@live_action == :edit}
@@ -808,7 +943,7 @@ defmodule NotebookWeb.NotebookLive do
             label="Embed"
             icon="embed"
             picker_title="Embed a board or a table"
-            resolve={&resolve_embed/1}
+            resolve={&resolve_embed(@current_scope, &1)}
           >
             <:embed :let={embed}>
               <.embedded
@@ -859,6 +994,11 @@ defmodule NotebookWeb.NotebookLive do
 
   # Maximize a board or a table to the window (Esc restores it), or to the
   # whole screen: the .Maximize hook of the frame they are in.
+  # What the sidebar marks as open.
+  defp current(%{live_action: :index}), do: :home
+  defp current(%{page: %Page{id: id}}), do: {:page, id}
+  defp current(_assigns), do: nil
+
   defp maximize_buttons(assigns) do
     ~H"""
     <div class="space-size">
@@ -912,13 +1052,23 @@ defmodule NotebookWeb.NotebookLive do
 
   attr :page, Page, required: true
   attr :grant, :map, required: true
+  attr :can_edit?, :boolean, default: false
 
-  # The top of a page: back to the pages, who is on it, the commands; and
+  # The top of a page: where it is, who is on it, the commands; and
   # their pointers over the whole page.
   defp page_bar(assigns) do
     ~H"""
     <div class="page-nav">
-      <.link navigate={~p"/"}>← All pages</.link>
+      <nav class="breadcrumb" aria-label="Where this page is">
+        <.link navigate={~p"/spaces/#{@page.space_id}"}>{@page.space.name}</.link>
+        <span :if={@page.folder} aria-hidden="true">/</span>
+        <.link
+          :if={@page.folder}
+          navigate={~p"/spaces/#{@page.space_id}/folders/#{@page.folder_id}"}
+        >
+          {@page.folder.name}
+        </.link>
+      </nav>
       <div class="page-nav-end">
         <.people id="page-people" grant={@grant} label="On this page" />
         <button
@@ -932,6 +1082,13 @@ defmodule NotebookWeb.NotebookLive do
         </button>
         <.command_button id="page-commands" class="command-link" /><span>{kind_name(@page.kind)} / {@page.id}</span>
       </div>
+    </div>
+    <div :if={@page.archived_at} class="archived-banner" role="status">
+      <.icon name="hero-archive-box" class="size-4" />
+      <span>
+        Archived on {Calendar.strftime(@page.archived_at, "%-d %B %Y")}. It is out of the sidebar and the lists.
+      </span>
+      <button :if={@can_edit?} type="button" phx-click="restore">Restore</button>
     </div>
     <.agents id="page-agents" grant={@grant} class="page-agents" />
     <.pointers id="page-pointers" grant={@grant} follow_agents="on_behalf" />
@@ -1144,27 +1301,30 @@ defmodule NotebookWeb.NotebookLive do
 
   # The index calendar's days: a mark for each thing a page has on the
   # day, and the titles for screen readers and the hover.
-  defp agenda_days(range) do
-    for {day, items} <- Pages.agenda(Pages.list(), range), into: %{} do
+  defp agenda_days(scope, range) do
+    for {day, items} <- Pages.agenda(Pages.list(scope), range), into: %{} do
       title = Enum.map_join(items, "; ", fn {kind, page} -> "#{@kinds[kind]}: #{page.title}" end)
       {day, [marks: Enum.map(items, fn {kind, _page} -> @tones[kind] end), title: title]}
     end
   end
 
   defp list_pages(socket) do
-    pages = Pages.list(socket.assigns.search)
+    pages = Pages.list(socket.assigns.current_scope, search: socket.assigns.search)
     pages = if socket.assigns.day, do: Pages.on_day(pages, socket.assigns.day), else: pages
     assign(socket, pages: pages)
   end
 
   # The Markdown or the plain text of a page, for the copy buttons.
-  defp copy_text(%{body: nil}, _format), do: ""
-  defp copy_text(%{body: %Kotoba.Content{text: text}}, :text), do: text || ""
+  defp copy_text(%{body: nil}, _format, _scope), do: ""
+  defp copy_text(%{body: %Kotoba.Content{text: text}}, :text, _scope), do: text || ""
 
-  defp copy_text(%{body: %Kotoba.Content{doc: doc}}, :markdown) do
+  defp copy_text(%{body: %Kotoba.Content{doc: doc}}, :markdown, scope) do
     case Kotoba.Document.parse(doc) do
-      {:ok, parsed} -> Kotoba.Renderer.to_markdown(parsed, embed: &Notebook.Embeds.render/2)
-      {:error, _messages} -> ""
+      {:ok, parsed} ->
+        Kotoba.Renderer.to_markdown(parsed, embed: Notebook.Embeds.renderer(scope))
+
+      {:error, _messages} ->
+        ""
     end
   end
 
@@ -1219,12 +1379,13 @@ defmodule NotebookWeb.NotebookLive do
   end
 
   def handle_event("koyomi:days", %{"id" => "notebook-calendar"} = params, socket),
-    do: Koyomi.Live.handle_days(socket, params, &agenda_days/1)
+    do: Koyomi.Live.handle_days(socket, params, &agenda_days(socket.assigns.current_scope, &1))
 
   # The review picker's free times; the page's own review is not taken.
   def handle_event("koyomi:days", %{"id" => "page_review_at_picker"} = params, socket) do
     page_id = socket.assigns.page && socket.assigns.page.id
-    Koyomi.Live.handle_days(socket, params, &Pages.review_slots(&1, page_id))
+    scope = socket.assigns.current_scope
+    Koyomi.Live.handle_days(socket, params, &Pages.review_slots(scope, &1, page_id))
   end
 
   def handle_event("validate", %{"page" => params}, socket) do
@@ -1235,11 +1396,14 @@ defmodule NotebookWeb.NotebookLive do
 
     page = socket.assigns.page || %Page{}
 
-    {:noreply, assign(socket, form: to_form(Pages.change(page, params), action: :validate))}
+    {:noreply,
+     socket
+     |> assign(form: to_form(Pages.change(page, params), action: :validate))
+     |> keep_place(params)}
   end
 
   def handle_event("create", %{"page" => params}, socket) do
-    case Pages.create(socket.assigns.current_scope, params) do
+    case Pages.create(socket.assigns.current_scope, place_attrs(params)) do
       {:ok, %Page{kind: "text"} = page} ->
         {:noreply, push_navigate(socket, to: ~p"/pages/#{page.id}/edit")}
 
@@ -1264,7 +1428,11 @@ defmodule NotebookWeb.NotebookLive do
              revision
            ),
          {:ok, page} <-
-           Pages.update(socket.assigns.page, page_params(params, content)) do
+           Pages.update(
+             socket.assigns.current_scope,
+             socket.assigns.page,
+             page_params(params, content)
+           ) do
       {:noreply,
        socket
        |> assign(page: page)
@@ -1282,6 +1450,8 @@ defmodule NotebookWeb.NotebookLive do
     end
   end
 
+  def handle_event("restore", _params, socket), do: {:noreply, restore_page(socket)}
+
   def handle_event("copied", %{"format" => format}, socket),
     do: {:noreply, put_flash(socket, :info, "#{format_name(format)} copied to your clipboard")}
 
@@ -1295,13 +1465,32 @@ defmodule NotebookWeb.NotebookLive do
   end
 
   def handle_event("kotoba:prompt", params, socket),
-    do: {:noreply, Kotoba.Live.handle_prompt(socket, params, prompts())}
+    do:
+      {:noreply, Kotoba.Live.handle_prompt(socket, params, prompts(socket.assigns.current_scope))}
 
   defp handle_progress(:attachments, entry, socket) do
     if entry.done?,
       do: {:noreply, Kotoba.Live.consume_uploads(socket, :attachments, "body-editor")},
       else: {:noreply, socket}
   end
+
+  # The place picked in the new page's form stays picked as it validates.
+  defp keep_place(socket, %{"place" => value}) do
+    case Enum.find(socket.assigns[:places] || [], fn {_l, s, f} -> "#{s}:#{f}" == value end) do
+      nil -> socket
+      place -> assign(socket, place: place)
+    end
+  end
+
+  defp keep_place(socket, _params), do: socket
+
+  # The space and folder of the form's place ("space:folder").
+  defp place_attrs(%{"place" => place} = params) do
+    [space_id, folder_id] = String.split(place, ":")
+    Map.merge(params, %{"space_id" => space_id, "folder_id" => folder_id})
+  end
+
+  defp place_attrs(params), do: params
 
   # The title and the dates come from the form; the body is the accepted
   # revision of the collaboration.

@@ -28,6 +28,8 @@ defmodule Notebook.AccountsFixtures do
       |> Accounts.User.email_changeset(attrs)
       |> Notebook.Repo.insert()
 
+    # As every account: a member of General, with a Private space.
+    {:ok, user} = Notebook.Spaces.welcome(user)
     user
   end
 

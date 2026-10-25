@@ -36,7 +36,10 @@ defmodule NotebookWeb.NotebookCommandsTest do
     {:ok, view, _html} = live(conn, ~p"/")
     results = view |> search("lisbon") |> Enum.filter(&(&1["source"] == "pages"))
 
-    assert [%{"name" => "Lisbon trip", "subtitle" => "Due 12 Mar · Nina Writer"} = result] =
+    assert [
+             %{"name" => "Lisbon trip", "subtitle" => "Due 12 Mar · General · Nina Writer"} =
+               result
+           ] =
              results
 
     assert result["id"] == "pages:#{page.id}"
@@ -62,12 +65,11 @@ defmodule NotebookWeb.NotebookCommandsTest do
     {:ok, view, _html} = live(conn, ~p"/")
     assert %{"ok" => true} = run(view, "day-#{today}")
 
-    html = render(view)
-    assert html =~ "Due today"
-    refute html =~ "Undated"
+    assert has_element?(view, ".page-list .page-row", "Due today")
+    refute has_element?(view, ".page-list .page-row", "Undated")
 
     assert %{"ok" => true} = run(view, :all_days)
-    assert render(view) =~ "Undated"
+    assert has_element?(view, ".page-list .page-row", "Undated")
   end
 
   test "a page renames itself and takes a due date from the palette", %{

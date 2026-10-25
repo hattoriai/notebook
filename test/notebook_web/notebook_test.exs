@@ -43,7 +43,7 @@ defmodule NotebookWeb.NotebookTest do
 
     content = Kotoba.Content.from_markdown("## Notes\n\nA useful sentence.")
     {:ok, page} = Pages.create(Scope.for_user(user), %{title: "Release notes", body: content})
-    assert Enum.any?(Pages.list("useful"), &(&1.id == page.id))
+    assert Enum.any?(Pages.list(Scope.for_user(user), search: "useful"), &(&1.id == page.id))
     assert {:ok, _view, html} = live(conn, ~p"/pages/#{page.id}")
     assert html =~ "Release notes"
     assert html =~ "A useful sentence."

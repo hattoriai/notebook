@@ -66,7 +66,7 @@ defmodule Notebook.Accounts do
   ## User registration
 
   @doc """
-  Registers a user.
+  Registers a user: a member of General, with a Private space of its own.
 
   ## Examples
 
@@ -78,9 +78,9 @@ defmodule Notebook.Accounts do
 
   """
   def register_user(attrs) do
-    %User{}
-    |> User.registration_changeset(attrs)
-    |> Repo.insert()
+    with {:ok, user} <- %User{} |> User.registration_changeset(attrs) |> Repo.insert() do
+      Notebook.Spaces.welcome(user)
+    end
   end
 
   def change_user_registration(user, attrs \\ %{}, opts \\ []) do

@@ -82,10 +82,10 @@ defmodule NotebookWeb.NotebookDatesTest do
 
     html = view |> element("#notebook-calendar") |> render_hook("day", %{"value" => "2027-03-12"})
     assert html =~ "12 March 2027"
-    assert html =~ "Due one"
-    refute html =~ "Undated"
+    assert has_element?(view, ".page-list .page-row", "Due one")
+    refute has_element?(view, ".page-list .page-row", "Undated")
 
-    html = view |> element("button", "Show every page") |> render_click()
-    assert html =~ "Undated"
+    view |> element("button", "Show every page") |> render_click()
+    assert has_element?(view, ".page-list .page-row", "Undated")
   end
 end

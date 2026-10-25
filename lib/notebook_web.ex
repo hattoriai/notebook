@@ -51,6 +51,7 @@ defmodule NotebookWeb do
       use Phoenix.LiveView
 
       unquote(html_helpers())
+      import NotebookWeb.Sidebar, only: [sidebar: 1]
     end
   end
 
