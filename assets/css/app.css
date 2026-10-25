@@ -682,3 +682,14 @@ html.space-maximized { overflow: hidden; }
 .page-body-live .kotoba:focus-within { box-shadow: none; }
 .page-body-live .kotoba-editable > :where(p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote) { max-width: 46em; }
 .embedded-chart { margin: .5em 0; }
+
+/* The sidebar hides and comes back with ⌘\ (Ctrl+\) or its buttons, as the
+   person left it in this browser. */
+.sidebar-hide { position: absolute; top: 24px; right: 10px; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 0; border-radius: 6px; background: none; color: var(--muted); opacity: 0; cursor: pointer; transition: opacity .15s ease, background .15s ease, color .15s ease; }
+.sidebar:hover .sidebar-hide, .sidebar-hide:focus-visible { opacity: 1; }
+.sidebar-hide:hover, .sidebar-show:hover { background: #ece7dc; color: var(--accent); }
+.sidebar-top { padding-right: 30px; }
+.sidebar-show { display: none; }
+html[data-sidebar="hidden"] .sidebar { display: none; }
+html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14px; z-index: 30; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--rule); border-radius: 8px; background: var(--paper); color: var(--muted); cursor: pointer; box-shadow: 0 6px 18px -12px rgba(35, 38, 34, .5); transition: background .15s ease, color .15s ease; }
+@media (max-width: 900px) { .sidebar-hide, html[data-sidebar="hidden"] .sidebar-show { display: none; } html[data-sidebar="hidden"] .sidebar { display: flex; } }

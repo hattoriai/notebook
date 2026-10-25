@@ -29,6 +29,14 @@ defmodule NotebookWeb.NotebookCommandsTest do
     assert "Show a day" in names
   end
 
+  test "the palette hides and shows the sidebar, with ⌘\\ (Ctrl+\\)", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/")
+    action = view |> actions() |> Enum.find(&(&1["name"] == "Hide or show the sidebar"))
+    assert action["shortcut"] == ["mod+\\"]
+    assert has_element?(view, "#sidebar .sidebar-hide")
+    assert has_element?(view, ".sidebar-show")
+  end
+
   test "a search finds pages by their title and their words", %{conn: conn, scope: scope} do
     {:ok, page} = Pages.create(scope, %{"title" => "Lisbon trip", "due_on" => "2027-03-12"})
     {:ok, _other} = Pages.create(scope, %{"title" => "Budget"})

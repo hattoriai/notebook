@@ -128,6 +128,14 @@ defmodule Notebook.ChartsTest do
     assert %{"errors" => [_]} = read["shows"]
   end
 
+  test "a page hears its charts' tables change", %{blades: blades} do
+    :ok = Charts.watch_rows([blades.id])
+    row = Repo.get_by!(Row, title: "Fold")
+    Masu.Live.broadcast_upsert(Notebook.PubSub, "page-rows:#{blades.id}", row)
+    assert_receive {:chart_rows, id}
+    assert id == blades.id
+  end
+
   test "the page's agents find its charts", %{numbers: numbers, chart: chart} do
     assert %{"use" => %{"charts" => [%{"chart" => document, "title" => "Points by status"}]}} =
              Notebook.Tools.describe(numbers)

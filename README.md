@@ -1,5 +1,7 @@
 # Notebook
 
+![Notebook — Pages you host yourself](https://raw.githubusercontent.com/hattoriai/notebook/main/media/banner.png)
+
 A shared notebook where people and agents work together, live: a Phoenix app built on [Issho](https://github.com/hattoriai/issho), collaboration for Phoenix, and the libraries on it. A page is a text (Kotoba), a board of cards and arrows (Hakushi) or a table of tasks (Masu), and each page is an Issho room: everyone on it is listed once, their pointers move over the whole page, and their changes land as they make them. Connect Claude Code or Codex, and your agent works on the pages beside you: its cursor in the text, its pointer on the board, its cell in the table. Pages live in spaces (everyone's General, each person's Private space, and team spaces with members and roles), in shallow folders, and who may read, comment on or edit each one is [Sekisho](https://github.com/hattoriai/sekisho)'s: the same rules answer the pages, their rooms and the agents. Pages are stored in SQLite, each page's dates are picked with Koyomi, and Jumon's command palette (⌘K) finds pages and runs the notebook's actions.
 
 ## Run locally
