@@ -17,24 +17,27 @@ defmodule Notebook.Pages do
   @doc """
   The pages the scope may read, the last changed first.
 
-    * `:search` - words of a title or a text.
+    * `:search` - words of a title, a text or its records (`Notebook.Search`),
+      the best first.
     * `:space_id` - only the pages of a space.
     * `:archived` - the archived pages instead of the others.
   """
   def list(scope, opts \\ []) do
-    search = "%" <> String.trim(opts[:search] || "") <> "%"
+    case String.trim(opts[:search] || "") do
+      "" ->
+        from(d in Page, order_by: [desc: d.updated_at], preload: [:author, :space])
+        |> archived(opts[:archived] || false)
+        |> in_space(opts[:space_id])
+        |> Permissions.where_allowed(scope, :read)
+        |> Repo.all()
 
-    from(d in Page,
-      where:
-        like(d.title, ^search) or
-          fragment("coalesce(json_extract(?, '$.text'), '') LIKE ?", d.body, ^search),
-      order_by: [desc: d.updated_at],
-      preload: [:author, :space]
-    )
-    |> archived(opts[:archived] || false)
-    |> in_space(opts[:space_id])
-    |> Permissions.where_allowed(scope, :read)
-    |> Repo.all()
+      # Their words, the best first (Notebook.Search).
+      search ->
+        scope
+        |> Notebook.Search.search(search, limit: 50, archived: opts[:archived] || false)
+        |> Enum.map(& &1.page)
+        |> Enum.filter(&(is_nil(opts[:space_id]) or &1.space_id == opts[:space_id]))
+    end
   end
 
   defp archived(query, true), do: where(query, [p], not is_nil(p.archived_at))

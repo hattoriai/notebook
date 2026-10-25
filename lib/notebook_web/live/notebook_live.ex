@@ -13,7 +13,7 @@ defmodule NotebookWeb.NotebookLive do
 
     socket =
       socket
-      |> assign(name: name, search: "", day: nil, page_title: "Notebook")
+      |> assign(name: name, search: "", snippets: %{}, day: nil, page_title: "Notebook")
       |> load_page(params)
 
     if socket.assigns.live_action == :edit and not socket.assigns.can_edit? do
@@ -697,8 +697,12 @@ defmodule NotebookWeb.NotebookLive do
                 <div>
                   <span class="page-kicker">{kind_name(page.kind)} / {page.id}</span><h2>
                     {page.title}
-                  </h2><p>
+                  </h2><p :if={not Map.has_key?(@snippets, page.id)}>
                     {excerpt(page)}
+                  </p><p :if={Map.has_key?(@snippets, page.id)} class="page-snippet">
+                    <%= for {text, matched?} <- @snippets[page.id] do %>
+                      <mark :if={matched?}>{text}</mark><span :if={not matched?}>{text}</span>
+                    <% end %>
                   </p>
                 </div>
                 <div class="page-meta">
@@ -1610,10 +1614,23 @@ defmodule NotebookWeb.NotebookLive do
     end
   end
 
+  # The pages of the home page: the last changed, or those with the words
+  # searched, the best first, each with what matched (Notebook.Search).
   defp list_pages(socket) do
-    pages = Pages.list(socket.assigns.current_scope, search: socket.assigns.search)
+    scope = socket.assigns.current_scope
+
+    {pages, snippets} =
+      case String.trim(socket.assigns.search) do
+        "" ->
+          {Pages.list(scope), %{}}
+
+        search ->
+          hits = Notebook.Search.search(scope, search, limit: 50)
+          {Enum.map(hits, & &1.page), Map.new(hits, &{&1.page.id, &1.snippet})}
+      end
+
     pages = if socket.assigns.day, do: Pages.on_day(pages, socket.assigns.day), else: pages
-    assign(socket, pages: pages)
+    assign(socket, pages: pages, snippets: snippets)
   end
 
   # The Markdown or the plain text of a page, for the copy buttons.

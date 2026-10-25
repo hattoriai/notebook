@@ -87,7 +87,11 @@ defmodule Notebook.Tools.ListPages do
     """,
     annotations: [read_only: true, idempotent: true]
 
-  arg(:search, :string, description: "Words of a title or a text")
+  arg(:search, :string,
+    description:
+      "Words of a title, a text, a table's rows or a database's records: the best first"
+  )
+
   arg(:space, :string, description: "Only the pages of the space of this name")
 
   @impl true
