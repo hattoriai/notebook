@@ -26,6 +26,11 @@ defmodule Notebook.Pages.Page do
     field :archived_at, :utc_datetime
     # Its place among its siblings, folders and pages alike (Narabe).
     field :position, :string
+    # Published (Notebook.Publishing): its public path's last word, since
+    # when, and by whom.
+    field :slug, :string
+    field :published_at, :utc_datetime
+    belongs_to :published_by, Notebook.Accounts.User
     timestamps(type: :utc_datetime)
   end
 

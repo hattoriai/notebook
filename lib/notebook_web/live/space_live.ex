@@ -124,6 +124,13 @@ defmodule NotebookWeb.SpaceLive do
 
     ~H"""
     <.live_component
+      :if={assigns[:publishing?] && assigns[:folder]}
+      module={NotebookWeb.PublishComponent}
+      id="publish-dialog"
+      resource={@folder}
+      scope={@current_scope}
+    />
+    <.live_component
       :if={assigns[:sharing?] && assigns[:folder]}
       module={NotebookWeb.ShareComponent}
       id="share-dialog"
@@ -250,6 +257,16 @@ defmodule NotebookWeb.SpaceLive do
               phx-click="start_rename"
             >
               <.icon name="hero-pencil" class="size-4" /> Rename
+            </button>
+            <button
+              :if={@folder && @can_edit?}
+              id="publish-open"
+              type="button"
+              class={["copy-action", @folder.published_at && "is-published"]}
+              phx-click="publish_open"
+            >
+              <.icon name="hero-globe-alt" class="size-4" />
+              {if @folder.published_at, do: "Published as a blog", else: "Publish as a blog"}
             </button>
             <button
               :if={@folder && @can_edit?}
@@ -472,6 +489,13 @@ defmodule NotebookWeb.SpaceLive do
   def handle_event("share_close", _params, socket),
     do: {:noreply, assign(socket, sharing?: false)}
 
+  # The Publish dialog of a folder, as a blog (NotebookWeb.PublishComponent).
+  def handle_event("publish_open", _params, socket),
+    do: {:noreply, assign(socket, publishing?: true)}
+
+  def handle_event("publish_close", _params, socket),
+    do: {:noreply, assign(socket, publishing?: false)}
+
   def handle_event("new_folder", _params, socket),
     do: {:noreply, assign(socket, folder_form: to_form(%{"name" => ""}, as: :folder))}
 
@@ -595,4 +619,15 @@ defmodule NotebookWeb.SpaceLive do
 
     load(socket, params)
   end
+
+  # Published as a blog, or taken back, from its dialog.
+  @impl true
+  def handle_info({:published, %Notebook.Spaces.Folder{} = folder}, socket),
+    do:
+      {:noreply,
+       assign(socket,
+         folder: %{socket.assigns.folder | published_at: folder.published_at, slug: folder.slug}
+       )}
+
+  def handle_info(_message, socket), do: {:noreply, socket}
 end

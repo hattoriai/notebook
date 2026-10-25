@@ -10,6 +10,7 @@ defmodule NotebookWeb.UserLive.Settings do
     {:ok,
      assign(socket,
        name_form: to_form(Accounts.change_user_name(user)),
+       handle_form: to_form(Accounts.change_user_handle(user)),
        password_form: to_form(Accounts.change_user_password(user, %{}, hash_password: false)),
        current_email: user.email,
        trigger_submit: false
@@ -39,6 +40,29 @@ defmodule NotebookWeb.UserLive.Settings do
           >
             <.input field={@name_form[:name]} type="text" label="Name" autocomplete="name" required />
             <button class="button button-primary" type="submit">Save name</button>
+          </.form>
+        </section>
+        <section>
+          <h2>Handle</h2>
+          <p>
+            The address of the pages you publish: <strong>{handle_example(@current_scope.user)}</strong>.
+            Change it, and their addresses change with it.
+          </p>
+          <.form
+            for={@handle_form}
+            id="handle_form"
+            phx-change="validate_handle"
+            phx-submit="update_handle"
+            class="settings-form"
+          >
+            <.input
+              field={@handle_form[:handle]}
+              type="text"
+              label="Handle"
+              autocomplete="off"
+              required
+            />
+            <button class="button button-primary" type="submit">Save handle</button>
           </.form>
         </section>
         <section>
@@ -108,6 +132,31 @@ defmodule NotebookWeb.UserLive.Settings do
     end
   end
 
+  def handle_event("validate_handle", %{"user" => params}, socket) do
+    form =
+      socket.assigns.current_scope.user
+      |> Accounts.change_user_handle(params)
+      |> Map.put(:action, :validate)
+      |> to_form()
+
+    {:noreply, assign(socket, handle_form: form)}
+  end
+
+  def handle_event("update_handle", %{"user" => params}, socket) do
+    case Accounts.update_user_handle(socket.assigns.current_scope.user, params) do
+      {:ok, user} ->
+        scope = %{socket.assigns.current_scope | user: user}
+
+        {:noreply,
+         socket
+         |> assign(current_scope: scope, handle_form: to_form(Accounts.change_user_handle(user)))
+         |> put_flash(:info, "Handle saved")}
+
+      {:error, changeset} ->
+        {:noreply, assign(socket, handle_form: to_form(changeset, action: :insert))}
+    end
+  end
+
   def handle_event("validate_password", %{"user" => params}, socket) do
     form =
       socket.assigns.current_scope.user
@@ -125,5 +174,12 @@ defmodule NotebookWeb.UserLive.Settings do
       changeset ->
         {:noreply, assign(socket, password_form: to_form(changeset, action: :insert))}
     end
+  end
+
+  # Where the person's published pages are read.
+  defp handle_example(user) do
+    %{url: url, prefix: prefix, paths: paths} = Notebook.Publishing.config()
+    host = URI.parse(url).host
+    if paths == :people, do: "#{host}#{prefix}/#{user.handle}/…", else: "#{host}#{prefix}/…"
   end
 end

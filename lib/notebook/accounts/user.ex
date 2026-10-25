@@ -4,6 +4,9 @@ defmodule Notebook.Accounts.User do
 
   schema "users" do
     field :name, :string
+    # The person's pages' paths when the notebook publishes by person
+    # (/hanzo/kotoba): Notebook.Publishing.
+    field :handle, :string
     field :email, :string
     field :password, :string, virtual: true, redact: true
     field :hashed_password, :string, redact: true
@@ -28,6 +31,21 @@ defmodule Notebook.Accounts.User do
     user
     |> cast(attrs, [:email])
     |> validate_email(opts)
+  end
+
+  @doc "A person's handle: lowercase letters, digits and dashes, a word no path of the notebook takes."
+  def handle_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:handle])
+    |> update_change(:handle, &(&1 |> String.trim() |> String.downcase()))
+    |> validate_required([:handle])
+    |> validate_format(:handle, ~r/^[a-z0-9][a-z0-9-]{1,38}$/,
+      message: "use 2 to 39 lowercase letters, digits and dashes"
+    )
+    |> validate_exclusion(:handle, Notebook.Publishing.reserved(),
+      message: "is a path of the notebook"
+    )
+    |> unique_constraint(:handle)
   end
 
   def registration_changeset(user, attrs, opts \\ []) do

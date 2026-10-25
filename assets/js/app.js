@@ -36,8 +36,11 @@ import {Fude} from "fude"
 
 enableCollaboration(registerCollaboration)
 
-const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
-const liveSocket = new LiveSocket("/live", Socket, {
+// A published page names its own socket (the notebook's public one, at
+// the notebook's address), and has no session to protect.
+const csrfToken = document.querySelector("meta[name='csrf-token']")?.getAttribute("content")
+const socketPath = document.querySelector("meta[name='live-socket']")?.getAttribute("content") || "/live"
+const liveSocket = new LiveSocket(socketPath, Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
   hooks: {...colocatedHooks, ...IsshoHooks, Kotoba, Koyomi, Jumon, Hakushi, Masu, Narabe, Fude},

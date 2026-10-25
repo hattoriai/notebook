@@ -78,7 +78,13 @@ defmodule Notebook.Accounts do
 
   """
   def register_user(attrs) do
-    with {:ok, user} <- %User{} |> User.registration_changeset(attrs) |> Repo.insert() do
+    changeset = User.registration_changeset(%User{}, attrs)
+    name = Ecto.Changeset.get_field(changeset, :name)
+
+    with {:ok, user} <-
+           changeset
+           |> Ecto.Changeset.put_change(:handle, Notebook.Publishing.free_handle(name))
+           |> Repo.insert() do
       Notebook.Spaces.welcome(user)
     end
   end
@@ -86,6 +92,11 @@ defmodule Notebook.Accounts do
   def change_user_registration(user, attrs \\ %{}, opts \\ []) do
     User.registration_changeset(user, attrs, opts)
   end
+
+  def change_user_handle(user, attrs \\ %{}), do: User.handle_changeset(user, attrs)
+
+  @doc "Changes a person's handle: the paths of the pages they publish change with it."
+  def update_user_handle(user, attrs), do: user |> User.handle_changeset(attrs) |> Repo.update()
 
   def change_user_name(user, attrs \\ %{}) do
     user

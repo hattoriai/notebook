@@ -771,6 +771,35 @@ share.(hanzo_scope, "Reading list", yuki, "viewer")
 forge_plan = Notebook.Repo.get_by!(Page, title: "The forge, planned")
 {:ok, plan_token} = Sharing.link(hanzo_scope, forge_plan, "viewer")
 
+# Publishing: Hanzo publishes the tour and the forge's numbers (their
+# charts move for readers as the table changes), and his journal is a
+# blog of the days he chose to publish.
+alias Notebook.Publishing
+
+publish = fn scope, resource, slug ->
+  if Publishing.published?(resource),
+    do: resource,
+    else: elem(Publishing.publish(scope, resource, slug), 1)
+end
+
+tour_page =
+  publish.(hanzo_scope, Notebook.Repo.get_by!(Page, title: "A tour of Notebook"), "tour")
+
+numbers =
+  publish.(
+    hanzo_scope,
+    Notebook.Repo.get_by!(Page, title: "The forge in numbers"),
+    "forge-in-numbers"
+  )
+
+journal_blog = publish.(hanzo_scope, Notebook.Repo.get!(Folder, journal.id), "journal")
+
+publish.(
+  hanzo_scope,
+  Notebook.Repo.get_by!(Page, title: "Day one without steel"),
+  "day-one-without-steel"
+)
+
 # What notifies of all this is done before the script ends; Hanzo has
 # read Yuki's invitation to the Tea house already.
 Notebook.Notifications.settle()
@@ -787,4 +816,10 @@ Sign in as one of them:
 
 Anyone signed in may read The forge, planned with its link:
   #{Sharing.url(forge_plan, plan_token)}
+
+Anyone may read what Hanzo published:
+  #{Publishing.url(tour_page)}
+  #{Publishing.url(numbers)}
+  #{Publishing.url(journal_blog)}  (and its feed, #{Publishing.feed_url(journal_blog)})
+  #{Publishing.person_url(hanzo_scope.user |> then(&Notebook.Repo.get!(Notebook.Accounts.User, &1.id)))}
 """)

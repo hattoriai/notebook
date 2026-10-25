@@ -145,6 +145,7 @@ defmodule Notebook.Pages do
          {:ok, updated} <- page |> Page.changeset(attrs) |> Repo.update() do
       if updated.title != page.title, do: Spaces.tree_changed()
       Notebook.Notifications.dates_changed(page, updated)
+      saved({:ok, updated})
       {:ok, Repo.preload(updated, [:author, :space, :folder], force: true)}
     end
   end
@@ -155,8 +156,19 @@ defmodule Notebook.Pages do
       page
       |> Ecto.Changeset.change(body: content)
       |> Repo.update()
+      |> saved()
     end
   end
+
+  @doc "Subscribes the caller to `{:page_saved, id}`, sent when a page's content or details are saved."
+  def subscribe(page_id), do: Phoenix.PubSub.subscribe(Notebook.PubSub, "page-saved:#{page_id}")
+
+  defp saved({:ok, %Page{id: id}} = result) do
+    Phoenix.PubSub.broadcast(Notebook.PubSub, "page-saved:#{id}", {:page_saved, id})
+    result
+  end
+
+  defp saved(result), do: result
 
   @doc "Archives a page: it leaves the sidebar and the lists, and keeps its words."
   def archive(scope, page), do: set_archived(scope, page, DateTime.utc_now(:second))
