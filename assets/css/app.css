@@ -884,7 +884,45 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 .storage-copy p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
 .storage-copy .storage-copied { color: var(--ink); }
 .storage-copy-actions { display: flex; flex-wrap: wrap; gap: 10px; flex: none; }
-.storage-copying { display: inline-flex; align-items: center; gap: 8px; flex: none; color: var(--accent); font-weight: 600; }
+.storage-usage { display: grid; gap: 14px; max-width: 46rem; margin: 0 0 30px; }
+.storage-usage .storage-now { margin: 0; }
+.storage-disk { padding: 18px 18px 16px; border: 1px solid var(--rule); background: #fbf9f4; font: 13px/1.45 ui-sans-serif, system-ui, sans-serif; }
+.storage-disk-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.storage-disk-head span { color: var(--muted); }
+.storage-disk-head b { color: var(--ink); font-weight: 600; }
+.storage-bar { display: flex; height: 12px; overflow: hidden; border-radius: 999px; background: #ebe5d8; box-shadow: inset 0 0 0 1px rgb(33 31 28 / .05); }
+.storage-bar span { height: 100%; min-width: 0; transition: width .6s cubic-bezier(.2, .8, .2, 1); }
+.storage-bar span + span { box-shadow: -1px 0 0 #fbf9f4; }
+.storage-bar .is-files, .storage-legend .is-files::before { background: var(--accent); }
+.storage-bar .is-database, .storage-legend .is-database::before { background: #3b3f3a; }
+.storage-bar .is-other, .storage-legend .is-other::before { background: #b9b2a2; }
+.storage-legend .is-free::before { background: #ebe5d8; box-shadow: inset 0 0 0 1px #d6cfbe; }
+.storage-bar.is-full { background: #f1dcd2; }
+.storage-legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 12px 0 0; padding: 0; list-style: none; color: var(--muted); }
+.storage-legend li { display: inline-flex; align-items: center; gap: 7px; }
+.storage-legend li::before { content: ""; width: 9px; height: 9px; border-radius: 3px; }
+.storage-legend b { color: var(--ink); font-weight: 600; }
+.storage-legend small { font-size: 12px; }
+.storage-warning { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; color: #933126; font-weight: 600; }
+.storage-bucket-usage { display: flex; align-items: center; gap: 9px; padding: 12px 16px; border: 1px solid var(--rule); background: #fbf9f4; color: var(--muted); font: 13px ui-sans-serif, system-ui, sans-serif; }
+.storage-bucket-usage .size-4 { color: var(--accent); }
+.storage-bucket-usage b { color: var(--ink); font-weight: 600; }
+.storage-progress { flex: 1; min-width: 0; }
+.storage-progress-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.storage-progress-head span { font: 600 20px/1 "Palatino Linotype", Palatino, Georgia, serif; letter-spacing: -.02em; color: var(--accent); }
+.storage-progress-bar { height: 10px; margin-bottom: 10px; }
+.storage-progress-bar.is-counting .is-files { width: 30% !important; animation: storage-counting 1.4s ease-in-out infinite; }
+@keyframes storage-counting { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+.storage-progress p { margin: 4px 0 0; color: var(--ink); font-size: 13px; font-variant-numeric: tabular-nums; }
+.storage-progress .storage-progress-note { color: var(--muted); font-size: 12.5px; }
+.storage-failed { color: #933126 !important; }
+.storage-errors { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+.storage-errors summary { cursor: pointer; color: #933126; }
+.storage-errors ul { margin: 6px 0 0; padding-left: 18px; }
+.storage-errors code { font-size: 11.5px; color: var(--ink); }
+.settings-grid .storage-moved { display: flex; align-items: center; gap: 10px; max-width: 46rem; margin: 34px 0 0; padding: 14px 18px; border: 1px solid #c9d6b8; background: #eef2e6; color: #3d4f2a; font: 14px ui-sans-serif, system-ui, sans-serif; }
+@media (prefers-reduced-motion: reduce) { .storage-progress-bar.is-counting .is-files { animation: none; } }
+
 @media (max-width: 700px) { .storage-kinds, .storage-pair { grid-template-columns: 1fr; } .storage-copy { flex-direction: column; align-items: stretch; } }
 
 /* A phone, or a narrow window. The sidebar is a drawer, whole: its menu

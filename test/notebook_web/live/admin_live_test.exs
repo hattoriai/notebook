@@ -42,7 +42,8 @@ defmodule NotebookWeb.AdminLiveTest do
     key = local_file("Fold the steel twelve times.")
     {:ok, view, html} = live(log_in_user(conn, admin), ~p"/admin")
     assert html =~ "Where files are kept"
-    assert html =~ "On this server"
+    assert html =~ "New files are kept on this server"
+    assert has_element?(view, ".storage-disk .storage-bar")
     refute has_element?(view, "#storage-copy")
 
     view |> form("#storage-form", storage: %{kind: "bucket"}) |> render_change()
@@ -73,14 +74,23 @@ defmodule NotebookWeb.AdminLiveTest do
     |> render_submit()
 
     assert render(view) =~ "New files go to the bucket notebook-files now."
-    assert has_element?(view, ".storage-now", "In the bucket notebook-files")
+    assert has_element?(view, ".storage-now", "New files go to the bucket notebook-files")
     assert has_element?(view, "#storage-copy", "Files from before are still on this server")
 
     view |> element("#storage-copy-start") |> render_click()
-    assert_enqueued(worker: Storage.Copy)
-    assert :ok = perform_job(Storage.Copy, %{})
+    assert has_element?(view, ".storage-progress", "Counting the files")
+    assert [%{args: args}] = all_enqueued(worker: Storage.Transfer)
+    assert :ok = perform_job(Storage.Transfer, args)
     assert key in FakeS3.keys(bucket)
     assert has_element?(view, "#storage-prune")
+
+    view |> element("#storage-prune") |> render_click()
+    assert has_element?(view, "#storage-stop")
+    run = Storage.transfer()["run"]
+    [%{args: args}] = all_enqueued(worker: Storage.Transfer, args: %{"run" => run})
+    assert :ok = perform_job(Storage.Transfer, args)
+    assert has_element?(view, "#storage-moved", "1 file removed from this server")
+    refute has_element?(view, "#storage-copy")
   end
 
   test "a file is served from the store that has it, to those who may read it", %{
@@ -103,8 +113,12 @@ defmodule NotebookWeb.AdminLiveTest do
         "secret_access_key" => "no-more-swords"
       })
 
-    :ok = perform_job(Storage.Copy, %{})
-    :ok = perform_job(Storage.Prune, %{})
+    scope = Notebook.Accounts.Scope.for_user(admin)
+
+    for action <- ["copy", "remove"] do
+      {:ok, transfer} = Storage.start_transfer(scope, action)
+      :ok = perform_job(Storage.Transfer, %{"run" => transfer["run"], "after" => nil})
+    end
 
     # On the bucket only now, at the same address.
     response = get(log_in_user(build_conn(), admin), "/uploads/kotoba/" <> key)

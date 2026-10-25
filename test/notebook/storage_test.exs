@@ -52,7 +52,7 @@ defmodule Notebook.StorageTest do
     assert Scope.admin?(admin)
     refute Scope.admin?(yuki)
     assert {:error, :forbidden} = Storage.save(yuki, bucket_attrs(bucket))
-    assert {:error, :forbidden} = Storage.copy(yuki)
+    assert {:error, :forbidden} = Storage.start_transfer(yuki, "copy")
     assert Storage.adapter() == Storehouse.Local
   end
 
@@ -98,26 +98,73 @@ defmodule Notebook.StorageTest do
     assert FakeS3.keys(bucket) == [file.key]
   end
 
+  defp run(transfer) do
+    :ok = perform_job(Storage.Transfer, %{"run" => transfer["run"], "after" => transfer["after"]})
+    Storage.transfer()
+  end
+
   test "the files of before are copied to the bucket, then removed from the disk", %{
     admin: admin,
+    yuki: yuki,
     bucket: bucket
   } do
     key = local_file("letter.txt", "To the museum: no.")
-    assert Storage.other() == nil
+    assert {:error, :nothing_to_move} = Storage.start_transfer(admin, "copy")
 
     {:ok, _config} = Storage.save(admin, bucket_attrs(bucket))
     assert Storage.other() == Storehouse.Local and Storage.other_files?()
     assert Storage.store_of(key) == Storehouse.Local
+    assert {:error, :forbidden} = Storage.start_transfer(yuki, "copy")
 
-    assert {:ok, _job} = Storage.copy(admin)
-    assert_enqueued(worker: Storage.Copy)
-    assert :ok = perform_job(Storage.Copy, %{})
+    assert {:ok, %{"state" => "counting"} = transfer} = Storage.start_transfer(admin, "copy")
+    assert {:error, :busy} = Storage.start_transfer(admin, "remove")
+
+    assert %{"state" => "done", "total" => 1, "moved" => 1, "failed" => 0} = run(transfer)
+    assert transfer["run"] == Storage.transfer()["run"]
     assert key in FakeS3.keys(bucket)
-    assert %{"copied" => 1, "failed" => 0} = Storage.last_copy()
 
-    assert :ok = perform_job(Storage.Prune, %{})
+    {:ok, transfer} = Storage.start_transfer(admin, "remove")
+    assert %{"state" => "done", "moved" => 1} = run(transfer)
     assert {:error, _missing} = Storehouse.Local.head(key)
     refute Storage.other_files?()
     assert Storage.store_of(key) == Storehouse.S3
+  end
+
+  test "a long transfer goes a slice at a time, and stops and goes on", %{
+    admin: admin,
+    bucket: bucket
+  } do
+    Application.put_env(:notebook, Storage.Transfer, slice: 0)
+    on_exit(fn -> Application.delete_env(:notebook, Storage.Transfer) end)
+    keys = for n <- 1..40, do: local_file("page-#{n}.txt", "Page #{n}.")
+    {:ok, _config} = Storage.save(admin, bucket_attrs(bucket))
+
+    {:ok, transfer} = Storage.start_transfer(admin, "copy")
+    # One slice: the files counted, the first batch copied, the rest left to the next job.
+    assert %{"state" => "running", "total" => 40, "done" => 32, "after" => cursor} = run(transfer)
+    assert [_next] = all_enqueued(worker: Storage.Transfer, args: %{"after" => cursor})
+
+    assert {:ok, %{"state" => "stopped"}} = Storage.stop_transfer(admin)
+    # The job after a stop does nothing.
+    assert %{"state" => "stopped", "done" => 32} = run(Storage.transfer())
+
+    assert {:ok, %{"state" => "running"} = transfer} = Storage.resume_transfer(admin)
+    # A slice ends at its deadline: the next finds nothing more.
+    assert %{"state" => "running", "done" => 40} = transfer = run(transfer)
+
+    assert %{"state" => "done", "done" => 40, "moved" => 40, "total_bytes" => bytes} =
+             run(transfer)
+
+    assert bytes > 0
+    assert Enum.all?(keys, &(&1 in FakeS3.keys(bucket)))
+  end
+
+  test "the room the notebook takes: the disk, the files, the database" do
+    assert %{total: total, free: free} = Storage.Usage.disk(Storage.Usage.root())
+    assert total > 0 and free <= total
+    assert %{count: _n, bytes: _bytes} = Storage.Usage.files(Storehouse.Local)
+    assert Storage.Usage.database() > 0
+    assert Storage.Usage.human(1_288_490_189) == "1.2 GB"
+    assert Storage.Usage.human(512) == "512 B"
   end
 end

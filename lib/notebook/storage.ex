@@ -11,7 +11,7 @@ defmodule Notebook.Storage do
   file from where it is (`NotebookWeb.Plugs.Files`), behind who may read
   it. So a notebook moves to a bucket, or back, without a page changing:
   new files go to the store chosen, the others are copied to it as a job
-  (`copy/1`), and until then are served from where they were.
+  (`start_transfer/2`), and until then are served from where they were.
 
   The bucket's secret is kept encrypted with the notebook's
   `secret_key_base`.
@@ -269,7 +269,7 @@ defmodule Notebook.Storage do
   @doc """
   The other store that has files, if there is one: this disk, with a
   bucket chosen; a bucket kept, with the disk chosen. Its files are
-  served until they are copied (`copy/1`).
+  served until they are copied (`start_transfer/2`).
   """
   def other do
     stored = stored()
@@ -309,37 +309,101 @@ defmodule Notebook.Storage do
   def prefix, do: @prefix
 
   @doc """
-  Copies the files of the other store (`other/0`) to the notebook's, as a
-  job, for an admin. Files already there are skipped, so it can run again.
+  Starts moving the files of the other store (`other/0`) to the
+  notebook's, for an admin: `"copy"` copies each (a file there already is
+  skipped), `"remove"` removes from the other store each file the
+  notebook's has, the same size. It runs as jobs, a slice at a time
+  (`Notebook.Storage.Transfer`), so that it may take hours and outlast a
+  restart; `transfer/0` is where it is.
   """
-  def copy(%Scope{} = scope) do
-    with :ok <- admin(scope) do
-      case other() do
-        nil ->
-          {:error, :nothing_to_copy}
+  def start_transfer(%Scope{} = scope, action) when action in ["copy", "remove"] do
+    with :ok <- admin(scope),
+         :ok <- idle(),
+         from when not is_nil(from) <- other() do
+      now = DateTime.utc_now(:second) |> DateTime.to_iso8601()
 
-        _store ->
-          %{} |> Notebook.Storage.Copy.new() |> Oban.insert()
-      end
+      put_transfer(%{
+        "run" => System.unique_integer([:positive]),
+        "action" => action,
+        "from" => inspect(from),
+        "to" => inspect(adapter()),
+        "state" => "counting",
+        "total" => nil,
+        "total_bytes" => nil,
+        "done" => 0,
+        "done_bytes" => 0,
+        "moved" => 0,
+        "skipped" => 0,
+        "failed" => 0,
+        "errors" => [],
+        "after" => nil,
+        "started_at" => now,
+        "finished_at" => nil
+      })
+      |> Notebook.Storage.Transfer.enqueue()
+    else
+      nil -> {:error, :nothing_to_move}
+      error -> error
+    end
+  end
+
+  @doc "Goes on with a transfer stopped, from where it was, for an admin."
+  def resume_transfer(%Scope{} = scope) do
+    with :ok <- admin(scope),
+         %{"state" => "stopped"} = transfer <- transfer() || {:error, :nothing_to_move} do
+      transfer
+      |> Map.merge(%{"state" => if(transfer["total"], do: "running", else: "counting")})
+      |> put_transfer()
+      |> Notebook.Storage.Transfer.enqueue()
+    end
+  end
+
+  @doc "Stops the transfer at its next files, for an admin: it can go on later."
+  def stop_transfer(%Scope{} = scope) do
+    with :ok <- admin(scope),
+         %{"state" => state} = transfer when state in ["counting", "running"] <-
+           transfer() || {:error, :nothing_to_move} do
+      {:ok, put_transfer(%{transfer | "state" => "stopped"})}
+    end
+  end
+
+  defp idle do
+    case transfer() do
+      %{"state" => state} when state in ["counting", "running"] -> {:error, :busy}
+      _idle -> :ok
     end
   end
 
   @doc """
-  Removes from the other store (`other/0`) the files the notebook's store
-  has now, as a job, for an admin: after a copy, the room they took.
+  The transfer of the files, the last one: its action, its state
+  (`"counting"`, `"running"`, `"stopped"`, `"done"`), how many files and
+  bytes it has and has done, those moved, skipped and failed, the first
+  errors, and when it started and finished. Nil before the first.
   """
-  def prune(%Scope{} = scope) do
-    with :ok <- admin(scope) do
-      if other(),
-        do: %{} |> Notebook.Storage.Prune.new() |> Oban.insert(),
-        else: {:error, :nothing_to_copy}
+  def transfer do
+    case Repo.get(Setting, "transfer") do
+      %Setting{value: value} when value != %{} -> value
+      _none -> nil
     end
+  end
+
+  @doc false
+  def put_transfer(transfer) do
+    transfer = Map.put(transfer, "updated_at", DateTime.utc_now(:second) |> DateTime.to_iso8601())
+
+    Repo.insert!(%Setting{key: "transfer", value: transfer},
+      on_conflict: [set: [value: transfer, updated_at: DateTime.utc_now(:second)]],
+      conflict_target: :key
+    )
+
+    broadcast({:storage, :transfer, transfer})
+    transfer
   end
 
   @doc """
   Every file of `store`, as `Storehouse.copy_prefix/2` lists them: its own
   `list/1` of `""`, the keys it gives checked (`Storehouse.list/2` takes
-  no empty prefix).
+  no empty prefix before hattoriai/storehouse#62), in the order of their keys.
   """
   def all(store) do
     with {:ok, entries} <- store.list(""),
@@ -358,34 +422,10 @@ defmodule Notebook.Storage do
     _error -> false
   end
 
-  @doc false
-  def pruned(removed) do
-    value = Map.update(stored(), "last_copy", nil, &(&1 && Map.put(&1, "removed", removed)))
-
-    Repo.insert!(%Setting{key: "storage", value: value},
-      on_conflict: [set: [value: value, updated_at: DateTime.utc_now(:second)]],
-      conflict_target: :key
-    )
-
-    broadcast({:storage, :pruned, removed})
-  end
-
-  @doc "The last copy's result: `%{\"copied\" => n, \"skipped\" => n, \"failed\" => n, \"at\" => …}`, or nil."
-  def last_copy, do: Map.get(stored(), "last_copy")
-
-  @doc false
-  def copied(result) do
-    value = Map.put(stored(), "last_copy", result)
-
-    Repo.insert!(%Setting{key: "storage", value: value},
-      on_conflict: [set: [value: value, updated_at: DateTime.utc_now(:second)]],
-      conflict_target: :key
-    )
-
-    broadcast({:storage, :copied, result})
-  end
-
-  @doc "Tells of the storage's changes: `{:storage, :saved}`, `{:storage, :copying, n}`, `{:storage, :copied, result}`, `{:storage, :pruned, n}`."
+  @doc """
+  Tells of the storage's changes: `{:storage, :saved}`, and
+  `{:storage, :transfer, transfer}` as the files move.
+  """
   def subscribe, do: Phoenix.PubSub.subscribe(Notebook.PubSub, @topic)
 
   @doc false
