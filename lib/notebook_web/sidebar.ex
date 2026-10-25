@@ -74,6 +74,7 @@ defmodule NotebookWeb.Sidebar do
     >
       <.panel_icon />
     </button>
+    <div class="sidebar-backdrop" phx-click={JS.dispatch("notebook:toggle-sidebar")}></div>
     <nav id="sidebar" class="sidebar" aria-label="Spaces">
       <button
         type="button"
@@ -83,6 +84,7 @@ defmodule NotebookWeb.Sidebar do
         title="Hide the sidebar (⌘\\)"
       >
         <.panel_icon />
+        <.icon name="hero-x-mark" class="size-6 sidebar-x" />
       </button>
       <div class="sidebar-top">
         <.link navigate={~p"/"} class={["sidebar-link", @current == :home && "is-current"]}>

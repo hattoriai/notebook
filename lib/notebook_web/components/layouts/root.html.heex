@@ -37,11 +37,22 @@
         // set before the page paints; ⌘\ (Ctrl+\) and its buttons toggle it.
         const root = document.documentElement;
         if (localStorage.getItem("notebook:sidebar") === "hidden") root.dataset.sidebar = "hidden";
+        // On a narrow screen it is a drawer instead, open until the person
+        // goes somewhere, taps beside it or presses Escape.
+        const narrow = matchMedia("(max-width: 900px)");
+        const closeDrawer = () => delete root.dataset.drawer;
         window.addEventListener("notebook:toggle-sidebar", () => {
+          if (narrow.matches) {
+            if (root.dataset.drawer) closeDrawer(); else root.dataset.drawer = "open";
+            return;
+          }
           const hidden = root.dataset.sidebar !== "hidden";
           if (hidden) root.dataset.sidebar = "hidden"; else delete root.dataset.sidebar;
           localStorage.setItem("notebook:sidebar", hidden ? "hidden" : "shown");
         });
+        window.addEventListener("phx:page-loading-start", closeDrawer);
+        window.addEventListener("keydown", (e) => e.key === "Escape" && closeDrawer());
+        narrow.addEventListener("change", closeDrawer);
 
         matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
           if (document.documentElement.getAttribute("data-theme-source") === "system") {
