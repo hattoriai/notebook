@@ -856,3 +856,6 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 .publish-slug input { flex: 1; min-width: 0; padding: 8px 10px 8px 0; border: 0; outline: 0; background: none; color: var(--ink); font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; }
 .publish-error { margin: 0; color: #933126; font-size: 12.5px; }
 .publish-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
+
+/* Search (FTS5): what matched, in a found page's words. */
+.page-snippet mark { padding: 0 2px; border-radius: 3px; background: #f3dfb8; color: var(--ink); }
