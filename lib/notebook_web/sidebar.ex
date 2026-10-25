@@ -52,6 +52,7 @@ defmodule NotebookWeb.Sidebar do
   def assign_tree(socket), do: assign(socket, :tree, Spaces.tree(socket.assigns.current_scope))
 
   attr :tree, :list, required: true
+  attr :chime, :any, default: nil, doc: "the person's notifications (`Chime.Live`), for the Inbox"
 
   attr :current, :any,
     default: nil,
@@ -82,6 +83,7 @@ defmodule NotebookWeb.Sidebar do
         <.link navigate={~p"/"} class={["sidebar-link", @current == :home && "is-current"]}>
           <.icon name="hero-home" class="size-4" /> Home
         </.link>
+        <.inbox :if={@chime} chime={@chime} />
         <.command_button id="sidebar-commands" class="sidebar-link sidebar-search" />
       </div>
 
@@ -133,6 +135,34 @@ defmodule NotebookWeb.Sidebar do
         </.link>
       </div>
     </nav>
+    """
+  end
+
+  attr :chime, :any, required: true
+
+  # The person's notifications (Chime): a dot while some are unseen, the
+  # number unread, and the feed beside the sidebar while it is open.
+  defp inbox(assigns) do
+    ~H"""
+    <div class="sidebar-inbox">
+      <button
+        type="button"
+        id="sidebar-inbox"
+        class={["sidebar-link", @chime.open && "is-current"]}
+        phx-click="chime:toggle"
+        aria-expanded={to_string(@chime.open)}
+      >
+        <span class="sidebar-inbox-icon">
+          <.icon name="hero-inbox" class="size-4" />
+          <span :if={@chime.unseen > 0} class="chime-dot" aria-hidden="true"></span>
+        </span>
+        Inbox
+        <span :if={@chime.unread > 0} class="sidebar-inbox-count" aria-label={"#{@chime.unread} unread"}>
+          {@chime.unread}
+        </span>
+      </button>
+      <Chime.Components.feed chime={@chime} title="Inbox" empty="Nothing new. Back to your pages." />
+    </div>
     """
   end
 

@@ -669,6 +669,87 @@ database.(
   ]
 )
 
+# Hanzo's Inbox (Chime). Yuki added him to the Tea house above; here the
+# others write to him, in comments (Issho), and Masamune hands him a
+# commission. Made once, with the threads it tells of.
+alias Notebook.Collaboration
+
+as = fn user -> %{id: user.id, name: user.name} end
+last_blade = Notebook.Repo.get_by!(Page, title: "The last blade")
+autumn_menu = Notebook.Repo.get_by!(Page, title: "Autumn menu")
+blade_room = Collaboration.room(last_blade)
+
+if Issho.Comments.threads(Notebook.Issho, blade_room) == {:ok, []} do
+  {:ok, %{thread: quench}} =
+    Issho.Comments.start(
+      Notebook.Issho,
+      blade_room,
+      as.(masamune),
+      nil,
+      "@Hattori Hanzo, the hamon on the museum blade wants one more quench. Shall I wait for you?",
+      mentions: [to_string(hanzo.id)]
+    )
+
+  {:ok, _} =
+    Issho.Comments.reply(Notebook.Issho, blade_room, as.(hanzo), quench, "Wait for me. Thursday, at dawn.")
+
+  {:ok, _} =
+    Issho.Comments.reply(
+      Notebook.Issho,
+      blade_room,
+      as.(yuki),
+      quench,
+      "May I watch? I'll bring tea for after."
+    )
+
+  menu_room = Collaboration.room(autumn_menu)
+
+  {:ok, %{thread: rice}} =
+    Issho.Comments.start(
+      Notebook.Issho,
+      menu_room,
+      as.(hanzo),
+      nil,
+      "The chestnut rice: less salt this year?"
+    )
+
+  {:ok, _} =
+    Issho.Comments.reply(
+      Notebook.Issho,
+      menu_room,
+      as.(yuki),
+      rice,
+      "Less salt, more chestnut. Come and taste it on Sunday."
+    )
+
+  # Masamune hands the wakizashi to his old master.
+  {:ok, [wakizashi]} =
+    Box.list(commissions, %{
+      "filter" => %{"field" => "Blade", "op" => "eq", "value" => "Grandfather's wakizashi"}
+    })
+
+  {:ok, _} =
+    Box.update(commissions, wakizashi, %{"Smith" => hanzo_id},
+      actor: Scope.for_user(masamune)
+    )
+
+  # A letter of his is due today: its reminder comes at 09:00, or now.
+  text.(
+    hanzo_scope,
+    "A reply to the museum",
+    hanzo_private,
+    journal,
+    """
+    They ask for the blade's story, for the card beside it. Keep it short:
+    thirteen folds, one winter, and the last sword of the forge.
+    """,
+    %{"due_on" => Date.utc_today()}
+  )
+end
+
+# What notifies of all this is done before the script ends.
+Notebook.Notifications.settle()
+
 IO.puts("""
 Sign in as one of them:
   Hattori Hanzo      #{hanzo_email}   no more swords

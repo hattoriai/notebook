@@ -97,6 +97,24 @@ config :kotoba, nodes: [Notebook.Kotoba.Nodes.Callout]
 config :koyomi, locale: "en-GB", time_zone: "Europe/Lisbon"
 config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 
+# SQLite takes one writer at a time: a transaction takes the lock when it
+# begins, and a writer waits for it, rather than failing at once when two
+# transactions that read would both write (the notifications write beside
+# the change that made them).
+config :notebook, Notebook.Repo, default_transaction_mode: :immediate, busy_timeout: 5_000
+
+# The jobs of the notifications (Chime's emails, reminders and digests),
+# in SQLite with the rest.
+config :notebook, Oban,
+  engine: Oban.Engines.Lite,
+  notifier: Oban.Notifiers.PG,
+  repo: Notebook.Repo,
+  queues: [default: 10],
+  plugins: [Oban.Plugins.Pruner]
+
+# Who the notifications' emails are from.
+config :notebook, :email_from, {"Notebook", "notebook@localhost"}
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

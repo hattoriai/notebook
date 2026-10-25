@@ -22,7 +22,7 @@ defmodule NotebookWeb.ArchiveLive do
   def render(assigns) do
     ~H"""
     <div class="notebook-shell notebook-with-sidebar">
-      <.sidebar tree={@tree} current={:archive} />
+      <.sidebar tree={@tree} chime={@chime} current={:archive} />
       <main class="notebook-main">
         <div class="flash-area"><Layouts.flash_group flash={@flash} /></div>
         <div class="space-view">

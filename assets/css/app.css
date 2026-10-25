@@ -11,6 +11,7 @@
 @import "../../deps/jumon/priv/static/jumon.css";
 @import "../../deps/narabe/priv/static/narabe.css";
 @import "../../deps/fude/priv/static/fude.css";
+@import "../../deps/chime/priv/static/chime.css";
 /* @import "../../deps/jumon/priv/static/jumon-sumi.css"; */
 @source "../css";
 @source "../js";
@@ -739,3 +740,21 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 .cardbox-card { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
 .cardbox-card strong { flex-basis: 100%; }
 .cardbox-card span { font: 12px/1.5 ui-sans-serif, system-ui, sans-serif; color: #6f6a60; }
+
+/* The Inbox (Chime): a row of the sidebar, and its feed beside the sidebar. */
+:root { --chime-ink: var(--ink); --chime-muted: var(--muted); --chime-paper: #fbf9f4; --chime-line: var(--rule); --chime-accent: var(--accent); --chime-unread: #f3ede1; --chime-radius: 10px; }
+.sidebar-inbox-icon { position: relative; display: inline-flex; }
+.sidebar-inbox-icon .chime-dot { top: -2px; right: -3px; width: 7px; height: 7px; box-shadow: 0 0 0 2px var(--paper); }
+.sidebar-inbox-count { margin-left: auto; min-width: 20px; padding: 0 6px; border-radius: 999px; background: #e6dfd0; color: var(--ink); font: 600 11px/18px ui-sans-serif, system-ui, sans-serif; text-align: center; }
+.sidebar-inbox .chime-feed { position: fixed; top: 96px; left: 276px; width: min(26rem, calc(100vw - 300px)); max-height: calc(100vh - 140px); margin: 0; font: 13px/1.4 ui-sans-serif, system-ui, sans-serif; box-shadow: 0 24px 48px -20px rgba(35, 38, 34, .35), 0 0 0 1px var(--rule); border: 0; }
+.sidebar-inbox .chime-feed-header { padding: 16px 18px 6px; }
+.sidebar-inbox .chime-feed-header h2 { font: 400 1.35rem/1.2 "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; letter-spacing: -.02em; }
+.sidebar-inbox .chime-filters { padding: 4px 14px 10px; }
+.sidebar-inbox .chime-item-open { padding: 11px 8px 11px 18px; gap: 3px; }
+.sidebar-inbox .chime-item-title { font-size: 13.5px; }
+.sidebar-inbox .chime-item-body { font: italic 13.5px/1.45 "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; }
+.sidebar-inbox .chime-unread .chime-item-title::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 999px; background: var(--accent); vertical-align: 2px; }
+@media (max-width: 760px) { .sidebar-inbox .chime-feed { left: 16px; right: 16px; width: auto; } }
+.settings-wide { grid-column: 1 / -1; }
+.chime-preferences { font: 13px/1.4 ui-sans-serif, system-ui, sans-serif; }
+.chime-preferences th { font-weight: 600; }

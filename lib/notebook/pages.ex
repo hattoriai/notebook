@@ -87,6 +87,7 @@ defmodule Notebook.Pages do
          :ok <- Permissions.authorize(scope, :edit, space),
          {:ok, page} <- insert(scope, user, space, folder_id, attrs) do
       Spaces.tree_changed()
+      Notebook.Notifications.remind(page)
       {:ok, Repo.preload(page, [:author, :space, :folder])}
     end
   end
@@ -143,6 +144,7 @@ defmodule Notebook.Pages do
     with :ok <- Permissions.authorize(scope, :edit, page),
          {:ok, updated} <- page |> Page.changeset(attrs) |> Repo.update() do
       if updated.title != page.title, do: Spaces.tree_changed()
+      Notebook.Notifications.dates_changed(page, updated)
       {:ok, Repo.preload(updated, [:author, :space, :folder], force: true)}
     end
   end
@@ -164,9 +166,10 @@ defmodule Notebook.Pages do
 
   defp set_archived(scope, page, at) do
     with :ok <- Permissions.authorize(scope, :edit, page),
-         {:ok, page} <- page |> Ecto.Changeset.change(archived_at: at) |> Repo.update() do
+         {:ok, updated} <- page |> Ecto.Changeset.change(archived_at: at) |> Repo.update() do
       Spaces.tree_changed()
-      {:ok, Repo.preload(page, [:author, :space, :folder], force: true)}
+      Notebook.Notifications.dates_changed(page, updated)
+      {:ok, Repo.preload(updated, [:author, :space, :folder], force: true)}
     end
   end
 

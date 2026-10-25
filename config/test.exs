@@ -25,6 +25,10 @@ config :notebook, NotebookWeb.Endpoint,
 config :logger, level: :warning
 config :notebook, Notebook.Mailer, adapter: Swoosh.Adapters.Test
 
+# The notifications' deliveries wait for Chime.Test.deliver/1.
+config :notebook, Oban, testing: :manual
+config :notebook, :chime_scheduler, false
+
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime
 
