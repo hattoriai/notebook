@@ -7,6 +7,8 @@ defmodule NotebookWeb.AgentMemoryLive do
   """
   use NotebookWeb, :live_view
 
+  import Ecto.Query, only: [from: 2]
+
   alias Notebook.Agents.Agent
   alias Notebook.Memory
 
@@ -43,11 +45,37 @@ defmodule NotebookWeb.AgentMemoryLive do
   end
 
   defp load(socket) do
-    %{agent: agent} = socket.assigns
+    %{agent: agent, current_scope: scope} = socket.assigns
     files = Memory.files(agent.id)
     path = socket.assigns[:path] || Memory.self_path()
     file = Enum.find(files, &(&1.path == path and not &1.directory))
-    assign(socket, files: files, file: file)
+
+    # What the agent may not see: learned on a page it may no longer read,
+    # by its scope as its person's agent.
+    hidden =
+      Memory.hidden(
+        agent.id,
+        Notebook.Accounts.Scope.for_agent(scope.user, Notebook.Agents.key(agent))
+      )
+
+    assign(socket, files: files, file: file, hidden: hidden, sources: sources(scope, file))
+  end
+
+  # The pages a file was learned on, as its person may see them: a title
+  # and a link, or that it is one they may no longer read.
+  defp sources(_scope, nil), do: []
+  defp sources(_scope, %{sources: []}), do: []
+
+  defp sources(scope, %{sources: ids}) do
+    readable = Memory.readable(scope, ids)
+
+    titles =
+      Notebook.Repo.all(
+        from p in Notebook.Pages.Page, where: p.id in ^ids, select: {p.id, p.title}
+      )
+      |> Map.new()
+
+    for id <- ids, do: %{id: id, title: if(id in readable, do: titles[id])}
   end
 
   @impl true
@@ -89,6 +117,13 @@ defmodule NotebookWeb.AgentMemoryLive do
       {:error, reason} ->
         {:noreply, put_flash(socket, :error, refusal(reason))}
     end
+  end
+
+  def handle_event("unhide", _params, socket) do
+    :ok = Memory.forget_sources(socket.assigns.agent.id, socket.assigns.path)
+
+    {:noreply,
+     socket |> load() |> put_flash(:info, "#{socket.assigns.agent.name} sees this note again.")}
   end
 
   def handle_event("remove", _params, socket) do
@@ -156,7 +191,8 @@ defmodule NotebookWeb.AgentMemoryLive do
                   "memory-entry",
                   file.directory && "is-dir",
                   file.path == @path && "is-current",
-                  file.path == Memory.self_path() && "is-self"
+                  file.path == Memory.self_path() && "is-self",
+                  MapSet.member?(@hidden, file.path) && "is-hidden"
                 ]}
                 style={"padding-left: #{10 + depth(file.path) * 16}px"}
               >
@@ -171,6 +207,11 @@ defmodule NotebookWeb.AgentMemoryLive do
                   class="size-4"
                 />
                 <span>{Path.basename(file.path)}</span>
+                <.icon
+                  :if={MapSet.member?(@hidden, file.path)}
+                  name="hero-eye-slash"
+                  class="size-3.5 memory-hidden-mark"
+                />
                 <small :if={not file.directory}>{size(file.content)}</small>
               </.link>
               <p :if={length(@files) == 1} class="memory-empty">Nothing noted yet.</p>
@@ -188,6 +229,30 @@ defmodule NotebookWeb.AgentMemoryLive do
                   Written {Calendar.strftime(@file.updated_at, "%-d %b, %H:%M")}
                 </small>
               </header>
+              <p :if={@sources != []} class="memory-sources" id="memory-sources">
+                Learned on
+                <%= for {source, i} <- Enum.with_index(@sources) do %>
+                  <span :if={i > 0}>, </span><.link
+                    :if={source.title}
+                    navigate={~p"/pages/#{source.id}"}
+                  >{source.title}</.link><em :if={is_nil(source.title)}>a page you may no longer read</em>
+                <% end %>
+              </p>
+              <div :if={MapSet.member?(@hidden, @file.path)} class="memory-hidden" id="memory-hidden">
+                <.icon name="hero-eye-slash" class="size-4" />
+                <span>
+                  Hidden from {@agent.name}: it was learned on a page {@agent.name} may no longer read, so
+                  what it learned there stays there.
+                </span>
+                <button
+                  type="button"
+                  class="button"
+                  phx-click="unhide"
+                  data-confirm={"Let #{@agent.name} see this note again, wherever it was learned?"}
+                >
+                  Let it see this again
+                </button>
+              </div>
               <p :if={@outdated?} class="memory-outdated">
                 {@agent.name} changed this file while you were editing. Save yours, or <.link patch={
                   ~p"/agents/#{@agent.id}?file=#{@path}"
