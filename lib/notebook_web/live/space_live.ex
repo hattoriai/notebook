@@ -92,7 +92,7 @@ defmodule NotebookWeb.SpaceLive do
 
     ~H"""
     <div class="notebook-shell notebook-with-sidebar">
-      <.sidebar tree={@tree} current={current(assigns)} />
+      <.sidebar tree={@tree} chime={@chime} current={current(assigns)} />
       <main class="notebook-main">
         <div class="flash-area"><Layouts.flash_group flash={@flash} /></div>
 

@@ -9,6 +9,10 @@ config :bcrypt_elixir, :log_rounds, 1
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
 config :notebook, Notebook.Repo,
+  # Each test is a transaction of the sandbox: begun immediately, each
+  # would take the write lock from the start, and the async tests would
+  # wait for each other.
+  default_transaction_mode: :deferred,
   database:
     Path.expand("../tmp/notebook_test#{System.get_env("MIX_TEST_PARTITION")}.db", __DIR__),
   pool: Ecto.Adapters.SQL.Sandbox,
@@ -24,6 +28,10 @@ config :notebook, NotebookWeb.Endpoint,
 # Print only warnings and errors during test
 config :logger, level: :warning
 config :notebook, Notebook.Mailer, adapter: Swoosh.Adapters.Test
+
+# The notifications' deliveries wait for Chime.Test.deliver/1.
+config :notebook, Oban, testing: :manual
+config :notebook, :chime_scheduler, false
 
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime

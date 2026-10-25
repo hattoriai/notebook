@@ -80,11 +80,19 @@ defmodule Notebook.MixProject do
       {:fude, "~> 0.8"},
       {:jumon, "~> 0.2"},
       {:storehouse, "~> 0.2"},
-      # The fix of hattoriai/cardbox#3 (a grid's "me" by actor_id/1), until 0.1.1.
-      {:cardbox, github: "hattoriai/cardbox", ref: "0812c6de2572832663b4dfc178b46e0f59f21145"},
+      {:chime, "~> 0.1.0-dev"},
+      {:oban, "~> 2.20"},
+      # Cardbox's main, until a release after 0.1.0. It ships no assets of its
+      # own: its views use Masu's, Narabe's, Koyomi's and Fude's.
+      {:cardbox, github: "hattoriai/cardbox", branch: "main"},
       {:sekisho, "~> 0.1.1"},
       {:narabe, "~> 0.2"},
-      {:tz, "~> 0.28"}
+      {:tz, "~> 0.28"},
+      # 0.43 frees a statement without waiting for its connection's lock,
+      # which another connection could hold through SQLite's busy timeout:
+      # two writers at once (a change and its notifications) stalled each
+      # other, and one failed with "database is locked".
+      {:exqlite, "~> 0.43"}
     ]
   end
 

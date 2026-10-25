@@ -37,6 +37,8 @@ defmodule Notebook.DataCase do
   def setup_sandbox(tags) do
     pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Notebook.Repo, shared: not tags[:async])
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
+    # What notifies of the test's changes is done before its sandbox goes.
+    on_exit(fn -> Notebook.Notifications.settle() end)
   end
 
   @doc """

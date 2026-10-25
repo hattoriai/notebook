@@ -12,6 +12,11 @@ defmodule Notebook.Application do
       Notebook.Repo,
       {DNSCluster, query: Application.get_env(:notebook, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Notebook.PubSub},
+      # The notifications (Chime): the feed, and the jobs of the rest; and
+      # what notifies of the changes, one after the other.
+      {Oban, Application.fetch_env!(:notebook, Oban)},
+      {Chime, Notebook.Notifications.config()},
+      Notebook.Notifications.Queue,
       # The pages' rooms: their people, their shared text and boards, and
       # Issho's own documents (comments, inboxes) in the database.
       {Issho,
@@ -31,7 +36,11 @@ defmodule Notebook.Application do
     # See https://elixir.hexdocs.pm/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Notebook.Supervisor]
-    Supervisor.start_link(children, opts)
+
+    with {:ok, pid} <- Supervisor.start_link(children, opts) do
+      Notebook.Notifications.attach()
+      {:ok, pid}
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration

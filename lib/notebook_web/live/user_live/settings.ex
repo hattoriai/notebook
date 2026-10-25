@@ -70,6 +70,14 @@ defmodule NotebookWeb.UserLive.Settings do
             <button class="button button-primary" type="submit">Save password</button>
           </.form>
         </section>
+        <section class="settings-wide">
+          <h2>Notifications</h2>
+          <p>
+            What you hear of, in your Inbox and by email. An email waits ten minutes,
+            and doesn't go if you read the notification first.
+          </p>
+          <Chime.Components.preferences id="notifications" chime={@chime} />
+        </section>
       </div>
     </main>
     """

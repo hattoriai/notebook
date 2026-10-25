@@ -124,7 +124,7 @@ defmodule Notebook.Spaces do
     |> Repo.all()
   end
 
-  @doc "Adds a person to a team space with a role: its admins may."
+  @doc "Adds a person to a team space with a role (its admins may), and tells them."
   def add_member(scope, %Space{kind: "team"} = space, %User{} = user, role) do
     with :ok <- Permissions.authorize(scope, :manage, space),
          {:ok, member} <-
@@ -132,6 +132,7 @@ defmodule Notebook.Spaces do
            |> Member.changeset(%{role: role})
            |> Repo.insert() do
       Permissions.changed()
+      Notebook.Notifications.added_to_space(space, user, role, scope.user)
       changed({:ok, member})
     end
   end
