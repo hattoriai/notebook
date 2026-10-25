@@ -852,6 +852,41 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 /* Search (FTS5): what matched, in a found page's words. */
 .page-snippet mark { padding: 0 2px; border-radius: 3px; background: #f3dfb8; color: var(--ink); }
 
+/* The notebook's settings, for its admins: where its files are kept. */
+.storage-now { display: flex; align-items: center; gap: 14px; margin: 0 0 28px; padding: 16px 18px; border: 1px solid var(--rule); background: #fbf9f4; font: 14px ui-sans-serif, system-ui, sans-serif; }
+.storage-now > .size-5 { flex: none; color: var(--accent); }
+.storage-now div { display: grid; gap: 2px; min-width: 0; }
+.storage-now small { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
+.storage-form { max-width: 46rem; }
+.storage-form fieldset { display: grid; gap: 10px; margin: 0; padding: 0; border: 0; }
+.storage-form legend { margin-bottom: 10px; color: var(--muted); font: 600 11px ui-sans-serif, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.storage-kinds { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.storage-kind { position: relative; display: flex !important; align-items: flex-start; gap: 12px; padding: 16px; border: 1px solid var(--rule); background: #fcfbf7; cursor: pointer; text-transform: none !important; letter-spacing: normal !important; font: 14px/1.4 ui-sans-serif, system-ui, sans-serif !important; color: var(--ink) !important; transition: border-color .15s ease, box-shadow .15s ease; }
+.storage-kind:hover { border-color: var(--ink); }
+.storage-kind.is-chosen { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.storage-kind input, .storage-serve input { position: absolute; opacity: 0; pointer-events: none; }
+.storage-kind > .size-5 { flex: none; margin-top: 1px; color: var(--accent); }
+.storage-kind span, .storage-serve span { display: grid; gap: 3px; }
+.storage-kind small, .storage-serve small { color: var(--muted); font-size: 12.5px; }
+.storage-bucket { display: flex; flex-direction: column; gap: 14px; padding: 22px 0 6px; border-top: 1px dashed var(--rule); }
+.storage-bucket select { width: 100%; padding: 12px 14px; border: 1px solid var(--rule); background: #fcfbf7; font: 15px ui-sans-serif, system-ui, sans-serif; color: var(--ink); }
+.storage-bucket .fieldset { margin: 0; }
+.storage-bucket .fieldset label { display: grid; gap: 8px; }
+.storage-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.storage-serve label { position: relative; display: flex !important; align-items: flex-start; gap: 12px; padding: 10px 12px; border-radius: 8px; cursor: pointer; text-transform: none !important; letter-spacing: normal !important; font: 14px/1.4 ui-sans-serif, system-ui, sans-serif !important; color: var(--ink) !important; }
+.storage-serve label::before { content: ""; flex: none; width: 16px; height: 16px; margin-top: 2px; border: 1.5px solid #b9b2a2; border-radius: 50%; background: #fff; }
+.storage-serve label:has(input:checked)::before { border: 5px solid var(--accent); }
+.storage-serve label:hover { background: #f3efe6; }
+.storage-hint { display: flex; gap: 10px; margin: 0; padding: 12px 14px; border-radius: 8px; background: #f3efe6; color: var(--muted); font: 13px/1.5 ui-sans-serif, system-ui, sans-serif; }
+.storage-hint .size-4 { flex: none; margin-top: 2px; color: var(--accent); }
+.storage-hint a { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+.storage-copy { display: flex; align-items: center; justify-content: space-between; gap: 24px; max-width: 46rem; margin-top: 34px; padding: 18px 20px; border: 1px solid var(--rule); border-left: 3px solid var(--accent); background: #fbf9f4; font: 14px/1.45 ui-sans-serif, system-ui, sans-serif; }
+.storage-copy p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.storage-copy .storage-copied { color: var(--ink); }
+.storage-copy-actions { display: flex; flex-wrap: wrap; gap: 10px; flex: none; }
+.storage-copying { display: inline-flex; align-items: center; gap: 8px; flex: none; color: var(--accent); font-weight: 600; }
+@media (max-width: 700px) { .storage-kinds, .storage-pair { grid-template-columns: 1fr; } .storage-copy { flex-direction: column; align-items: stretch; } }
+
 /* A phone, or a narrow window. The sidebar is a drawer, whole: its menu
    button sits at the top bar's start, and it slides over the page until
    the person goes somewhere, taps beside it or presses Escape; on a phone

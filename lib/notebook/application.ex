@@ -10,6 +10,8 @@ defmodule Notebook.Application do
     children = [
       NotebookWeb.Telemetry,
       Notebook.Repo,
+      # Where the files are kept (this disk, or a bucket), as the admins chose.
+      Notebook.Storage,
       {DNSCluster, query: Application.get_env(:notebook, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Notebook.PubSub},
       # The notifications (Chime): the feed, and the jobs of the rest; and

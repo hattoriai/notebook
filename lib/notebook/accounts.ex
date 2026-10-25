@@ -84,6 +84,7 @@ defmodule Notebook.Accounts do
     with {:ok, user} <-
            changeset
            |> Ecto.Changeset.put_change(:handle, Notebook.Publishing.free_handle(name))
+           |> Ecto.Changeset.put_change(:admin, not Repo.exists?(User))
            |> Repo.insert() do
       Notebook.Spaces.welcome(user)
     end
