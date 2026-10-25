@@ -20,6 +20,13 @@ defmodule Notebook.MemorySourcesTest do
     {:ok, plans} = Pages.create(scope, %{"title" => "Plans", "space_id" => forge.id})
     agent_scope = Scope.for_agent(hanzo, Agents.key(agent))
 
+    # Each test's ids are the last one's (its rows are rolled back), and an
+    # agent in a room outlives a test: this one is in none.
+    key = Agents.key(agent)
+
+    for room <- Issho.Agents.rooms(Notebook.Issho, key),
+        do: Issho.Agents.leave(Notebook.Issho, key, room)
+
     %{
       hanzo: hanzo,
       scope: scope,

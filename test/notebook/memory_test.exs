@@ -11,6 +11,7 @@ defmodule Notebook.MemoryTest do
     scope = Scope.for_user(user_fixture(%{name: "Hattori Hanzo"}))
     {:ok, agent, _token} = Agents.create(scope, %{"name" => "Hanzo's apprentice"})
     {:ok, other, _token} = Agents.create(scope, %{"name" => "Another"})
+    leave_rooms(agent)
     %{agent: agent, other: other}
   end
 
@@ -109,5 +110,14 @@ defmodule Notebook.MemoryTest do
       )
 
     assert {:error, _} = Notebook.Tools.Memory.call(%{command: "ls"}, ctx)
+  end
+
+  # Each test's ids are the last one's (its rows are rolled back), and an
+  # agent in a room outlives a test: this one is in none.
+  defp leave_rooms(agent) do
+    key = Agents.key(agent)
+
+    for room <- Issho.Agents.rooms(Notebook.Issho, key),
+        do: Issho.Agents.leave(Notebook.Issho, key, room)
   end
 end

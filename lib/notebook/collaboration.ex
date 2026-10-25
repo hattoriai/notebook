@@ -7,6 +7,10 @@ defmodule Notebook.Collaboration do
   comments, an editor also writes. An agent may do what
   the person it works for may, but not on a page off limits to agents.
 
+  A person may ask one of their own agents about what they selected
+  (`Issho.Requests`): an agent of theirs, not revoked, that may read the
+  page.
+
   A page is the room `"page:<id>"`: its text is the document
   `"page:<id>/body"` (Kotoba), its board the room's own document (a
   Hakushi canvas), its table the place `"page:<id>/rows"` (a Masu grid,
@@ -30,6 +34,25 @@ defmodule Notebook.Collaboration do
   end
 
   def authorize(_identity, _room, _action), do: {:error, :forbidden}
+
+  @impl true
+  def ask(%Issho.Identity{on_behalf_of: nil} = identity, "page:" <> _ = room, "agent:" <> id) do
+    with {:ok, user} <- account(identity),
+         {agent_id, ""} <- Integer.parse(id),
+         %Notebook.Agents.Agent{revoked_at: nil} = agent <-
+           Repo.get_by(Notebook.Agents.Agent, id: agent_id, user_id: user.id),
+         agent_identity =
+           Issho.Identity.new(%{id: Notebook.Agents.key(agent), name: agent.name, kind: :agent},
+             on_behalf_of: identity
+           ),
+         :ok <- authorize(agent_identity, room, :read) do
+      :ok
+    else
+      _ -> {:error, :forbidden}
+    end
+  end
+
+  def ask(_identity, _room, _agent), do: {:error, :forbidden}
 
   # What each of the room's actions takes on the page.
   defp permission(action) when action in [:join, :read], do: :read

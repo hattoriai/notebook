@@ -309,10 +309,13 @@ defmodule NotebookWeb.NotebookLive do
         # once for the page, whatever it is.
         grant: Issho.Live.grant(Notebook.Issho, user(socket), Notebook.Collaboration.room(page)),
         editing?: Map.has_key?(params, "edit"),
-        mentionable: mentionable(page)
+        mentionable: mentionable(page),
+        asking: nil,
+        agents: Notebook.Agents.list(scope)
       )
       |> assign_kind(page)
       |> join_room(page)
+      |> suggestions()
 
     allow_upload(socket, :attachments,
       accept: ~w(.png .jpg .jpeg .gif .webp .pdf .mp4 .webm),
@@ -347,6 +350,18 @@ defmodule NotebookWeb.NotebookLive do
 
     socket
   end
+
+  # What an agent answers in the text (a stream at a place of its body,
+  # for this person: Issho.Requests) shows in the editor, inline, to take
+  # or leave (Kotoba.Issho.suggestions/4). Once for each page.
+  defp suggestions(%{assigns: %{issho: [_ | _] = issho}} = socket) do
+    socket
+    |> Phoenix.LiveView.detach_hook(:kotoba_issho_suggestions, :handle_info)
+    |> Phoenix.LiveView.detach_hook(:kotoba_issho_suggestions, :handle_event)
+    |> Kotoba.Issho.suggestions(user(socket), %{"body-editor" => issho}, display: :inline)
+  end
+
+  defp suggestions(socket), do: socket
 
   # Whom a comment may mention, though they are not on the page: every
   # account, and every agent that may work, which finds it in its inbox.
@@ -621,6 +636,7 @@ defmodule NotebookWeb.NotebookLive do
       space={@page.space}
       scope={@current_scope}
     />
+    <.ask_dialog :if={assigns[:asking]} asking={@asking} agents={@agents} />
     <div class="notebook-shell notebook-with-sidebar">
       <.sidebar tree={@tree} chime={@chime} shared={@shared} current={current(assigns)} />
       <main class="notebook-main">
@@ -1127,10 +1143,14 @@ defmodule NotebookWeb.NotebookLive do
               prompts={@prompts}
               extensions={[~p"/assets/kotoba/extensions/callout.js"]}
               placeholder="Write something worth keeping…"
+              assist={[ask: "Ask my agent…"]}
               embeds
             >
               <:selection>
                 <.kotoba_selection_menu id="body-selection-menu" class="notebook-selection-menu">
+                  <:button :if={@agents != []} command="assist" label="Ask my agent">
+                    <.icon name="hero-sparkles" class="size-4" />
+                  </:button>
                   <:button command="bold"><.icon name="hero-bold" class="size-4" /></:button>
                   <:button command="italic"><.icon name="hero-italic" class="size-4" /></:button>
                   <:button command="underline">
@@ -1465,6 +1485,76 @@ defmodule NotebookWeb.NotebookLive do
 
   defp toggle_comments,
     do: JS.toggle_attribute({"data-open", "true"}, to: "#comments-drawer")
+
+  # Where the person asked: the block of their selection in the body, in
+  # its words (Issho.Place's label).
+  defp asked_place(document, %{block: block, text: text}) when is_binary(block),
+    do: %{"doc" => document, "at" => %{"node" => block}, "label" => text}
+
+  defp asked_place(document, %{text: text}), do: %{"doc" => document, "label" => text}
+
+  # The version of the body the person asked on (Issho.Version).
+  defp version(document) do
+    with {:ok, pid} <- Issho.Documents.open(Notebook.Issho, document),
+         {:ok, snapshot} <- Issho.Authority.snapshot(pid) do
+      Issho.Version.of(snapshot)
+    else
+      _ -> nil
+    end
+  end
+
+  attr :asking, :map, required: true
+  attr :agents, :list, required: true
+
+  # What the person asks their agent, about what they selected: privately.
+  defp ask_dialog(assigns) do
+    ~H"""
+    <div class="share-backdrop" phx-window-keydown="ask_close" phx-key="Escape">
+      <section
+        id="ask-dialog"
+        class="share-dialog ask-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ask-dialog-title"
+        phx-click-away="ask_close"
+      >
+        <header class="share-head">
+          <div>
+            <p class="eyebrow">Only you and your agent see this</p>
+            <h2 id="ask-dialog-title">Ask my agent</h2>
+          </div>
+          <button type="button" class="share-close" phx-click="ask_close" aria-label="Close">
+            <.icon name="hero-x-mark" class="size-5" />
+          </button>
+        </header>
+        <blockquote :if={@asking.text != ""} class="ask-selection">{@asking.text}</blockquote>
+        <form id="ask-form" class="ask-form" phx-submit="ask">
+          <label :if={length(@agents) > 1} class="field-label" for="ask-agent">Agent</label>
+          <select :if={length(@agents) > 1} id="ask-agent" name="agent">
+            <option :for={agent <- @agents} value={agent.id}>{agent.name}</option>
+          </select>
+          <input :if={length(@agents) == 1} type="hidden" name="agent" value={hd(@agents).id} />
+          <label class="field-label" for="ask-question">
+            What should {if length(@agents) == 1, do: hd(@agents).name, else: "it"} do?
+          </label>
+          <textarea
+            id="ask-question"
+            name="question"
+            rows="3"
+            maxlength="4000"
+            required
+            phx-mounted={JS.focus()}
+            placeholder="Make this shorter"
+          ></textarea>
+          <p class="ask-hint">
+            It answers here, in the text: you take its suggestion or leave it.
+          </p>
+          <button type="submit" class="button button-primary">Ask</button>
+        </form>
+      </section>
+    </div>
+    """
+  end
 
   # Where a thread is, in the words of the page, and what, when its
   # component says it (Issho.Place's label): In the text: “Fold it”.
@@ -1810,6 +1900,57 @@ defmodule NotebookWeb.NotebookLive do
   end
 
   def handle_event("restore", _params, socket), do: {:noreply, restore_page(socket)}
+
+  # Ask my agent: the editor's Assist menu gives the selection and its
+  # block; the person says what they want, and of which agent of theirs.
+  def handle_event("kotoba:assist", %{"action" => "ask"} = params, socket) do
+    case socket.assigns.agents do
+      [] ->
+        {:noreply, put_flash(socket, :error, "Connect an agent first, on the Agents page.")}
+
+      _agents ->
+        asking = %{text: params["text"] || "", block: get_in(params, ["place", "id"])}
+        {:noreply, assign(socket, asking: asking)}
+    end
+  end
+
+  def handle_event("kotoba:assist", _params, socket), do: {:noreply, socket}
+
+  def handle_event("ask_close", _params, socket), do: {:noreply, assign(socket, asking: nil)}
+
+  def handle_event("ask", %{"question" => question, "agent" => agent_id}, socket) do
+    %{asking: asking, agents: agents, page: page} = socket.assigns
+    agent = Enum.find(agents, &(to_string(&1.id) == agent_id))
+    room = Notebook.Collaboration.room(page)
+    document = room <> "/body"
+
+    result =
+      agent &&
+        Issho.Live.ask(room, question,
+          agent: Notebook.Agents.key(agent),
+          place: asked_place(document, asking),
+          version: version(document)
+        )
+
+    case result do
+      {:ok, _request} ->
+        {:noreply,
+         socket
+         |> assign(asking: nil)
+         |> put_flash(
+           :info,
+           "Asked #{agent.name}. Its answer comes here, for you to take or leave."
+         )}
+
+      _refused ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           "#{(agent && agent.name) || "That agent"} may not be asked here."
+         )}
+    end
+  end
 
   # The Share dialog (NotebookWeb.ShareComponent).
   def handle_event("share_open", _params, socket), do: {:noreply, assign(socket, sharing?: true)}
