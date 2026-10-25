@@ -278,6 +278,25 @@ defmodule NotebookWeb.SpaceLive do
               <.icon name="hero-user-plus" class="size-4" /> Share
             </button>
             <button
+              :if={is_nil(@folder) and @can_manage?}
+              id="space-agents"
+              type="button"
+              class={["copy-action", @space.closed_to_agents && "is-closed-to-agents"]}
+              phx-click="toggle_agents"
+              data-confirm={
+                if @space.closed_to_agents,
+                  do: "Let agents work in this space again, as their people may?",
+                  else:
+                    "Close this space to agents? No agent will read its pages, find them or join them."
+              }
+            >
+              <.icon
+                name={if @space.closed_to_agents, do: "hero-no-symbol", else: "hero-sparkles"}
+                class="size-4"
+              />
+              {if @space.closed_to_agents, do: "Off limits to agents", else: "Close to agents"}
+            </button>
+            <button
               :if={@folder && @can_edit?}
               type="button"
               class="copy-action"
@@ -465,6 +484,18 @@ defmodule NotebookWeb.SpaceLive do
   end
 
   @impl true
+  def handle_event("toggle_agents", _params, socket) do
+    %{current_scope: scope, space: space} = socket.assigns
+
+    case Spaces.set_closed_to_agents(scope, space, not space.closed_to_agents) do
+      {:ok, %Space{closed_to_agents: closed?}} ->
+        {:noreply, assign(socket, space: %{space | closed_to_agents: closed?})}
+
+      {:error, _reason} ->
+        {:noreply, socket}
+    end
+  end
+
   def handle_event("validate", %{"space" => params}, socket),
     do:
       {:noreply,

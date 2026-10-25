@@ -2,7 +2,8 @@ defmodule NotebookWeb.ShareComponent do
   @moduledoc """
   The Share dialog of a page or a folder (`Notebook.Sharing`): who has it
   through its space, the people it is shared with and their roles, a
-  person to share it with, and the link, made, made again or taken back.
+  person to share it with, the link, made, made again or taken back, and,
+  for a page, whether agents may work on it.
   A link's address shows once, when it is made: the notebook keeps only
   its hash.
   """
@@ -47,6 +48,13 @@ defmodule NotebookWeb.ShareComponent do
     %{scope: scope, resource: resource} = socket.assigns
     :ok = Sharing.unshare(scope, resource, Notebook.Repo.get!(User, id))
     {:noreply, load(socket)}
+  end
+
+  def handle_event("agents", %{"agents" => agents}, socket) do
+    %{scope: scope, resource: %Page{} = page} = socket.assigns
+    {:ok, page} = Notebook.Pages.set_closed_to_agents(scope, page, agents == "closed")
+    send(self(), {:agents_changed, page})
+    {:noreply, assign(socket, resource: page)}
   end
 
   def handle_event("link", %{"role" => "off"}, socket) do
@@ -160,6 +168,35 @@ defmodule NotebookWeb.ShareComponent do
         <p :if={@access.link && is_nil(@link_url)} class="share-note">
           A link is on. Choose its role again to make a new one, and the last one stops.
         </p>
+
+        <%= if match?(%Page{}, @resource) do %>
+          <h3>Agents</h3>
+          <form
+            id={@id <> "-agents"}
+            class="share-agents"
+            phx-change="agents"
+            phx-target={@myself}
+          >
+            <span class={["share-avatar is-agent", closed?(@resource) && "is-closed"]}>
+              <.icon
+                name={if closed?(@resource), do: "hero-no-symbol", else: "hero-sparkles"}
+                class="size-4"
+              />
+            </span>
+            <span class="share-who">
+              {if closed?(@resource), do: "Off limits", else: "May work here"}
+              <small>{agents_hint(@resource)}</small>
+            </span>
+            <select
+              name="agents"
+              aria-label="Whether agents may work on this page"
+              disabled={space_closed?(@resource)}
+            >
+              <option value="open" selected={not @resource.closed_to_agents}>May work here</option>
+              <option value="closed" selected={@resource.closed_to_agents}>Off limits</option>
+            </select>
+          </form>
+        <% end %>
       </section>
     </div>
     """
@@ -174,6 +211,17 @@ defmodule NotebookWeb.ShareComponent do
   defp role_name("viewer"), do: "Can read"
   defp role_name("commenter"), do: "Can comment"
   defp role_name("editor"), do: "Can edit"
+
+  defp closed?(page), do: Notebook.Pages.closed_to_agents?(page)
+  defp space_closed?(page), do: Notebook.Repo.preload(page, :space).space.closed_to_agents
+
+  defp agents_hint(page) do
+    cond do
+      space_closed?(page) -> "Its space is off limits to agents."
+      page.closed_to_agents -> "No agent reads it, finds it or joins it."
+      true -> "Its people's agents may do what they may."
+    end
+  end
 
   defp link_hint(nil, _resource), do: "Only the people above have it."
   defp link_hint(_role, %Page{}), do: "Anyone signed in with the link opens this page."

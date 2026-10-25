@@ -9,7 +9,9 @@ defmodule Notebook.Permissions do
     * an editor also writes, makes and archives pages and folders (`:edit`);
     * an admin also renames the space and manages its members (`:manage`).
 
-  An agent asks as the person it works for: it may do what they may.
+  An agent asks as the person it works for: it may do what they may,
+  but not on a page or a space off limits to agents (`closed_to_agents`),
+  a rule that wins over every role (`deny/2`).
   The same rules answer a check (`allowed?/3`, `authorize/3`) and a list
   (`where_allowed/3`), so a list never shows a page a check refuses.
   """
@@ -28,6 +30,9 @@ defmodule Notebook.Permissions do
   alias Notebook.Accounts.{Scope, User}
 
   @impl Sekisho
+  def actor(%Scope{user: %User{} = user, agent: agent}) when is_binary(agent),
+    do: %{user | as_agent: true}
+
   def actor(%Scope{user: user}), do: user
   def actor(%User{} = user), do: user
   def actor(nil), do: nil

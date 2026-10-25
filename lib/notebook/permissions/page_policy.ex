@@ -4,6 +4,7 @@ defmodule Notebook.Permissions.PagePolicy do
   # shared with someone shares its pages. Its editors share it with a
   # person, or with anyone who has a link (to read, or to comment too).
   use Sekisho.Policy, for: Notebook.Pages.Page
+  import Ecto.Query
 
   permissions([:read, :comment, :edit, :manage])
 
@@ -27,4 +28,13 @@ defmodule Notebook.Permissions.PagePolicy do
   derive(:viewer, from: {:folder, :viewer})
 
   grant_to([:user, :link], by: :edit, link_up_to: :commenter)
+
+  # Off limits to agents: the page, or its space. Over every role.
+  @impl true
+  def deny(%Notebook.Accounts.User{as_agent: true}, _permission) do
+    closed = from(s in Notebook.Spaces.Space, where: s.closed_to_agents, select: s.id)
+    dynamic([p], p.closed_to_agents or p.space_id in subquery(closed))
+  end
+
+  def deny(_actor, _permission), do: false
 end

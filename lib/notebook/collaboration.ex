@@ -5,7 +5,7 @@ defmodule Notebook.Collaboration do
   lets them (`Notebook.Permissions`), or a share of the page (with them,
   or a link they followed): a viewer joins and reads, a commenter also
   comments, an editor also writes. An agent may do what
-  the person it works for may.
+  the person it works for may, but not on a page off limits to agents.
 
   A page is the room `"page:<id>"`: its text is the document
   `"page:<id>/body"` (Kotoba), its board the room's own document (a
@@ -77,6 +77,11 @@ defmodule Notebook.Collaboration do
 
   # The person's scope, with the links they followed (`Notebook.Sharing`),
   # which their identity carries, signed, from the page they joined from.
+  # An agent (on behalf of its person) asks as their agent: not on what is
+  # off limits to agents.
+  defp scope(user, %Issho.Identity{on_behalf_of: %Issho.Identity{}, key: key}),
+    do: Scope.for_agent(user, key)
+
   defp scope(user, %Issho.Identity{claims: claims}),
     do: user |> Scope.for_user() |> Scope.with_links(claims[:links] || claims["links"] || [])
 

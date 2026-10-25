@@ -17,14 +17,15 @@ defmodule Notebook.Tools do
 
   @doc """
   The scope of the person an agent works for (`on_behalf_of`, from the
-  token it connected with), or nil. The agent may do what they may.
+  token it connected with), as their agent, or nil. The agent may do what
+  they may, but not on what is off limits to agents.
   """
-  def scope(%Issho.Tool.Context{opts: opts}) do
+  def scope(%Issho.Tool.Context{opts: opts} = ctx) do
     with %{} = person <- opts[:on_behalf_of],
          key = Issho.Identity.new(person).key,
          {id, ""} <- Integer.parse(key),
          %Notebook.Accounts.User{} = user <- Notebook.Repo.get(Notebook.Accounts.User, id) do
-      Notebook.Accounts.Scope.for_user(user)
+      Notebook.Accounts.Scope.for_agent(user, Issho.Identity.new(ctx.actor).key)
     else
       _ -> nil
     end

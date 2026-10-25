@@ -18,7 +18,7 @@ defmodule Notebook.Accounts.Scope do
 
   alias Notebook.Accounts.User
 
-  defstruct user: nil, link_tokens: []
+  defstruct user: nil, link_tokens: [], agent: nil
 
   @doc """
   Creates a scope for the given user.
@@ -30,6 +30,18 @@ defmodule Notebook.Accounts.Scope do
   end
 
   def for_user(nil), do: nil
+
+  @doc """
+  The scope of an agent (its key in the rooms, `Notebook.Agents.key/1`),
+  working for the given user: it may do what they may, but not on pages
+  and spaces off limits to agents.
+  """
+  def for_agent(%User{} = user, agent) when is_binary(agent),
+    do: %__MODULE__{user: user, agent: agent}
+
+  @doc "Whether the scope is an agent's."
+  def agent?(%__MODULE__{agent: agent}), do: is_binary(agent)
+  def agent?(_scope), do: false
 
   @doc """
   The scope with the tokens of the links its person followed (pages and

@@ -163,6 +163,24 @@ defmodule Notebook.Pages do
     end
   end
 
+  @doc """
+  Closes a page to agents, or opens it again: its editors may. Closed, an
+  agent may not read it, find it, or join its room (`Notebook.Permissions`);
+  one in its room is refused at its next step, and leaves.
+  """
+  def set_closed_to_agents(scope, page, closed?) when is_boolean(closed?) do
+    with :ok <- Permissions.authorize(scope, :edit, page),
+         {:ok, updated} <-
+           page |> Ecto.Changeset.change(closed_to_agents: closed?) |> Repo.update() do
+      saved({:ok, updated})
+      {:ok, Repo.preload(updated, [:author, :space, :folder], force: true)}
+    end
+  end
+
+  @doc "Whether agents may not work on the page: it is closed to them, or its space is."
+  def closed_to_agents?(%Page{closed_to_agents: true}), do: true
+  def closed_to_agents?(%Page{} = page), do: Repo.preload(page, :space).space.closed_to_agents
+
   @doc "Subscribes the caller to `{:page_saved, id}`, sent when a page's content or details are saved."
   def subscribe(page_id), do: Phoenix.PubSub.subscribe(Notebook.PubSub, "page-saved:#{page_id}")
 

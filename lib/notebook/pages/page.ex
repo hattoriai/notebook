@@ -24,6 +24,9 @@ defmodule Notebook.Pages.Page do
     belongs_to :space, Notebook.Spaces.Space
     belongs_to :folder, Notebook.Spaces.Folder
     field :archived_at, :utc_datetime
+    # Off limits to agents (Notebook.Permissions): its people work here,
+    # agents may not read it, find it or join its room.
+    field :closed_to_agents, :boolean, default: false
     # Its place among its siblings, folders and pages alike (Narabe).
     field :position, :string
     # Published (Notebook.Publishing): its public path's last word, since

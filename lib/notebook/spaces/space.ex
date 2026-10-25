@@ -14,6 +14,8 @@ defmodule Notebook.Spaces.Space do
     field :name, :string
     field :kind, :string, default: "team"
     field :description, :string
+    # Off limits to agents, with every page in it (Notebook.Permissions).
+    field :closed_to_agents, :boolean, default: false
     belongs_to :owner, Notebook.Accounts.User
     has_many :members, Notebook.Spaces.Member
     has_many :folders, Notebook.Spaces.Folder
