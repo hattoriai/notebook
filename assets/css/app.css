@@ -628,13 +628,6 @@ html.space-maximized { overflow: hidden; }
 .sidebar .narabe-item:has(> .narabe-content .is-current) > .narabe-content { background: #e6dfd0; }
 .sidebar .narabe-tree .is-current { background: none; font-weight: 600; color: var(--ink); }
 .sidebar-empty { padding: 4px 8px; color: var(--muted); font-style: italic; font-family: "Palatino Linotype", Palatino, Georgia, serif; }
-@media (max-width: 900px) {
-  .notebook-with-sidebar { flex-direction: column; }
-  .sidebar { position: static; width: auto; height: auto; max-height: none; border-right: 0; border-bottom: 1px solid var(--rule); padding: 16px clamp(16px, 5vw, 70px); }
-  .sidebar-space, .sidebar-bottom { display: none; }
-  .sidebar-top { flex-direction: row; flex-wrap: wrap; }
-  .sidebar-top .sidebar-link { width: auto; }
-}
 
 /* Where a page or a folder is: its space, and its folder. */
 .breadcrumb { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--muted); }
@@ -693,7 +686,6 @@ html.space-maximized { overflow: hidden; }
 .sidebar-show { display: none; }
 html[data-sidebar="hidden"] .sidebar { display: none; }
 html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14px; z-index: 30; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--rule); border-radius: 8px; background: var(--paper); color: var(--muted); cursor: pointer; box-shadow: 0 6px 18px -12px rgba(35, 38, 34, .5); transition: background .15s ease, color .15s ease; }
-@media (max-width: 900px) { .sidebar-hide, html[data-sidebar="hidden"] .sidebar-show { display: none; } html[data-sidebar="hidden"] .sidebar { display: flex; } }
 
 /* A database: its views as tabs, the view shown in its frame. */
 .database-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 28px; border-bottom: 1px solid var(--rule); font: 13px ui-sans-serif, system-ui, sans-serif; }
@@ -859,3 +851,43 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 
 /* Search (FTS5): what matched, in a found page's words. */
 .page-snippet mark { padding: 0 2px; border-radius: 3px; background: #f3dfb8; color: var(--ink); }
+
+/* A phone, or a narrow window. The sidebar is a drawer, whole: its menu
+   button sits at the top bar's start, and it slides over the page until
+   the person goes somewhere, taps beside it or presses Escape. Nothing
+   is wider than the screen: the page's bar wraps, and the dialogs, the
+   board's tools and Home's actions fit. */
+.sidebar-backdrop { display: none; }
+@media (max-width: 900px) {
+  .notebook-with-sidebar { flex-direction: column; }
+  body:has(.sidebar) .auth-topbar { padding-left: calc(clamp(16px, 5vw, 88px) + 44px); }
+  .sidebar-show, html[data-sidebar="hidden"] .sidebar-show { position: absolute; top: 19px; left: clamp(16px, 5vw, 88px); z-index: 40; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 0; border-radius: 8px; background: none; color: var(--ink); box-shadow: none; cursor: pointer; }
+  html[data-drawer] .sidebar-show { background: #e8e0d2; }
+  .sidebar, html[data-sidebar="hidden"] .sidebar { position: fixed; top: 0; bottom: 0; left: 0; z-index: 70; display: flex; width: min(86vw, 320px); height: 100dvh; max-height: 100dvh; padding: 22px 18px 24px; border-right: 1px solid var(--rule); background: var(--paper); box-shadow: 24px 0 48px -28px rgba(35, 38, 34, .45); transform: translateX(-105%); visibility: hidden; transition: transform .22s ease, visibility 0s linear .22s; }
+  html[data-drawer] .sidebar { transform: none; visibility: visible; transition: transform .22s ease; }
+  .sidebar-hide { opacity: 1; top: 20px; }
+  .sidebar-add { opacity: 1; }
+  .sidebar-backdrop { position: fixed; inset: 0; z-index: 65; display: block; background: rgba(35, 38, 34, .28); opacity: 0; pointer-events: none; transition: opacity .22s ease; }
+  html[data-drawer] .sidebar-backdrop { opacity: 1; pointer-events: auto; }
+  html[data-drawer] { overflow: hidden; }
+  .notebook-main { overflow-x: clip; }
+}
+@media (max-width: 760px) {
+  .topbar-bell { right: calc(16px + 46px); }
+  .auth-topbar { padding-right: 16px; }
+  body:has(.sidebar) .auth-topbar { padding-left: calc(16px + 44px); }
+  .sidebar-show, html[data-sidebar="hidden"] .sidebar-show { left: 16px; }
+  .page-nav { flex-wrap: wrap; row-gap: 12px; }
+  .page-nav .breadcrumb { flex: 1 1 100%; }
+  .page-nav-end { flex-wrap: wrap; gap: 8px 16px; }
+  .page-nav-end > span { display: none; }
+  .index-actions { flex-wrap: wrap; }
+  .share-backdrop { padding: 10vh 12px 12px; }
+  .share-dialog { max-height: 84vh; padding: 18px 16px 20px; }
+  .share-invite { flex-wrap: wrap; }
+  .share-invite select:first-child { flex: 1 1 100%; }
+  .space-tools { flex-wrap: wrap; row-gap: 4px; }
+  .space-hint { display: none; }
+  .space-frame { max-width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .sidebar, .sidebar-backdrop { transition: none !important; } }

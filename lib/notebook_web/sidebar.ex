@@ -74,6 +74,7 @@ defmodule NotebookWeb.Sidebar do
     >
       <.panel_icon />
     </button>
+    <div class="sidebar-backdrop" phx-click={JS.dispatch("notebook:toggle-sidebar")}></div>
     <nav id="sidebar" class="sidebar" aria-label="Spaces">
       <button
         type="button"
