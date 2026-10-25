@@ -25,15 +25,28 @@ defmodule NotebookWeb.CommentsTest do
 
     {:ok, page} = Pages.create(Scope.for_user(nina), %{title: "Plans"})
 
+    {:ok, ada_agent, _token} =
+      Notebook.Agents.create(Scope.for_user(ada), %{"name" => "Ada's agent"})
+
+    {:ok, nina_agent, _token} =
+      Notebook.Agents.create(Scope.for_user(nina), %{"name" => "Nina's agent"})
+
     # Each test's ids are the last one's (its rows are rolled back), and
     # Issho's documents outlive a test: none of the last one's goes on.
-    for user <- [nina, ada] do
-      stop(Issho.Inbox.document(NotebookWeb.MCP.agent_key(user)))
+    for agent <- [nina_agent, ada_agent] do
+      stop(Issho.Inbox.document(Notebook.Agents.key(agent)))
     end
 
     stop(Issho.Comments.document(Notebook.Collaboration.room(page)))
 
-    %{conn: log_in_user(conn, nina), nina: nina, ada: ada, page: page}
+    %{
+      conn: log_in_user(conn, nina),
+      nina: nina,
+      ada: ada,
+      page: page,
+      ada_agent: ada_agent,
+      nina_agent: nina_agent
+    }
   end
 
   defp stop(document) do
@@ -51,11 +64,12 @@ defmodule NotebookWeb.CommentsTest do
     assert has_element?(view, "#page-agents[phx-hook=IsshoAgents]")
   end
 
-  test "a comment may mention every account, and each one's agent", %{
+  test "a comment may mention every account, and every agent by its name", %{
     conn: conn,
     page: page,
-    nina: nina,
-    ada: ada
+    ada: ada,
+    ada_agent: ada_agent,
+    nina_agent: nina_agent
   } do
     {:ok, view, _html} = live(conn, ~p"/pages/#{page.id}")
 
@@ -70,17 +84,18 @@ defmodule NotebookWeb.CommentsTest do
 
     names = Map.new(candidates, &{&1["key"], &1["name"]})
     assert names[to_string(ada.id)] == "Ada Lovelace"
-    assert names["agent:#{ada.id}"] == "Ada Lovelace's agent"
-    assert names["agent:#{nina.id}"] == "My agent"
+    assert names[Notebook.Agents.key(ada_agent)] == "Ada's agent"
+    assert names[Notebook.Agents.key(nina_agent)] == "Nina's agent"
   end
 
-  test "what is said to a person's agent waits in its inbox, kept in the database", %{
+  test "what is said to an agent waits in its inbox, kept in the database", %{
     page: page,
     nina: nina,
-    ada: ada
+    ada: ada,
+    ada_agent: ada_agent
   } do
     room = Notebook.Collaboration.room(page)
-    agent = NotebookWeb.MCP.agent_key(ada)
+    agent = Notebook.Agents.key(ada_agent)
 
     {:ok, _} =
       Issho.Comments.start(Notebook.Issho, room, nina, nil, "@Ada's agent, a look?",
@@ -88,16 +103,23 @@ defmodule NotebookWeb.CommentsTest do
       )
 
     assert [%{"room" => ^room, "data" => %{"body" => "@Ada's agent, a look?"}}] =
-             inbox(%{id: agent, name: "Claude Code", kind: :agent}, ada)
+             inbox(%{id: agent, name: "Ada's agent", kind: :agent}, ada)
 
     assert Repo.get(Notebook.IsshoStore.Document, Issho.Inbox.document(agent))
   end
 
-  test "an MCP client is the agent of the person whose token it has, by one key" do
-    user = %Accounts.User{id: 7, name: "Ada Lovelace"}
-    ctx = %Sake.Context{scope: user, client_info: %{"name" => "codex", "title" => "Codex"}}
+  test "an MCP client is the agent whose token it has, by its own key, for its person", %{
+    ada: ada,
+    ada_agent: ada_agent
+  } do
+    ctx = %Sake.Context{
+      scope: %{ada_agent | user: ada},
+      client_info: %{"name" => "codex", "title" => "Codex"}
+    }
 
-    assert {%{id: "agent:7", name: "Codex", kind: :agent}, on_behalf_of: ^user} =
+    key = Notebook.Agents.key(ada_agent)
+
+    assert {%{id: ^key, name: "Ada's agent", kind: :agent}, on_behalf_of: ^ada} =
              NotebookWeb.MCP.agent(ctx)
 
     assert NotebookWeb.MCP.__sake__(:instructions) =~ "inbox tool"

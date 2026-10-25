@@ -572,6 +572,31 @@ html.space-maximized { overflow: hidden; }
 .agent-prompts { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
 .agent-prompts li { padding: 14px 18px; border-left: 3px solid var(--accent); background: #fcfbf7; }
 .agent-note { margin-top: 40px; font: 13px ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
+/* A person's agents: each connected with its name and token, its token
+   shown once. */
+.agent-connected { margin-top: 30px; padding: 22px 24px; border: 1px solid #c9d6b8; background: #f2f5ec; }
+.agent-connected-head { display: flex; gap: 12px; align-items: flex-start; color: #3d4f2a; }
+.agent-connected-head p { margin: 4px 0 0; font: 13px ui-sans-serif, system-ui, sans-serif; }
+.agent-address { display: flex; gap: 8px; margin: 18px 0 6px; }
+.agent-address input { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--rule); background: #fff; font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.agent-done { margin-top: 18px; padding: 0; border: 0; background: none; color: var(--muted); font: 13px ui-sans-serif, system-ui, sans-serif; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.agent-list, .agent-new { margin-top: 40px; }
+.agent-list h2, .agent-new h2 { font: 600 13px ui-sans-serif, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 0 0 12px; }
+.agent-list ul { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--ink); }
+.agent-list li { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--rule); font: 14px ui-sans-serif, system-ui, sans-serif; }
+.agent-list li.is-ended { opacity: .55; }
+.agent-avatar { display: inline-grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 50%; background: #f1e3d9; color: var(--accent); }
+.agent-who { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.agent-who small { color: var(--muted); font-size: 12.5px; }
+.agent-who code { font-size: 12px; }
+.agent-revoke { padding: 6px 12px; border: 1px solid var(--rule); background: none; color: var(--muted); font: 12.5px ui-sans-serif, system-ui, sans-serif; cursor: pointer; transition: color .15s ease, border-color .15s ease; }
+.agent-revoke:hover { border-color: #a3362b; color: #a3362b; }
+.agent-empty { color: var(--muted); font: italic 15px "Palatino Linotype", Palatino, Georgia, serif; }
+.agent-form { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; gap: 14px; align-items: end; font: 14px ui-sans-serif, system-ui, sans-serif; }
+.agent-form .fieldset { margin: 0; }
+.agent-form label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
+.agent-form input, .agent-form select { width: 100%; padding: 10px 12px; border: 1px solid var(--rule); background: #fcfbf7; font: 14px ui-sans-serif, system-ui, sans-serif; color: var(--ink); }
+@media (max-width: 700px) { .agent-form { grid-template-columns: 1fr; } .agent-list li { flex-wrap: wrap; } }
 
 /* An embedded table takes the height of its rows (up to its max_height); a board keeps the embed's. */
 .kotoba-embed[data-kind="table"] .kotoba-embed-slot { height: auto; }
