@@ -154,10 +154,10 @@ defmodule NotebookWeb.SpacesLiveTest do
 
     assert [%{"Points" => 5}] = chart_data(view, "body-reader-embed-1")
 
-    # A row changes, as the table's grid writes and broadcasts it.
-    row = row |> Ecto.Changeset.change(points: 8) |> Notebook.Repo.update!()
-    Masu.Live.broadcast_upsert(Notebook.PubSub, "page-rows:#{table.id}", row)
-    _ = :sys.get_state(view.pid)
+    # A row changes; the relay of its table (Charts.watch_rows/1, tested in
+    # ChartsTest) tells the page.
+    row |> Ecto.Changeset.change(points: 8) |> Notebook.Repo.update!()
+    send(view.pid, {:chart_rows, table.id})
     assert [%{"Points" => 8}] = chart_data(view, "body-reader-embed-1")
   end
 

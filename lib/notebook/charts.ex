@@ -154,10 +154,18 @@ defmodule Notebook.Charts do
     me = self()
 
     for id <- Enum.uniq(source_ids) do
+      ref = make_ref()
+
       spawn_link(fn ->
         Phoenix.PubSub.subscribe(Notebook.PubSub, "page-rows:#{id}")
+        send(me, {:watching, ref})
         relay(me, id)
       end)
+
+      # Back once it listens, so that no change after this call is missed.
+      receive do
+        {:watching, ^ref} -> :ok
+      end
     end
 
     :ok
