@@ -33,6 +33,16 @@
         window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
         window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
 
+        // The sidebar, hidden or shown as the person left it in this browser,
+        // set before the page paints; ⌘\ (Ctrl+\) and its buttons toggle it.
+        const root = document.documentElement;
+        if (localStorage.getItem("notebook:sidebar") === "hidden") root.dataset.sidebar = "hidden";
+        window.addEventListener("notebook:toggle-sidebar", () => {
+          const hidden = root.dataset.sidebar !== "hidden";
+          if (hidden) root.dataset.sidebar = "hidden"; else delete root.dataset.sidebar;
+          localStorage.setItem("notebook:sidebar", hidden ? "hidden" : "shown");
+        });
+
         matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
           if (document.documentElement.getAttribute("data-theme-source") === "system") {
             document.documentElement.setAttribute("data-theme", systemTheme());

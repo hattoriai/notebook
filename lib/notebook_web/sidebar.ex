@@ -59,7 +59,25 @@ defmodule NotebookWeb.Sidebar do
 
   def sidebar(assigns) do
     ~H"""
+    <button
+      type="button"
+      class="sidebar-show"
+      phx-click={JS.dispatch("notebook:toggle-sidebar")}
+      aria-label="Show the sidebar"
+      title="Show the sidebar (⌘\\)"
+    >
+      <.panel_icon />
+    </button>
     <nav id="sidebar" class="sidebar" aria-label="Spaces">
+      <button
+        type="button"
+        class="sidebar-hide"
+        phx-click={JS.dispatch("notebook:toggle-sidebar")}
+        aria-label="Hide the sidebar"
+        title="Hide the sidebar (⌘\\)"
+      >
+        <.panel_icon />
+      </button>
       <div class="sidebar-top">
         <.link navigate={~p"/"} class={["sidebar-link", @current == :home && "is-current"]}>
           <.icon name="hero-home" class="size-4" /> Home
@@ -115,6 +133,24 @@ defmodule NotebookWeb.Sidebar do
         </.link>
       </div>
     </nav>
+    """
+  end
+
+  # A window with its left column, the sidebar, marked: the icon editors
+  # give the button that hides and shows it. Heroicons' stroke and size.
+  defp panel_icon(assigns) do
+    ~H"""
+    <svg
+      class="size-[18px]"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+      aria-hidden="true"
+    >
+      <rect x="3" y="4.5" width="18" height="15" rx="2.25" />
+      <path d="M9 4.5v15" />
+    </svg>
     """
   end
 

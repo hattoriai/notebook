@@ -11,6 +11,8 @@ defmodule NotebookWeb.Commands do
   use Jumon.Commands, history: {Jumon.History.Ecto, repo: Notebook.Repo}
   use NotebookWeb, :verified_routes
 
+  alias Phoenix.LiveView.JS
+
   alias Notebook.Pages
 
   @impl true
@@ -36,6 +38,13 @@ defmodule NotebookWeb.Commands do
         keywords: ~w(account email password),
         shortcut: "g s",
         navigate: ~p"/users/settings"
+      ),
+      action(:toggle_sidebar, "Hide or show the sidebar",
+        section: "View",
+        icon: "hero-view-columns",
+        keywords: ~w(sidebar panel tree collapse expand),
+        shortcut: "mod+\\",
+        js: JS.dispatch("notebook:toggle-sidebar")
       ),
       action(:log_out, "Log out",
         section: "Account",
