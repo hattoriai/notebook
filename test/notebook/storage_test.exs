@@ -87,6 +87,9 @@ defmodule Notebook.StorageTest do
     refute inspect(stored) =~ "no-more-swords"
     # The secret is the notebook's, encrypted by its vault.
     assert Notebook.Secrets.get("storage.secret_access_key") == "no-more-swords"
+    # Storehouse asks for it each time, and never keeps it in its config.
+    assert Application.get_env(:storehouse, Storehouse.S3) == {Storage, :s3_config, []}
+    assert Storehouse.S3.config()[:secret_access_key] == "no-more-swords"
 
     # A save without the secret keeps it.
     assert {:ok, %{secret?: true}} =

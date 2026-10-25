@@ -209,20 +209,16 @@ defmodule Notebook.Storage do
 
   @doc """
   Makes the store kept the notebook's: Storehouse's (and so Kotoba's)
-  adapter, and the bucket's settings when there is one. At boot, and on
-  each save.
+  adapter, and where it finds the bucket's settings (`s3_config/0`). At
+  boot, and on each save.
   """
   def apply do
     stored = stored()
     config = load(stored)
 
-    if bucket?(config, stored) do
-      Application.put_env(
-        :storehouse,
-        Storehouse.S3,
-        s3(%{config | secret_access_key: secret(stored)})
-      )
-    end
+    # The bucket's config, the secret with it, given each time Storehouse
+    # needs it (`s3_config/0`): the secret never sits in the environment.
+    Application.put_env(:storehouse, Storehouse.S3, {__MODULE__, :s3_config, []})
 
     adapter =
       cond do
@@ -246,6 +242,20 @@ defmodule Notebook.Storage do
 
     Application.put_env(:storehouse, :adapter, adapter)
     :ok
+  end
+
+  @doc """
+  The bucket's config as `Storehouse.S3` takes it, its secret from the
+  vault (`Notebook.Secrets`): Storehouse asks for it each time it needs
+  it. Empty with no bucket kept.
+  """
+  def s3_config do
+    stored = stored()
+    config = load(stored)
+
+    if bucket?(config, stored),
+      do: s3(%{config | secret_access_key: secret(stored)}),
+      else: []
   end
 
   @doc false
