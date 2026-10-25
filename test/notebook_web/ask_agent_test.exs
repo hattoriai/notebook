@@ -95,6 +95,34 @@ defmodule NotebookWeb.AskAgentTest do
     assert is_binary(version)
   end
 
+  test "a selection in the text goes as it is: the answer replaces it", %{
+    conn: conn,
+    hanzo: hanzo,
+    page: page,
+    agent: agent
+  } do
+    {:ok, view, _html} = live(conn, ~p"/pages/#{page.id}/edit")
+
+    selection = %{
+      "anchor" => %{"node" => "t1", "before" => "a3"},
+      "focus" => %{"node" => "t1", "before" => "a9"}
+    }
+
+    render_hook(view, "kotoba:assist", %{
+      "ref" => "r1",
+      "action" => "ask",
+      "text" => "Fold it",
+      "place" => %{"block" => 1, "id" => "b1", "selection" => selection}
+    })
+
+    view |> form("#ask-form", %{"question" => "Make this shorter"}) |> render_submit()
+
+    me = %{id: Agents.key(agent), name: agent.name, kind: :agent}
+
+    assert [%{"data" => %{"place" => %{"at" => ^selection, "label" => "Fold it"}}}] =
+             inbox(me, hanzo)
+  end
+
   test "with no agent, the person is told to connect one", %{
     conn: conn,
     scope: scope,
