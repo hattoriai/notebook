@@ -25,7 +25,7 @@ defmodule Notebook.Storage.Usage do
 
   @doc "The files of `store`: `%{count: n, bytes: bytes}`."
   def files(store) do
-    case Notebook.Storage.all(store) do
+    case Storehouse.list("", adapter: store) do
       {:ok, entries} ->
         Enum.reduce(entries, %{count: 0, bytes: 0}, fn entry, acc ->
           %{count: acc.count + 1, bytes: acc.bytes + entry.bytes}
