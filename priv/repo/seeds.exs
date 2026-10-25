@@ -691,7 +691,13 @@ if Issho.Comments.threads(Notebook.Issho, blade_room) == {:ok, []} do
     )
 
   {:ok, _} =
-    Issho.Comments.reply(Notebook.Issho, blade_room, as.(hanzo), quench, "Wait for me. Thursday, at dawn.")
+    Issho.Comments.reply(
+      Notebook.Issho,
+      blade_room,
+      as.(hanzo),
+      quench,
+      "Wait for me. Thursday, at dawn."
+    )
 
   {:ok, _} =
     Issho.Comments.reply(
@@ -729,9 +735,7 @@ if Issho.Comments.threads(Notebook.Issho, blade_room) == {:ok, []} do
     })
 
   {:ok, _} =
-    Box.update(commissions, wakizashi, %{"Smith" => hanzo_id},
-      actor: Scope.for_user(masamune)
-    )
+    Box.update(commissions, wakizashi, %{"Smith" => hanzo_id}, actor: Scope.for_user(masamune))
 
   # A letter of his is due today: its reminder comes at 09:00, or now.
   text.(
@@ -751,7 +755,8 @@ end
 # read Yuki's invitation to the Tea house already.
 Notebook.Notifications.settle()
 
-for n <- Chime.feed("user:#{hanzo.id}", filter: :all), n.kind == "added_to_space",
+for n <- Chime.feed("user:#{hanzo.id}", filter: :all),
+    n.kind == "added_to_space",
     do: Chime.mark_read("user:#{hanzo.id}", [n.id])
 
 IO.puts("""

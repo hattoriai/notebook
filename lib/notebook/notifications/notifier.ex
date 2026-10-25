@@ -10,8 +10,8 @@ defmodule Notebook.Notifier do
     quote do
       use Chime.Notifier, unquote(opts)
 
-      deliver :feed, if: :may_read?
-      deliver :email, wait: {10, :minute}, unless: :read, if: :may_read?
+      deliver(:feed, if: :may_read?)
+      deliver(:email, wait: {10, :minute}, unless: :read, if: :may_read?)
 
       @doc false
       def may_read?(%{"page_id" => id}, recipient),
@@ -35,7 +35,8 @@ defmodule Notebook.Notifier do
     Swoosh.Email.new(
       to: {recipient.name, recipient.email},
       subject: feed.title,
-      text_body: Enum.join(Enum.reject([feed.title, body, "Open it: " <> link], &is_nil/1), "\n\n"),
+      text_body:
+        Enum.join(Enum.reject([feed.title, body, "Open it: " <> link], &is_nil/1), "\n\n"),
       html_body: """
       <p style="font:16px/1.5 Georgia,serif;color:#1c1917">#{escape(feed.title)}</p>
       #{if body, do: ~s(<blockquote style="margin:0 0 16px;padding-left:12px;border-left:3px solid #e4ddd0;color:#57534e">#{escape(body)}</blockquote>), else: ""}
@@ -48,7 +49,9 @@ defmodule Notebook.Notifier do
 
   @doc "Who did it, as a notification keeps them: an account, or an Issho identity (a person or an agent)."
   def actor(nil), do: nil
-  def actor(%Notebook.Accounts.User{} = user), do: %{"id" => Notebook.Notifications.id(user), "name" => user.name}
+
+  def actor(%Notebook.Accounts.User{} = user),
+    do: %{"id" => Notebook.Notifications.id(user), "name" => user.name}
 
   def actor(%Issho.Identity{key: key, name: name}) do
     case Integer.parse(to_string(key)) do

@@ -9,7 +9,12 @@ defmodule Notebook.Notifications.Mentioned do
 
   @impl true
   def data(%{page: page, body: body, thread: thread}),
-    do: %{"page_id" => page.id, "page" => page.title, "body" => Notifier.excerpt(body), "thread" => thread}
+    do: %{
+      "page_id" => page.id,
+      "page" => page.title,
+      "body" => Notifier.excerpt(body),
+      "thread" => thread
+    }
 
   @impl true
   def actor(%{by: by}), do: Notifier.actor(by)
@@ -36,7 +41,12 @@ defmodule Notebook.Notifications.Replied do
 
   @impl true
   def data(%{page: page, body: body, thread: thread}),
-    do: %{"page_id" => page.id, "page" => page.title, "body" => Notifier.excerpt(body), "thread" => thread}
+    do: %{
+      "page_id" => page.id,
+      "page" => page.title,
+      "body" => Notifier.excerpt(body),
+      "thread" => thread
+    }
 
   @impl true
   def actor(%{by: by}), do: Notifier.actor(by)
@@ -126,11 +136,16 @@ defmodule Notebook.Notifications.Due do
   def recipients(_params), do: []
 
   @impl true
-  def data(%{page: page}), do: %{"page_id" => page.id, "page" => page.title, "due_on" => Date.to_iso8601(page.due_on)}
+  def data(%{page: page}),
+    do: %{"page_id" => page.id, "page" => page.title, "due_on" => Date.to_iso8601(page.due_on)}
 
   @impl true
   def feed(data, _notification),
-    do: %{title: "#{data["page"]} is due today", url: "/pages/#{data["page_id"]}", icon: "calendar"}
+    do: %{
+      title: "#{data["page"]} is due today",
+      url: "/pages/#{data["page_id"]}",
+      icon: "calendar"
+    }
 end
 
 defmodule Notebook.Notifications.Review do

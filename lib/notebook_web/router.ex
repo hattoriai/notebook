@@ -32,7 +32,7 @@ defmodule NotebookWeb.Router do
 
   scope "/" do
     pipe_through :mail
-    chime_mail "/notifications/mail", app_name: "Notebook"
+    chime_mail("/notifications/mail", app_name: "Notebook")
   end
 
   scope "/" do
@@ -99,5 +99,13 @@ defmodule NotebookWeb.Router do
     post "/users/log-in", UserSessionController, :create
     post "/users/register", RegistrationController, :create
     delete "/users/log-out", UserSessionController, :delete
+  end
+
+  # The emails sent in development (the notifications'), to read them.
+  if Application.compile_env(:notebook, :dev_routes) do
+    scope "/dev" do
+      pipe_through :browser
+      forward "/mailbox", Plug.Swoosh.MailboxPreview
+    end
   end
 end

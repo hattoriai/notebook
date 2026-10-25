@@ -24,6 +24,8 @@ defmodule Notebook.Notifications.Resolver do
   end
 
   @impl true
-  def resolve_recipient(%{assigns: %{current_scope: %{user: %User{} = user}}}), do: recipient(user)
+  def resolve_recipient(%{assigns: %{current_scope: %{user: %User{} = user}}}),
+    do: recipient(user)
+
   def resolve_recipient(_nobody), do: nil
 end

@@ -21,9 +21,15 @@ defmodule Notebook.Notifications do
   @categories [
     mentions: [label: "Mentions", description: "Someone mentions you in a comment."],
     replies: [label: "Replies", description: "Someone replies in a thread you are in."],
-    assignments: [label: "Assigned to you", description: "Someone gives you a record of a database."],
+    assignments: [
+      label: "Assigned to you",
+      description: "Someone gives you a record of a database."
+    ],
     spaces: [label: "Spaces", description: "Someone adds you to a space."],
-    dates: [label: "Due dates and reviews", description: "A page of yours is due today, or it is time to review it."]
+    dates: [
+      label: "Due dates and reviews",
+      description: "A page of yours is due today, or it is time to review it."
+    ]
   ]
 
   @doc "Chime's options, for the application's supervisor."
@@ -121,10 +127,20 @@ defmodule Notebook.Notifications do
   end
 
   @doc false
-  def handle_event([:issho, :event], _measures, %{event: %Issho.Event{name: "comment.created"} = event}, _),
-    do: run(fn -> comment(event) end)
+  def handle_event(
+        [:issho, :event],
+        _measures,
+        %{event: %Issho.Event{name: "comment.created"} = event},
+        _
+      ),
+      do: run(fn -> comment(event) end)
 
-  def handle_event([:cardbox, :change], _measures, %{event: %Cardbox.Event{type: type} = event}, _)
+  def handle_event(
+        [:cardbox, :change],
+        _measures,
+        %{event: %Cardbox.Event{type: type} = event},
+        _
+      )
       when type in [:record_inserted, :record_updated],
       do: run(fn -> record(event) end)
 
@@ -170,7 +186,11 @@ defmodule Notebook.Notifications do
   # The accounts of keys of Issho (a person's is their id), but one.
   defp users(keys, except) do
     ids =
-      for key <- keys, key != except, {id, ""} <- [Integer.parse(to_string(key))], uniq: true, do: id
+      for key <- keys,
+          key != except,
+          {id, ""} <- [Integer.parse(to_string(key))],
+          uniq: true,
+          do: id
 
     if ids == [], do: [], else: Repo.all(from_ids(ids))
   end
@@ -253,28 +273,45 @@ defmodule Notebook.Notifications do
     now = DateTime.utc_now()
 
     if page.due_on do
-      at = page.due_on |> DateTime.new!(~T[09:00:00], time_zone()) |> DateTime.shift_zone!("Etc/UTC")
+      at =
+        page.due_on |> DateTime.new!(~T[09:00:00], time_zone()) |> DateTime.shift_zone!("Etc/UTC")
 
-      if Date.compare(page.due_on, DateTime.to_date(DateTime.shift_zone!(now, time_zone()))) != :lt,
-        do: Chime.notify(N.Due, %{page: page}, to: author, at: later(at, now), key: key(page, :due))
+      if Date.compare(page.due_on, DateTime.to_date(DateTime.shift_zone!(now, time_zone()))) !=
+           :lt,
+         do:
+           Chime.notify(N.Due, %{page: page},
+             to: author,
+             at: later(at, now),
+             key: key(page, :due)
+           )
     end
 
     if page.review_at && DateTime.compare(page.review_at, now) == :gt,
-      do: Chime.notify(N.Review, %{page: page}, to: author, at: page.review_at, key: key(page, :review))
+      do:
+        Chime.notify(N.Review, %{page: page},
+          to: author,
+          at: page.review_at,
+          key: key(page, :review)
+        )
 
     :ok
   end
 
   def remind(_page), do: :ok
 
-  defp later(at, now), do: if(DateTime.compare(at, now) == :gt, do: at, else: DateTime.add(now, 1))
+  defp later(at, now),
+    do: if(DateTime.compare(at, now) == :gt, do: at, else: DateTime.add(now, 1))
 
   # The reminders of a page that still wait for their time.
   defp cancel_reminders(%Page{id: id}) do
     import Ecto.Query
 
     for prefix <- ["due:page:#{id}:", "review:page:#{id}:"],
-        event <- Repo.all(from e in Chime.Event, where: like(e.key, ^(prefix <> "%")) and e.status == "scheduled"),
+        event <-
+          Repo.all(
+            from e in Chime.Event,
+              where: like(e.key, ^(prefix <> "%")) and e.status == "scheduled"
+          ),
         do: Chime.cancel(event)
   end
 

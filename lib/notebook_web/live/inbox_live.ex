@@ -114,7 +114,9 @@ defmodule NotebookWeb.InboxLive do
           <div class="page-heading">
             <p class="eyebrow"><.icon name="hero-inbox" class="size-3.5" /> For you</p>
             <h1>Inbox</h1>
-            <p>What people said to you and gave you, and what's due. Archive what you've dealt with.</p>
+            <p>
+              What people said to you and gave you, and what's due. Archive what you've dealt with.
+            </p>
           </div>
 
           <div class="inbox-bar">
@@ -152,11 +154,19 @@ defmodule NotebookWeb.InboxLive do
                     <.icon name={kind_icon(item.feed[:icon])} class="size-4" />
                   <% end %>
                 </span>
-                <button type="button" class="inbox-open" phx-click="chime:visit" phx-value-id={item.id}>
+                <button
+                  type="button"
+                  class="inbox-open"
+                  phx-click="chime:visit"
+                  phx-value-id={item.id}
+                >
                   <span class="inbox-title">{item.feed.title}</span>
                   <span :if={item.feed[:body]} class="inbox-body">{item.feed[:body]}</span>
                   <time datetime={DateTime.to_iso8601(item.notification.updated_at)}>
-                    {Calendar.strftime(DateTime.shift_zone!(item.notification.updated_at, Notifications.time_zone()), "%H:%M")}
+                    {Calendar.strftime(
+                      DateTime.shift_zone!(item.notification.updated_at, Notifications.time_zone()),
+                      "%H:%M"
+                    )}
                   </time>
                 </button>
                 <div class="inbox-actions">
@@ -223,5 +233,8 @@ defmodule NotebookWeb.InboxLive do
 
   defp empty(:unread), do: "Nothing unread. You're all caught up."
   defp empty(:archived), do: "Nothing archived yet."
-  defp empty(:inbox), do: "Nothing here yet. When someone mentions you, replies to you or gives you something, it's here."
+
+  defp empty(:inbox),
+    do:
+      "Nothing here yet. When someone mentions you, replies to you or gives you something, it's here."
 end
