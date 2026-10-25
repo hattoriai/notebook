@@ -10,8 +10,7 @@
 @import "../../deps/masu/priv/static/masu.css";
 @import "../../deps/koyomi/priv/static/koyomi.css";
 @import "../../deps/jumon/priv/static/jumon.css";
-/* Until Narabe's tree of several tables is on Hex: its sources. */
-@import "../../deps/narabe/assets/css/narabe.css";
+@import "../../deps/narabe/priv/static/narabe.css";
 /* @import "../../deps/jumon/priv/static/jumon-sumi.css"; */
 @source "../css";
 @source "../js";

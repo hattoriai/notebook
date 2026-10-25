@@ -4,7 +4,7 @@ A shared notebook where people and agents work together, live: a Phoenix app bui
 
 ## Run locally
 
-Notebook uses the published Kotoba, Hakushi, Masu, Koyomi, Jumon and Sekisho from Hex, as your app would, Issho's main branch until Issho 0.4.0 is on Hex, and Narabe's branch with trees of several tables until it is released (`mix.exs`, the `issho` and `narabe` aliases in `config/config.exs`, and their style sheets in `app.css`). With Elixir 1.18 or later (`.tool-versions` pins the versions used here):
+Notebook uses the published Kotoba, Hakushi, Masu, Koyomi, Jumon, Sekisho and Narabe from Hex, as your app would, and Issho's main branch until Issho 0.4.0 is on Hex (`mix.exs`, the `issho` alias in `config/config.exs`, and Issho's style sheet in `app.css`). With Elixir 1.18 or later (`.tool-versions` pins the versions used here):
 
 ```sh
 mix setup
