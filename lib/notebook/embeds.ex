@@ -28,5 +28,15 @@ defmodule Notebook.Embeds do
     end
   end
 
+  # A chart is its words and its table (Fude.Export), for a reader who may
+  # read its source.
+  def render(scope, %{kind: "chart", ref: ref}, format)
+      when format in [:markdown, :html, :text] do
+    case Notebook.Charts.get(scope, ref) do
+      nil -> nil
+      chart -> Fude.Export.render(chart.spec, format, Notebook.Charts.rows(chart.source_id))
+    end
+  end
+
   def render(_scope, _embed, _format), do: nil
 end

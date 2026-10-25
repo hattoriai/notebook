@@ -107,6 +107,60 @@ defmodule NotebookWeb.SpacesLiveTest do
     refute is_nil(Pages.get!(scope, blade.id).folder_id)
   end
 
+  test "a chart in a page reads live, and moves as its table's rows change", %{
+    conn: conn,
+    hanzo: hanzo,
+    scope: scope,
+    forge: forge
+  } do
+    {:ok, table} =
+      Pages.create(scope, %{"title" => "Blades", "kind" => "table", "space_id" => forge.id})
+
+    row =
+      Notebook.Repo.insert!(%Notebook.Pages.Row{
+        page_id: table.id,
+        title: "Fold",
+        status: "done",
+        points: 5
+      })
+
+    {:ok, page} = Pages.create(scope, %{"title" => "Numbers", "space_id" => forge.id})
+    {:ok, chart} = Notebook.Charts.create(scope, page, table, "points_by_status")
+
+    body =
+      Kotoba.Content.from_markdown("""
+      <!-- kotoba:embed {"kind":"chart","ref":"#{chart.id}","title":"Points by status"} -->
+
+      Points by status
+
+      <!-- /kotoba:embed -->
+      """)
+
+    {:ok, page} = Pages.update(scope, page, %{"body" => body})
+
+    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{page.id}")
+    assert has_element?(view, "#body-reader[data-readonly='true']")
+
+    # The editor tells the page its embed's slot, as it does in the browser.
+    view
+    |> with_target("#body-reader-embeds")
+    |> render_hook("kotoba:embeds", %{
+      "action" => "mount",
+      "slot" => "body-reader-embed-1",
+      "kind" => "chart",
+      "ref" => to_string(chart.id),
+      "title" => "Points by status"
+    })
+
+    assert [%{"Points" => 5}] = chart_data(view, "body-reader-embed-1")
+
+    # A row changes, as the table's grid writes and broadcasts it.
+    row = row |> Ecto.Changeset.change(points: 8) |> Notebook.Repo.update!()
+    Masu.Live.broadcast_upsert(Notebook.PubSub, "page-rows:#{table.id}", row)
+    _ = :sys.get_state(view.pid)
+    assert [%{"Points" => 8}] = chart_data(view, "body-reader-embed-1")
+  end
+
   test "the sidebar follows changes others make", %{
     conn: conn,
     hanzo: hanzo,
@@ -238,5 +292,17 @@ defmodule NotebookWeb.SpacesLiveTest do
     assert %{"ok" => true} = run(view, "move-#{forge.id}-")
     assert %{space_id: space_id, folder_id: nil} = Pages.get!(scope, blade.id)
     assert space_id == forge.id
+  end
+
+  # The data of a chart in an embed's slot: LiveView renders the embed in a
+  # portal (a <template>), whose content Fude.Test reads as its own page.
+  defp chart_data(view, slot) do
+    [_, content] =
+      Regex.run(
+        ~r/<template[^>]*data-phx-portal="##{slot}"[^>]*>(.*?)<\/template>/s,
+        render(view)
+      )
+
+    Fude.Test.data(content, "chart-" <> slot)
   end
 end

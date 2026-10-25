@@ -1,7 +1,7 @@
 defmodule NotebookWeb.NotebookLive do
   use NotebookWeb, :live_view
 
-  alias Notebook.Pages
+  alias Notebook.{Charts, Pages}
   alias Phoenix.LiveView.JS
   alias Notebook.Pages.Page
 
@@ -370,9 +370,18 @@ defmodule NotebookWeb.NotebookLive do
     do: assign(socket, issho: nil, grid: Notebook.Grids.rows(page))
 
   defp assign_kind(socket, page) do
+    charts = Charts.embeddable(socket.assigns.current_scope, page)
+
+    # A chart moves as its spec or its table's rows change.
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Notebook.PubSub, Charts.topic(page.id))
+      Charts.watch_rows(for {_id, %{chart: chart}} <- charts, do: chart.source_id)
+    end
+
     assign(socket,
       boards: embeddable(socket.assigns.current_scope, "board"),
       tables: embeddable(socket.assigns.current_scope, "table"),
+      charts: charts,
       issho: [
         instance: Notebook.Issho,
         document: "#{Notebook.Collaboration.room(page)}/body",
@@ -412,6 +421,7 @@ defmodule NotebookWeb.NotebookLive do
 
   defp embedded(assigns, "board"), do: assigns.boards
   defp embedded(assigns, "table"), do: assigns.tables
+  defp embedded(assigns, "chart"), do: assigns.charts
   defp embedded(_assigns, _kind), do: %{}
 
   # The person, as every part of the page knows them: the same key, name
@@ -509,6 +519,19 @@ defmodule NotebookWeb.NotebookLive do
   defp embedded(%{found: nil} = assigns) do
     ~H"""
     <p class="embed-gone">{@embed.title}: this {@embed.kind} is gone.</p>
+    """
+  end
+
+  defp embedded(%{embed: %{kind: "chart"}} = assigns) do
+    ~H"""
+    <.chart
+      id={"chart-" <> @embed.id}
+      spec={@found.chart.spec}
+      data={@found.rows}
+      issho={Charts.document(@found.chart)}
+      height={if @embed.full, do: :fill, else: 300}
+      class="embedded-chart"
+    />
     """
   end
 
@@ -871,8 +894,33 @@ defmodule NotebookWeb.NotebookLive do
               </dd>
             </div>
           </dl>
-          <article :if={@live_action == :show} class="page-body">
+          <article :if={@live_action == :show and not live_embeds?(@page)} class="page-body">
             <.kotoba_content content={@page.body} embed={Notebook.Embeds.renderer(@current_scope)} />
+          </article>
+          <%!-- A page with boards, tables or charts reads in a read-only editor, its embeds live. --%>
+          <article
+            :if={@live_action == :show and live_embeds?(@page)}
+            class="page-body page-body-live"
+          >
+            <.kotoba
+              field={@form[:body]}
+              id="body-reader"
+              label="Body"
+              readonly
+              show_toolbar={false}
+              extensions={[~p"/assets/kotoba/extensions/callout.js"]}
+              embeds
+            />
+            <.kotoba_embeds for="body-reader" readonly>
+              <:embed :let={embed}>
+                <.embedded
+                  embed={embed}
+                  found={embedded(assigns, embed.kind)[embed.ref]}
+                  user={user(assigns)}
+                  scope={@current_scope}
+                />
+              </:embed>
+            </.kotoba_embeds>
           </article>
           <.form
             :if={@live_action == :edit}
@@ -942,7 +990,7 @@ defmodule NotebookWeb.NotebookLive do
             for="body-editor"
             label="Embed"
             icon="embed"
-            picker_title="Embed a board or a table"
+            picker_title="Embed a board, a table or a chart"
             resolve={&resolve_embed(@current_scope, &1)}
           >
             <:embed :let={embed}>
@@ -972,6 +1020,16 @@ defmodule NotebookWeb.NotebookLive do
                 title={table.page.title}
                 about="Rows of tasks, live in the text"
               />
+              <h3 :if={@tables != %{}}>Charts of a table</h3>
+              <%= for {id, table} <- @tables, {preset, name, about} <- Charts.presets() do %>
+                <.kotoba_embed_option
+                  phx-click="embed_chart"
+                  phx-value-source={id}
+                  phx-value-preset={preset}
+                  title={"#{name}: #{table.page.title}"}
+                  about={about}
+                />
+              <% end %>
             </:picker>
           </.kotoba_embeds>
         </div>
@@ -994,6 +1052,15 @@ defmodule NotebookWeb.NotebookLive do
 
   # Maximize a board or a table to the window (Esc restores it), or to the
   # whole screen: the .Maximize hook of the frame they are in.
+  # Whether a text has embeds, which its reader shows live.
+  defp live_embeds?(%Page{
+         kind: "text",
+         body: %Kotoba.Content{doc: %{"root" => %{"children" => children}}}
+       }),
+       do: Enum.any?(children, &(&1["type"] == "embed"))
+
+  defp live_embeds?(_page), do: false
+
   # What the sidebar marks as open.
   defp current(%{live_action: :index}), do: :home
   defp current(%{page: %Page{id: id}}), do: {:page, id}
@@ -1349,6 +1416,27 @@ defmodule NotebookWeb.NotebookLive do
   end
 
   @impl true
+  # A chart of a table, made from one of its presets, in the text.
+  def handle_event("embed_chart", %{"source" => source_id, "preset" => preset}, socket) do
+    %{current_scope: scope, page: page} = socket.assigns
+    %{page: source} = Map.fetch!(socket.assigns.tables, source_id)
+
+    case Charts.create(scope, page, source, preset) do
+      {:ok, chart} ->
+        Charts.watch_rows([chart.source_id])
+
+        {:noreply,
+         socket
+         |> assign(charts: Charts.embeddable(scope, page))
+         |> Kotoba.Live.insert_embed("body-editor", "chart", to_string(chart.id),
+           title: chart.spec["title"]
+         )}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Could not make that chart.")}
+    end
+  end
+
   def handle_event("embed_page", %{"id" => id, "kind" => kind}, socket)
       when kind in ["board", "table"] do
     %{page: page} = Map.fetch!(embedded(socket.assigns, kind), id)
@@ -1467,6 +1555,15 @@ defmodule NotebookWeb.NotebookLive do
   def handle_event("kotoba:prompt", params, socket),
     do:
       {:noreply, Kotoba.Live.handle_prompt(socket, params, prompts(socket.assigns.current_scope))}
+
+  # A chart's spec changed (a person or an agent), or a row of its table.
+  @impl true
+  def handle_info({event, _id}, %{assigns: %{page: %Page{kind: "text"} = page}} = socket)
+      when event in [:chart_changed, :chart_rows] do
+    {:noreply, assign(socket, charts: Charts.embeddable(socket.assigns.current_scope, page))}
+  end
+
+  def handle_info(_message, socket), do: {:noreply, socket}
 
   defp handle_progress(:attachments, entry, socket) do
     if entry.done?,

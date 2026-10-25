@@ -4,7 +4,7 @@ A shared notebook where people and agents work together, live: a Phoenix app bui
 
 ## Run locally
 
-Notebook uses the published Kotoba, Hakushi, Masu, Koyomi, Jumon, Sekisho and Narabe from Hex, as your app would, and Issho's main branch until Issho 0.4.0 is on Hex (`mix.exs`, the `issho` alias in `config/config.exs`, and Issho's style sheet in `app.css`). With Elixir 1.18 or later (`.tool-versions` pins the versions used here):
+Notebook uses the published Kotoba, Hakushi, Masu, Koyomi, Jumon, Sekisho, Narabe and Fude from Hex, as your app would, and Issho's main branch until Issho 0.4.0 is on Hex (`mix.exs`, the `issho` alias in `config/config.exs`, and Issho's style sheet in `app.css`). With Elixir 1.18 or later (`.tool-versions` pins the versions used here):
 
 ```sh
 mix setup
@@ -49,6 +49,8 @@ The sample pages (`mix setup`, or `mix run priv/repo/seeds.exs`) are **A tour of
 - Open a space for its folders and pages. An editor makes pages and folders (two levels deep at most), an admin renames the space and manages its **Members**: viewer, commenter, editor, admin. Make your own with **New space**.
 - On a page, ⌘K has **Move to…** (a space you edit, and its folders) and **Archive this page**. An archived page leaves the sidebar and the lists for the **Archive**, where it can be restored. *Sword orders, 1998* is archived already.
 - As Yuki in *The forge*, a page reads and takes comments, and does not open for editing.
+- **The forge in numbers** has charts of *Blades in progress* ([Fude](https://github.com/hattoriai/fude)): change a row in the table and the bars move, on the page and in the editor. In a text's editor, **Embed** has *Charts of a table* for every table you may read. Ask your agent "In *The forge in numbers*, make the first chart show points by owner": it reads the chart and its data (`read_chart`) and changes it (`change_chart`), live. Copied as Markdown, or read by an agent, a chart is its title and its table. A chart's data shows only to someone who may read its table.
+- A text with boards, tables or charts reads with them live, in a read-only editor; a text without reads as server-rendered HTML.
 
 - Open a page in two browsers, as two people: each is in the page's list of people once, and their pointers move over the whole page, on the same part of the other's page whatever its size; a click rings.
 - Make a **New page** of each kind. On a board, drag a **Card**, a **Note** or a **Frame** onto the paper, or double-click it; join cards from their sides, and the arrows say *then*; a page card opens its page. Cards snap to the paper's grid, and the controls zoom, fit, tidy up, undo and download the board. On a table, edit a cell as in a spreadsheet, paste rows from one, add and delete rows: the others see each change in the color of who made it, and a cell someone types in is theirs until they are done.

@@ -39,6 +39,7 @@ defmodule Notebook.Collaboration do
   def document(_identity, "page:" <> rest) do
     case String.split(rest, "/") do
       [_id, "body"] -> Kotoba.Issho.document(store: {Notebook.CollabStore, Repo})
+      [_id, "chart:" <> chart_id] -> Notebook.Charts.shared(chart_id)
       [id] -> board(id)
       _other -> {:error, :not_found}
     end

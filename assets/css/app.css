@@ -11,6 +11,7 @@
 @import "../../deps/koyomi/priv/static/koyomi.css";
 @import "../../deps/jumon/priv/static/jumon.css";
 @import "../../deps/narabe/priv/static/narabe.css";
+@import "../../deps/fude/priv/static/fude.css";
 /* @import "../../deps/jumon/priv/static/jumon-sumi.css"; */
 @source "../css";
 @source "../js";
@@ -675,3 +676,9 @@ html.space-maximized { overflow: hidden; }
 .member-list .account-avatar { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 36px; height: 36px; border-radius: 50%; background: #e8e0d2; color: var(--ink); font: 600 11px ui-sans-serif, system-ui, sans-serif; letter-spacing: .03em; }
 .sidebar .narabe-handle { opacity: 0; transition: opacity .15s ease; }
 .sidebar .narabe-item:hover > .narabe-content .narabe-handle, .sidebar .narabe-item:focus-visible > .narabe-content .narabe-handle { opacity: .8; }
+
+/* A page with live embeds reads in a read-only editor: no box, the reader's type. */
+.page-body-live .kotoba { border: 0; border-radius: 0; background: none; --kotoba-padding: 0; --kotoba-min-height: 0; --kotoba-font-size: 1.12rem; --kotoba-line-height: 1.8; }
+.page-body-live .kotoba:focus-within { box-shadow: none; }
+.page-body-live .kotoba-editable > :where(p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote) { max-width: 46em; }
+.embedded-chart { margin: .5em 0; }

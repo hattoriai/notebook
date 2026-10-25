@@ -9,7 +9,8 @@ defmodule Notebook.Tools do
   @doc "Every tool of the Notebook, for MCP (NotebookWeb.MCP) or an app's own model."
   def all do
     [Notebook.Tools.ListPages, Notebook.Tools.CreatePage] ++
-      Issho.Tools.room() ++ Kotoba.Issho.tools() ++ Hakushi.Issho.tools() ++ Masu.Issho.tools()
+      Issho.Tools.room() ++
+      Kotoba.Issho.tools() ++ Hakushi.Issho.tools() ++ Masu.Issho.tools() ++ Fude.Issho.tools()
   end
 
   @doc """
@@ -49,7 +50,18 @@ defmodule Notebook.Tools do
             %{"grid" => room <> "/rows", "tools" => "read_grid, edit_cells, add_rows, ..."}
 
           _text ->
-            %{"document" => room <> "/body", "tools" => "read_text, select_text, type_text, ..."}
+            %{
+              "document" => room <> "/body",
+              "tools" => "read_text, select_text, type_text, ...",
+              "charts" =>
+                for chart <- Notebook.Repo.all(Ecto.assoc(page, :charts)) do
+                  %{
+                    "chart" => Notebook.Charts.document(chart),
+                    "title" => chart.spec["title"],
+                    "tools" => "read_chart, change_chart"
+                  }
+                end
+            }
         end
     }
   end

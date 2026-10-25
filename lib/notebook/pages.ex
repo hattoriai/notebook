@@ -66,6 +66,9 @@ defmodule Notebook.Pages do
   """
   def fetch(id), do: Repo.get(Page, id)
 
+  @doc "`:ok` when the scope may do what the permission says with the page, or `{:error, %Sekisho.Denied{}}`."
+  def authorize(scope, permission, page), do: Permissions.authorize(scope, permission, page)
+
   @doc "Whether the scope may do what the permission says with the page."
   def allowed?(scope, permission, page), do: Permissions.allowed?(scope, permission, page)
 
