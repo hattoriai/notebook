@@ -1,6 +1,8 @@
 defmodule Notebook.Permissions.FolderPolicy do
   @moduledoc false
-  # A folder is its space's: its members' roles are their roles on it.
+  # A folder is its space's: its members' roles are their roles on it; and
+  # a folder in a folder is its parent's. Its editors share it, and its
+  # pages with it, with a person or with anyone who has a link (to read).
   use Sekisho.Policy, for: Notebook.Spaces.Folder
 
   permissions([:read, :comment, :edit, :manage])
@@ -18,4 +20,11 @@ defmodule Notebook.Permissions.FolderPolicy do
   derive(:editor, from: {:space, :editor})
   derive(:commenter, from: {:space, :commenter})
   derive(:viewer, from: {:space, :viewer})
+
+  derive(:admin, from: {:parent, :admin})
+  derive(:editor, from: {:parent, :editor})
+  derive(:commenter, from: {:parent, :commenter})
+  derive(:viewer, from: {:parent, :viewer})
+
+  grant_to([:user, :link], by: :edit, link_up_to: :viewer)
 end

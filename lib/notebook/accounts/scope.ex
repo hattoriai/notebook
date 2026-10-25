@@ -18,7 +18,7 @@ defmodule Notebook.Accounts.Scope do
 
   alias Notebook.Accounts.User
 
-  defstruct user: nil
+  defstruct user: nil, link_tokens: []
 
   @doc """
   Creates a scope for the given user.
@@ -30,4 +30,13 @@ defmodule Notebook.Accounts.Scope do
   end
 
   def for_user(nil), do: nil
+
+  @doc """
+  The scope with the tokens of the links its person followed (pages and
+  folders shared with anyone who has the link): what they may open.
+  """
+  def with_links(%__MODULE__{} = scope, tokens) when is_list(tokens),
+    do: %{scope | link_tokens: tokens}
+
+  def with_links(nil, _tokens), do: nil
 end

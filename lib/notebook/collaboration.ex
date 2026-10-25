@@ -2,8 +2,9 @@ defmodule Notebook.Collaboration do
   @moduledoc """
   Who may be in a page's room, and what its shared documents are (Issho's
   policy). A person may do in a page's room what their role in its space
-  lets them (`Notebook.Permissions`): a viewer joins and reads, a
-  commenter also comments, an editor also writes. An agent may do what
+  lets them (`Notebook.Permissions`), or a share of the page (with them,
+  or a link they followed): a viewer joins and reads, a commenter also
+  comments, an editor also writes. An agent may do what
   the person it works for may.
 
   A page is the room `"page:<id>"`: its text is the document
@@ -21,7 +22,7 @@ defmodule Notebook.Collaboration do
     with {:ok, user} <- account(identity),
          {page_id, ""} <- Integer.parse(id),
          %Pages.Page{} = page <- Pages.fetch(page_id),
-         true <- Permissions.allowed?(Scope.for_user(user), permission(action), page) do
+         true <- Permissions.allowed?(scope(user, identity), permission(action), page) do
       :ok
     else
       _ -> {:error, :forbidden}
@@ -73,6 +74,11 @@ defmodule Notebook.Collaboration do
   end
 
   def page_id(_other), do: nil
+
+  # The person's scope, with the links they followed (`Notebook.Sharing`),
+  # which their identity carries, signed, from the page they joined from.
+  defp scope(user, %Issho.Identity{claims: claims}),
+    do: user |> Scope.for_user() |> Scope.with_links(claims[:links] || claims["links"] || [])
 
   # A person signs in with an account; an agent works for one.
   defp account(%Issho.Identity{on_behalf_of: %Issho.Identity{} = person}), do: account(person)

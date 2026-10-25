@@ -26,6 +26,10 @@ defmodule Notebook.Notifications do
       description: "Someone gives you a record of a database."
     ],
     spaces: [label: "Spaces", description: "Someone adds you to a space."],
+    sharing: [
+      label: "Shared with you",
+      description: "Someone shares a page or a folder with you."
+    ],
     dates: [
       label: "Due dates and reviews",
       description: "A page of yours is due today, or it is time to review it."
@@ -247,6 +251,10 @@ defmodule Notebook.Notifications do
   end
 
   ## Spaces and dates
+
+  @doc "Tells a person a page or a folder was shared with them, as a role, by whom."
+  def shared(resource, %User{} = user, role, %User{} = by),
+    do: Chime.notify(N.Shared, %{resource: resource, role: role, by: by}, to: user)
 
   @doc "Tells a person they were added to a space, by whom."
   def added_to_space(space, %User{} = user, role, %User{} = by),

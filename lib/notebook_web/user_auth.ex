@@ -69,7 +69,10 @@ defmodule NotebookWeb.UserAuth do
     with {token, conn} <- ensure_user_token(conn),
          {user, token_inserted_at} <- Accounts.get_user_by_session_token(token) do
       conn
-      |> assign(:current_scope, Scope.for_user(user))
+      |> assign(
+        :current_scope,
+        user |> Scope.for_user() |> Scope.with_links(get_session(conn, :link_tokens) || [])
+      )
       |> maybe_reissue_user_session_token(user, token_inserted_at)
     else
       nil -> assign(conn, :current_scope, Scope.for_user(nil))
@@ -253,8 +256,26 @@ defmodule NotebookWeb.UserAuth do
           Accounts.get_user_by_session_token(user_token)
         end || {nil, nil}
 
-      Scope.for_user(user)
+      user |> Scope.for_user() |> Scope.with_links(session["link_tokens"] || [])
     end)
+  end
+
+  @links_kept 50
+
+  @doc """
+  Keeps the token of a shared link (`?key=`, a page or a folder shared
+  with anyone who has the link) in the session: the scope carries the
+  links its person followed, and they may open what those share.
+  """
+  def keep_link_token(conn, _opts) do
+    case conn.params do
+      %{"key" => key} when is_binary(key) and byte_size(key) in 16..128 ->
+        tokens = get_session(conn, :link_tokens) || []
+        put_session(conn, :link_tokens, Enum.take(Enum.uniq([key | tokens]), @links_kept))
+
+      _ ->
+        conn
+    end
   end
 
   @doc "Returns the path to redirect to after log in."

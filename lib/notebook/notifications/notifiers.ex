@@ -128,6 +128,52 @@ defmodule Notebook.Notifications.AddedToSpace do
   defp article(_role), do: "a"
 end
 
+defmodule Notebook.Notifications.Shared do
+  @moduledoc "Someone shared a page or a folder with a person."
+  use Notebook.Notifier, category: :sharing
+
+  @impl true
+  def recipients(_params), do: []
+
+  @impl true
+  def data(%{resource: %Notebook.Pages.Page{} = page, role: role}),
+    do: %{"page_id" => page.id, "page" => page.title, "role" => role}
+
+  def data(%{resource: %Notebook.Spaces.Folder{} = folder, role: role}),
+    do: %{
+      "folder_id" => folder.id,
+      "space_id" => folder.space_id,
+      "folder" => folder.name,
+      "role" => role
+    }
+
+  @impl true
+  def actor(%{by: by}), do: Notebook.Notifier.actor(by)
+
+  @impl true
+  def feed(%{"page" => page} = data, notification) do
+    %{
+      title: "#{Chime.actors(notification)} shared #{page} with you",
+      body: "You can #{can(data["role"])} it.",
+      url: "/pages/#{data["page_id"]}",
+      icon: "share"
+    }
+  end
+
+  def feed(%{"folder" => folder} = data, notification) do
+    %{
+      title: "#{Chime.actors(notification)} shared the folder #{folder} with you",
+      body: "You can #{can(data["role"])} its pages.",
+      url: "/spaces/#{data["space_id"]}/folders/#{data["folder_id"]}",
+      icon: "share"
+    }
+  end
+
+  defp can("editor"), do: "edit"
+  defp can("commenter"), do: "read and comment on"
+  defp can(_viewer), do: "read"
+end
+
 defmodule Notebook.Notifications.Due do
   @moduledoc "A page of a person's is due today (at 09:00 of its due day)."
   use Notebook.Notifier, category: :dates

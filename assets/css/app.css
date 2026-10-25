@@ -792,3 +792,31 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 .settings-wide { grid-column: 1 / -1; }
 .chime-preferences { font: 13px/1.4 ui-sans-serif, system-ui, sans-serif; }
 .chime-preferences th { font-weight: 600; }
+
+/* Sharing: the Share dialog of a page or a folder, and the sidebar's
+   "Shared with you". */
+.share-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: start center; padding: 12vh 16px 16px; background: rgba(35, 38, 34, .28); }
+.share-dialog { width: min(34rem, 100%); max-height: 76vh; overflow: auto; padding: 22px 24px 24px; border-radius: 14px; background: #fbf9f4; box-shadow: 0 30px 60px -24px rgba(35, 38, 34, .45), 0 0 0 1px var(--rule); font: 13.5px/1.45 ui-sans-serif, system-ui, sans-serif; }
+.share-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.share-head h2 { margin: 4px 0 0; font: 400 1.6rem/1.15 "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; letter-spacing: -.02em; }
+.share-close { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; }
+.share-close:hover { background: #ece7dc; color: var(--ink); }
+.share-invite { display: flex; gap: 8px; margin-bottom: 18px; }
+.share-invite select:first-child { flex: 1; min-width: 0; }
+.share-dialog select { padding: 7px 28px 7px 10px; border: 1px solid var(--rule); border-radius: 8px; background-color: #fff; color: var(--ink); font: inherit; }
+.share-dialog h3 { margin: 16px 0 6px; font: 600 10.5px/1.4 ui-sans-serif, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.share-people { list-style: none; margin: 0; padding: 0; }
+.share-people li, .share-link { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+.share-avatar { flex: none; display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; background: #e8e0d2; font: 600 11px ui-sans-serif, system-ui, sans-serif; letter-spacing: .03em; }
+.share-avatar.is-space { background: #e6ead9; color: #4d5a37; }
+.share-avatar.is-link { background: #f1e3d9; color: var(--accent); }
+.share-who { flex: 1; min-width: 0; display: grid; }
+.share-who small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.share-remove { display: inline-grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
+.share-remove:hover { background: #ece7dc; color: var(--ink); }
+.share-url { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 12px; padding: 12px; border-radius: 10px; background: #f3ede1; }
+.share-url input { min-width: 0; padding: 7px 10px; border: 1px solid var(--rule); border-radius: 8px; background: #fff; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); }
+.share-url p, .share-note { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 12px; }
+.share-note { margin-top: 10px; }
+.sidebar-shared-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.sidebar-shared-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

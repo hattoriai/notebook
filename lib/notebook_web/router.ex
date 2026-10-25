@@ -12,6 +12,7 @@ defmodule NotebookWeb.Router do
     plug :put_root_layout, html: {NotebookWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug :keep_link_token
     plug :fetch_current_scope_for_user
   end
 

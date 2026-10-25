@@ -50,6 +50,12 @@ window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 window.addEventListener("phx:page-loading-stop", () => highlightRenderedContent())
 window.addEventListener("DOMContentLoaded", () => highlightRenderedContent())
 
+// Copies the value of the element it is dispatched to (a share link).
+window.addEventListener("notebook:copy", ({target}) => {
+  target.select?.()
+  navigator.clipboard?.writeText(target.value ?? target.textContent ?? "")
+})
+
 // connect if there are any LiveViews on the page
 liveSocket.connect()
 
