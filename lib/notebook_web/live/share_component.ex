@@ -218,8 +218,8 @@ defmodule NotebookWeb.ShareComponent do
   defp agents_hint(page) do
     cond do
       space_closed?(page) -> "Its space is off limits to agents."
-      page.closed_to_agents -> "No agent reads it, finds it or joins it, though its people's may."
-      true -> "The agents of its people may do here what they may."
+      page.closed_to_agents -> "No agent reads it, finds it or joins it."
+      true -> "Its people's agents may do what they may."
     end
   end
 
