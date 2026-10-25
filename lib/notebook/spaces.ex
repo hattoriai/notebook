@@ -112,7 +112,11 @@ defmodule Notebook.Spaces do
   """
   def set_closed_to_agents(scope, %Space{} = space, closed?) when is_boolean(closed?) do
     with :ok <- Permissions.authorize(scope, :manage, space) do
-      space |> Ecto.Changeset.change(closed_to_agents: closed?) |> Repo.update() |> changed()
+      space
+      |> Ecto.Changeset.change()
+      |> Ecto.Changeset.force_change(:closed_to_agents, closed?)
+      |> Repo.update()
+      |> changed()
     end
   end
 

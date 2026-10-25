@@ -171,7 +171,10 @@ defmodule Notebook.Pages do
   def set_closed_to_agents(scope, page, closed?) when is_boolean(closed?) do
     with :ok <- Permissions.authorize(scope, :edit, page),
          {:ok, updated} <-
-           page |> Ecto.Changeset.change(closed_to_agents: closed?) |> Repo.update() do
+           page
+           |> Ecto.Changeset.change()
+           |> Ecto.Changeset.force_change(:closed_to_agents, closed?)
+           |> Repo.update() do
       saved({:ok, updated})
       {:ok, Repo.preload(updated, [:author, :space, :folder], force: true)}
     end

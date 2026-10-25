@@ -16,6 +16,14 @@ defmodule Notebook.Memory do
 
   Paths are absolute within the memory (`"/notes/hanzo.md"`); a
   directory is there when a file is under it, or when it was made.
+
+  A file keeps where it was learned: the pages whose rooms its agent was
+  in when it wrote it (`:sources`), every one it was ever written from. A
+  note learned on a page the agent may no longer read (off limits to
+  agents, or its person lost it) is not there for the agent
+  (`hidden/2`), by the same permissions as the page: what it learned
+  there does not leave it. Its person still sees it, and may let the
+  agent see it again (`forget_sources/2`).
   """
   import Ecto.Query
 
@@ -74,15 +82,56 @@ defmodule Notebook.Memory do
   Writes a file, made or replaced: `{:ok, file}`, or why not
   (`:eisdir`, `:enotdir`, `:eacces` for `self.md`, `:efbig`, `:enospc`).
   """
-  def write(agent_id, path, content) when is_binary(content) do
+  def write(agent_id, path, content, sources \\ []) when is_binary(content) do
     cond do
       path == @self -> {:error, :eacces}
       byte_size(content) > @max_file -> {:error, :efbig}
       directory?(agent_id, path) -> {:error, :eisdir}
       file_above?(agent_id, path) -> {:error, :enotdir}
       over?(agent_id, path, byte_size(content)) -> {:error, :enospc}
-      true -> upsert(agent_id, path, content, false)
+      true -> upsert(agent_id, path, content, false, sources)
     end
+  end
+
+  @doc """
+  The paths of the agent's files it may not see: those learned on a page
+  the scope (the agent's, `Scope.for_agent/2`) may not read, or that is
+  gone. One query for the pages, whatever the files.
+  """
+  def hidden(agent_id, scope) do
+    files =
+      MemoryFile |> where(agent_id: ^agent_id) |> select([f], {f.path, f.sources}) |> Repo.all()
+
+    ids = files |> Enum.flat_map(&elem(&1, 1)) |> Enum.uniq()
+    readable = readable(scope, ids)
+
+    for {path, sources} <- files,
+        Enum.any?(sources, &(&1 not in readable)),
+        into: MapSet.new(),
+        do: path
+  end
+
+  @doc "The pages of `ids` the scope may read, as a set of ids."
+  def readable(_scope, []), do: MapSet.new()
+
+  def readable(scope, ids) do
+    Notebook.Pages.Page
+    |> where([p], p.id in ^ids)
+    |> Notebook.Permissions.where_allowed(scope, :read)
+    |> select([p], p.id)
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  @doc "Lets the agent see a file again: it forgets where it was learned. Its person's to do."
+  def forget_sources(agent_id, path) do
+    {count, _} =
+      MemoryFile
+      |> where([f], f.agent_id == ^agent_id and f.path == ^path)
+      |> Repo.update_all(set: [sources: [], updated_at: DateTime.utc_now()])
+
+    if count > 0, do: broadcast(agent_id)
+    :ok
   end
 
   @doc "Makes a directory (and those above it, with `parents: true`)."
@@ -101,7 +150,7 @@ defmodule Notebook.Memory do
         {:error, :enoent}
 
       true ->
-        upsert(agent_id, path, nil, true)
+        upsert(agent_id, path, nil, true, [])
     end
   end
 
@@ -147,13 +196,31 @@ defmodule Notebook.Memory do
     %MemoryFile{agent_id: agent_id, path: @self, content: instructions || "", directory: false}
   end
 
-  defp upsert(agent_id, path, content, directory?) do
+  # Its sources are those it had and those it is written from now.
+  defp upsert(agent_id, path, content, directory?, sources) do
     now = DateTime.utc_now()
+
+    had =
+      Repo.one(
+        from f in MemoryFile,
+          where: f.agent_id == ^agent_id and f.path == ^path,
+          select: f.sources
+      ) || []
+
+    sources = Enum.uniq(had ++ sources)
 
     file =
       Repo.insert!(
-        %MemoryFile{agent_id: agent_id, path: path, content: content, directory: directory?},
-        on_conflict: [set: [content: content, directory: directory?, updated_at: now]],
+        %MemoryFile{
+          agent_id: agent_id,
+          path: path,
+          content: content,
+          directory: directory?,
+          sources: sources
+        },
+        on_conflict: [
+          set: [content: content, directory: directory?, sources: sources, updated_at: now]
+        ],
         conflict_target: [:agent_id, :path],
         returning: true
       )
