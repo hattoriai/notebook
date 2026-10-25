@@ -12,7 +12,8 @@ defmodule Notebook.Pages.Page do
     field :review_at, :utc_datetime
     field :revisit, Koyomi.Recurrence
     # What the page is: a text (Kotoba), a board (Hakushi, its graph in
-    # `board`) or a table (Masu, its rows in page_rows).
+    # `board`), a table (Masu, its rows in page_rows) or a database (a
+    # Cardbox collection of its own, Notebook.Databases).
     field :kind, :string, default: "text"
     field :board, :map
     has_many :rows, Notebook.Pages.Row
@@ -45,7 +46,7 @@ defmodule Notebook.Pages.Page do
   def changeset(page, attrs) do
     page
     |> cast(attrs, [:title, :body, :due_on, :covers, :revisit, :kind])
-    |> validate_inclusion(:kind, ~w(text board table))
+    |> validate_inclusion(:kind, ~w(text board table database))
     |> Koyomi.Changeset.cast_datetime(attrs, :review_at, review_rules().time_zone)
     |> validate_required([:title])
     |> validate_length(:title, max: 160)

@@ -85,15 +85,40 @@ defmodule Notebook.Pages do
     with {:ok, space} <- space_of(attrs["space_id"]),
          {:ok, folder_id} <- folder_in(attrs["folder_id"], space),
          :ok <- Permissions.authorize(scope, :edit, space),
-         {:ok, page} <-
-           %Page{author_id: user.id, space_id: space.id, folder_id: folder_id}
-           |> Page.changeset(attrs)
-           |> Narabe.Ecto.Mixed.put_position(Repo, Spaces.order(space))
-           |> Repo.insert() do
+         {:ok, page} <- insert(scope, user, space, folder_id, attrs) do
       Spaces.tree_changed()
       {:ok, Repo.preload(page, [:author, :space, :folder])}
     end
   end
+
+  # The page, and a database's collection with it, in one transaction.
+  defp insert(scope, user, space, folder_id, attrs) do
+    Repo.transact(fn ->
+      with {:ok, page} <-
+             %Page{author_id: user.id, space_id: space.id, folder_id: folder_id}
+             |> Page.changeset(attrs)
+             |> Narabe.Ecto.Mixed.put_position(Repo, Spaces.order(space))
+             |> Repo.insert(),
+           :ok <- with_collection(scope, page, attrs["fields"]) do
+        {:ok, page}
+      end
+    end)
+  end
+
+  # A database's fields are its default ones, or those of "fields".
+  defp with_collection(scope, %Page{kind: "database"} = page, fields) do
+    created =
+      if fields,
+        do: Notebook.Databases.create(scope, page, fields),
+        else: Notebook.Databases.create(scope, page)
+
+    case created do
+      {:ok, _collection} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp with_collection(_scope, _page, _fields), do: :ok
 
   defp space_of(id) when id in [nil, ""], do: {:ok, Spaces.general!()}
 

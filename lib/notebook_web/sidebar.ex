@@ -197,5 +197,6 @@ defmodule NotebookWeb.Sidebar do
   @doc "The icon of a page of a kind."
   def page_icon("board"), do: "hero-rectangle-group"
   def page_icon("table"), do: "hero-table-cells"
+  def page_icon("database"), do: "hero-circle-stack"
   def page_icon(_text), do: "hero-document-text"
 end

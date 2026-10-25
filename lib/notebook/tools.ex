@@ -2,13 +2,15 @@ defmodule Notebook.Tools do
   @moduledoc """
   What an agent can do in the Notebook, however it connects: the tools
   of the pages' rooms (Issho's), of their parts (Kotoba's text, Hakushi's
-  board, Masu's table), and the Notebook's own, to find the pages and to
-  make one.
+  board, Masu's table, Fude's charts), and the Notebook's own: to find the
+  pages, to make one, and to read and write a database's records
+  (`Notebook.Tools.Databases`).
   """
 
   @doc "Every tool of the Notebook, for MCP (NotebookWeb.MCP) or an app's own model."
   def all do
     [Notebook.Tools.ListPages, Notebook.Tools.CreatePage] ++
+      [Notebook.Tools.ReadDatabase, Notebook.Tools.AddRecords, Notebook.Tools.UpdateRecords] ++
       Issho.Tools.room() ++
       Kotoba.Issho.tools() ++ Hakushi.Issho.tools() ++ Masu.Issho.tools() ++ Fude.Issho.tools()
   end
@@ -49,6 +51,9 @@ defmodule Notebook.Tools do
           "table" ->
             %{"grid" => room <> "/rows", "tools" => "read_grid, edit_cells, add_rows, ..."}
 
+          "database" ->
+            %{"page_id" => page.id, "tools" => "read_database, add_records, update_records"}
+
           _text ->
             %{
               "document" => room <> "/body",
@@ -73,11 +78,12 @@ defmodule Notebook.Tools.ListPages do
     name: "list_pages",
     description: """
     The Notebook's pages that the person you work for may read: each
-    one's title, kind (a text, a board or a table), its space and folder,
-    its room, and the name its tools take: a text's document for
-    Kotoba's tools (read_text, type_text...), a board's canvas for
+    one's title, kind (a text, a board, a table or a database), its space
+    and folder, its room, and the name its tools take: a text's document
+    for Kotoba's tools (read_text, type_text...), a board's canvas for
     Hakushi's (read_canvas, add_node...), a table's grid for Masu's
-    (read_grid, edit_cells...). Start here.
+    (read_grid, edit_cells...), a database's page id for read_database,
+    add_records and update_records. Start here.
     """,
     annotations: [read_only: true, idempotent: true]
 
@@ -106,15 +112,16 @@ defmodule Notebook.Tools.CreatePage do
   use Issho.Tool,
     name: "create_page",
     description: """
-    Makes a page: a text, a board (notes and arrows) or a table (rows of
-    tasks), with a title, by the person you work for, in a space they may
+    Makes a page: a text, a board (notes and arrows), a table (rows of
+    tasks) or a database (records with fields: a Name, a Status, an
+    Owner, a Due day and Tags to start), with a title, by the person you work for, in a space they may
     edit (their Private space when you name none). Gives the page, and
     the name its tools take.
     """,
     annotations: []
 
   arg(:title, :string, required: true, max_length: 160)
-  arg(:kind, {:enum, ["text", "board", "table"]}, required: true)
+  arg(:kind, {:enum, ["text", "board", "table", "database"]}, required: true)
   arg(:space, :string, description: "The name of the space, as list_pages gives it")
 
   alias Notebook.Spaces

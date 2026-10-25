@@ -15,6 +15,7 @@
 @source "../css";
 @source "../js";
 @source "../../lib/notebook_web";
+@source "../../lib/notebook/databases.ex";
 /* Required for Tailwind to automatically pick up changes in colocated CSS files in dev */
 @source "../../_build/dev/phoenix-colocated/notebook/*/";
 
@@ -484,7 +485,7 @@ a.hattori-mark:hover::before { width: 36px; }
 .issho-avatar { font: 600 11px ui-sans-serif, system-ui, sans-serif; letter-spacing: .03em; }
 
 /* A new page: what kind of page. */
-.page-kinds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; border: 0; padding: 0; margin: 0 0 28px; }
+.page-kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; border: 0; padding: 0; margin: 0 0 28px; }
 .page-kinds legend { margin-bottom: 10px; }
 .page-kind { display: flex; gap: 12px; align-items: flex-start; padding: 16px; border: 1px solid var(--rule); background: #fcfbf7; cursor: pointer; transition: border-color .2s ease, background .2s ease; }
 .page-kind:hover { border-color: var(--ink); }
@@ -692,3 +693,49 @@ html.space-maximized { overflow: hidden; }
 html[data-sidebar="hidden"] .sidebar { display: none; }
 html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14px; z-index: 30; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--rule); border-radius: 8px; background: var(--paper); color: var(--muted); cursor: pointer; box-shadow: 0 6px 18px -12px rgba(35, 38, 34, .5); transition: background .15s ease, color .15s ease; }
 @media (max-width: 900px) { .sidebar-hide, html[data-sidebar="hidden"] .sidebar-show { display: none; } html[data-sidebar="hidden"] .sidebar { display: flex; } }
+
+/* A database: its views as tabs, the view shown in its frame. */
+.database-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 28px; border-bottom: 1px solid var(--rule); font: 13px ui-sans-serif, system-ui, sans-serif; }
+.database-views { display: flex; gap: 2px; flex-wrap: wrap; }
+.database-view-tab { display: inline-flex; align-items: center; gap: 7px; padding: 10px 14px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; color: var(--muted); font: inherit; cursor: pointer; transition: color .15s ease, border-color .15s ease; }
+.database-view-tab:hover { color: var(--ink); }
+.database-view-tab.is-current { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.database-actions { display: flex; align-items: center; gap: 6px; padding-bottom: 6px; }
+.database-add, .database-menu > summary { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--rule); border-radius: 6px; background: #fbf9f4; color: var(--ink); font: inherit; cursor: pointer; list-style: none; transition: border-color .15s ease, color .15s ease; }
+.database-menu > summary::-webkit-details-marker { display: none; }
+.database-add:hover, .database-menu > summary:hover { border-color: var(--accent); color: var(--accent); }
+.database-menu { position: relative; }
+.database-menu-panel { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; display: flex; flex-direction: column; min-width: 170px; padding: 6px; border: 1px solid var(--rule); border-radius: 8px; background: var(--paper); box-shadow: 0 14px 30px -18px rgba(35, 38, 34, .45); }
+.database-menu-panel button { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border: 0; border-radius: 6px; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.database-menu-panel button:hover { background: #ece7dc; }
+.folder-form select { padding: 11px 12px; border: 1px solid var(--rule); background: #fbf9f4; font: 14px ui-sans-serif, system-ui, sans-serif; color: var(--ink); }
+.database-frame { margin-top: 18px; padding: 18px; }
+.database-calendar { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 28px; align-items: start; }
+.database-day { padding: 8px 0; font: 14px ui-sans-serif, system-ui, sans-serif; }
+.database-day-list { margin: 10px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.database-day-list li { padding: 8px 10px; border: 1px solid var(--rule); border-radius: 6px; background: #fbf9f4; }
+@media (max-width: 900px) { .database-calendar { grid-template-columns: 1fr; } }
+
+/* Cardbox's chips, links and people, in Erabi's nine colors. */
+.cardbox-choice { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px; font: 500 12px/1.6 ui-sans-serif, system-ui, sans-serif; background: #ece7dc; color: #3b3f3a; }
+.cardbox-choice[data-color="gray"] { background: #ebe9e4; color: #55534e; }
+.cardbox-choice[data-color="brown"] { background: #efe2d6; color: #6e4b33; }
+.cardbox-choice[data-color="orange"] { background: #f8e2cf; color: #8a4513; }
+.cardbox-choice[data-color="yellow"] { background: #f6ecc4; color: #7a5d00; }
+.cardbox-choice[data-color="green"] { background: #dcefe2; color: #1f6a3e; }
+.cardbox-choice[data-color="blue"] { background: #dde7f7; color: #284f91; }
+.cardbox-choice[data-color="purple"] { background: #e7e0f6; color: #553f92; }
+.cardbox-choice[data-color="pink"] { background: #f6dde9; color: #923a65; }
+.cardbox-choice[data-color="red"] { background: #f6dcd8; color: #933126; }
+.cardbox-person, .cardbox-link { font: 13px ui-sans-serif, system-ui, sans-serif; }
+
+/* People in a database's cells (Cardbox): initials, then the name. */
+.cardbox-person { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.cardbox-person + .cardbox-person { margin-left: 8px; }
+.cardbox-person i { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 999px; background: var(--cardbox-person, #e4ddd0); color: #3b3f3a; font: 600 9px/1 ui-sans-serif, system-ui, sans-serif; font-style: normal; letter-spacing: .02em; }
+.cardbox-link { display: inline-flex; padding: 1px 8px; border-radius: 6px; background: #efebe3; font-size: 12px; }
+
+/* A board's cards (Cardbox): the title, then a line of its fields. */
+.cardbox-card { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.cardbox-card strong { flex-basis: 100%; }
+.cardbox-card span { font: 12px/1.5 ui-sans-serif, system-ui, sans-serif; color: #6f6a60; }

@@ -1,7 +1,8 @@
 defmodule NotebookWeb.NotebookLive do
   use NotebookWeb, :live_view
 
-  alias Notebook.{Charts, Pages}
+  alias Notebook.{Charts, Databases, Pages}
+  alias Notebook.Cardbox, as: Box
   alias Phoenix.LiveView.JS
   alias Notebook.Pages.Page
 
@@ -368,6 +369,23 @@ defmodule NotebookWeb.NotebookLive do
 
   defp assign_kind(socket, %Page{kind: "table"} = page),
     do: assign(socket, issho: nil, grid: Notebook.Grids.rows(page))
+
+  # A database: its collection, its views, the one shown, and its records.
+  defp assign_kind(socket, %Page{kind: "database"} = page) do
+    collection = Databases.collection(page)
+    if connected?(socket), do: Box.subscribe(collection)
+
+    socket
+    |> assign(
+      issho: nil,
+      collection: collection,
+      people: Databases.people(page),
+      field_form: nil,
+      day: nil,
+      day_records: []
+    )
+    |> show_view(nil)
+  end
 
   defp assign_kind(socket, page) do
     charts = Charts.embeddable(socket.assigns.current_scope, page)
@@ -777,6 +795,115 @@ defmodule NotebookWeb.NotebookLive do
         </div>
 
         <div
+          :if={@live_action in [:show, :edit] and @page.kind == "database"}
+          class="page-view page-space"
+        >
+          <.page_bar page={@page} grant={@grant} can_edit?={@can_edit?} />
+          <div class="page-heading">
+            <p class="eyebrow">Database · shared live</p>
+            <h1>{@page.title}</h1>
+            <p>
+              Records with the fields you give them, seen as a table, a board, a calendar or a chart.
+            </p>
+          </div>
+          <div class="database-bar">
+            <nav class="database-views" aria-label="Views">
+              <button
+                :for={view <- @views}
+                id={"view-#{view.id}"}
+                type="button"
+                class={["database-view-tab", @view && view.id == @view.id && "is-current"]}
+                phx-click="db_view"
+                phx-value-id={view.id}
+              >
+                <.icon name={view_icon(view.type)} class="size-4" />{view.name}
+              </button>
+            </nav>
+            <div :if={@can_edit?} class="database-actions">
+              <details class="database-menu">
+                <summary><.icon name="hero-plus" class="size-4" /> View</summary>
+                <div class="database-menu-panel">
+                  <button
+                    :for={{type, name, icon} <- Databases.view_types()}
+                    type="button"
+                    phx-click="db_add_view"
+                    phx-value-type={type}
+                  >
+                    <.icon name={icon} class="size-4" />{name}
+                  </button>
+                </div>
+              </details>
+              <button type="button" class="database-add" phx-click="db_new_field">
+                <.icon name="hero-plus" class="size-4" /> Field
+              </button>
+            </div>
+          </div>
+          <.form
+            :if={@field_form}
+            for={@field_form}
+            id="field-form"
+            phx-submit="db_add_field"
+            class="folder-form"
+          >
+            <input
+              name="field[name]"
+              placeholder="A field's name: Client, Price, Due…"
+              maxlength="60"
+              required
+              autofocus
+            />
+            <select name="field[type]" aria-label="Type">
+              <option :for={{type, name} <- Databases.field_types()} value={type}>{name}</option>
+            </select>
+            <button class="button button-primary" type="submit">Add field</button>
+            <button class="copy-action" type="button" phx-click="db_cancel_field">Cancel</button>
+          </.form>
+          <div :if={@view} id="database-frame" class="space-frame database-frame">
+            <Cardbox.Masu.table
+              :if={@view.type == "table"}
+              cardbox={Box}
+              collection={@collection}
+              view={@view}
+              actor={@current_scope}
+              people={@people}
+              searchable
+              height="32rem"
+            />
+            <Cardbox.Narabe.board
+              :if={@view.type == "board"}
+              id={"board-#{@view.id}"}
+              collection={@collection}
+              view={@view}
+              records={@records}
+              people={@people}
+              on_move={@can_edit? && "db_move"}
+              readonly={not @can_edit?}
+            />
+            <div :if={@view.type == "calendar"} class="database-calendar">
+              <Cardbox.Koyomi.calendar id="db-calendar" view={@view} on_change="db_day" months={2} />
+              <div class="database-day">
+                <p :if={is_nil(@day)} class="field-hint">Pick a day for its records.</p>
+                <p :if={@day} class="eyebrow">{Calendar.strftime(@day, "%A, %-d %B")}</p>
+                <ul :if={@day} class="database-day-list">
+                  <li :for={record <- @day_records}>{record_title(@collection, record)}</li>
+                  <li :if={@day_records == []} class="field-hint">Nothing on this day.</li>
+                </ul>
+              </div>
+            </div>
+            <Cardbox.Fude.chart
+              :if={@view.type == "chart"}
+              id={"chart-#{@view.id}"}
+              cardbox={Box}
+              collection={@collection}
+              view={@view}
+              people={@people}
+              me={Databases.me(@current_scope)}
+              height={360}
+            />
+          </div>
+        </div>
+
+        <div
           :if={@live_action in [:show, :edit] and @page.kind == "table"}
           class="page-view page-space"
         >
@@ -1066,6 +1193,40 @@ defmodule NotebookWeb.NotebookLive do
   defp current(%{page: %Page{id: id}}), do: {:page, id}
   defp current(_assigns), do: nil
 
+  # The database's views, and the one shown (its id, else the first), with
+  # its records for a board.
+  defp show_view(%{assigns: %{collection: collection}} = socket, id) do
+    views = Databases.views(collection)
+    view = Enum.find(views, &(to_string(&1.id) == to_string(id))) || List.first(views)
+
+    records =
+      if view && view.type == "board",
+        do: Databases.records(socket.assigns.current_scope, collection, view),
+        else: []
+
+    assign(socket, views: views, view: view, records: records)
+  end
+
+  defp reload_database(%{assigns: %{collection: collection, view: view}} = socket) do
+    socket
+    |> assign(collection: Box.get_collection!(collection.id))
+    |> show_view(view && view.id)
+  end
+
+  defp view_icon(type) do
+    case List.keyfind(Databases.view_types(), type, 0) do
+      {_type, _name, icon} -> icon
+      nil -> "hero-squares-2x2"
+    end
+  end
+
+  defp record_title(collection, record) do
+    case Enum.find(collection.fields, &(&1.type == "text")) do
+      nil -> "Untitled"
+      field -> record.data[field.key] || "Untitled"
+    end
+  end
+
   defp maximize_buttons(assigns) do
     ~H"""
     <div class="space-size">
@@ -1238,12 +1399,14 @@ defmodule NotebookWeb.NotebookLive do
     [
       {"text", "Text", "Words, written together"},
       {"board", "Board", "Notes and arrows, on a canvas"},
-      {"table", "Table", "Rows of tasks, in a grid"}
+      {"table", "Table", "Rows of tasks, in a grid"},
+      {"database", "Database", "Records with fields: a table, a board, a calendar"}
     ]
   end
 
   defp kind_name("board"), do: "BOARD"
   defp kind_name("table"), do: "TABLE"
+  defp kind_name("database"), do: "DATABASE"
   defp kind_name(_text), do: "PAGE"
 
   defp kind_hint("board"),
@@ -1400,6 +1563,10 @@ defmodule NotebookWeb.NotebookLive do
 
   defp excerpt(%Page{kind: "board"}), do: "A board of notes and arrows, moved together."
   defp excerpt(%Page{kind: "table"}), do: "A table of tasks, edited together."
+
+  defp excerpt(%Page{kind: "database"}),
+    do: "Records and their fields, as a table, a board, a calendar or a chart."
+
   defp excerpt(%Page{body: body}), do: excerpt(body)
   defp excerpt(nil), do: "A fresh page, ready for words."
 
@@ -1540,6 +1707,60 @@ defmodule NotebookWeb.NotebookLive do
 
   def handle_event("restore", _params, socket), do: {:noreply, restore_page(socket)}
 
+  # A database's views, fields, board moves and calendar days.
+  def handle_event("db_view", %{"id" => id}, socket),
+    do: {:noreply, socket |> assign(day: nil, day_records: []) |> show_view(id)}
+
+  def handle_event("db_add_view", %{"type" => type}, socket) do
+    case Databases.add_view(socket.assigns.current_scope, socket.assigns.collection, type) do
+      {:ok, view} -> {:noreply, show_view(socket, view.id)}
+      {:error, message} when is_binary(message) -> {:noreply, put_flash(socket, :error, message)}
+      {:error, error} -> {:noreply, put_flash(socket, :error, Exception.message(error))}
+    end
+  end
+
+  def handle_event("db_new_field", _params, socket),
+    do:
+      {:noreply,
+       assign(socket, field_form: to_form(%{"name" => "", "type" => "text"}, as: :field))}
+
+  def handle_event("db_cancel_field", _params, socket),
+    do: {:noreply, assign(socket, field_form: nil)}
+
+  def handle_event("db_add_field", %{"field" => params}, socket) do
+    case Databases.add_field(socket.assigns.current_scope, socket.assigns.collection, params) do
+      {:ok, _collection} -> {:noreply, socket |> assign(field_form: nil) |> reload_database()}
+      {:error, error} -> {:noreply, put_flash(socket, :error, Exception.message(error))}
+    end
+  end
+
+  def handle_event("db_move", params, socket) do
+    %{collection: collection, view: view, current_scope: scope} = socket.assigns
+
+    {:reply, reply, socket} =
+      Cardbox.Narabe.handle_move(socket, params, Box, collection, view, actor: scope)
+
+    {:reply, reply, show_view(socket, view.id)}
+  end
+
+  def handle_event("koyomi:days", %{"id" => "db-calendar"} = params, socket) do
+    %{collection: collection, view: view, current_scope: scope} = socket.assigns
+    Cardbox.Koyomi.handle_days(socket, params, Box, collection, view, me: Databases.me(scope))
+  end
+
+  def handle_event("db_day", %{"value" => value}, socket) do
+    %{collection: collection, view: view} = socket.assigns
+
+    case Date.from_iso8601(value || "") do
+      {:ok, day} ->
+        {:ok, records} = Cardbox.Koyomi.on_day(Box, collection, view, day)
+        {:noreply, assign(socket, day: day, day_records: records)}
+
+      _none ->
+        {:noreply, assign(socket, day: nil, day_records: [])}
+    end
+  end
+
   def handle_event("copied", %{"format" => format}, socket),
     do: {:noreply, put_flash(socket, :info, "#{format_name(format)} copied to your clipboard")}
 
@@ -1561,6 +1782,16 @@ defmodule NotebookWeb.NotebookLive do
   def handle_info({event, _id}, %{assigns: %{page: %Page{kind: "text"} = page}} = socket)
       when event in [:chart_changed, :chart_rows] do
     {:noreply, assign(socket, charts: Charts.embeddable(socket.assigns.current_scope, page))}
+  end
+
+  # A change to the database, by anyone: its grid, its board, its calendar.
+  def handle_info({:cardbox, event}, %{assigns: %{page: %Page{kind: "database"}}} = socket) do
+    Cardbox.Masu.relay(event, "cardbox-#{socket.assigns.collection.id}")
+
+    {:noreply,
+     socket
+     |> reload_database()
+     |> Koyomi.Live.refresh_days("db-calendar")}
   end
 
   def handle_info(_message, socket), do: {:noreply, socket}
