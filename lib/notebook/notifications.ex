@@ -158,7 +158,7 @@ defmodule Notebook.Notifications do
         |> Enum.find(&(&1["id"] == thread_id))
         |> case do
           nil -> []
-          thread -> for(c <- thread["comments"] || [], do: get_in(c, ["by", "key"]))
+          thread -> for(c <- thread["comments"] || [], do: get_in(c, ["author", "key"]))
         end
         |> users(nil)
         |> Enum.reject(&(to_string(&1.id) in except))
