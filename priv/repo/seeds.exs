@@ -303,6 +303,46 @@ unless Notebook.Repo.get_by(Page, title: "Blades in progress") do
   end
 end
 
+# A page of charts of the table, live: they move as its rows change, and
+# an agent changes them with change_chart.
+numbers_title = "The forge in numbers"
+
+unless Notebook.Repo.get_by(Page, title: numbers_title) do
+  blades = Notebook.Repo.get_by!(Page, title: "Blades in progress")
+
+  {:ok, numbers} =
+    Pages.create(hanzo_scope, %{
+      "title" => numbers_title,
+      "space_id" => forge.id,
+      "folder_id" => in_progress.id
+    })
+
+  {:ok, by_status} = Notebook.Charts.create(hanzo_scope, numbers, blades, "points_by_status")
+  {:ok, by_week} = Notebook.Charts.create(hanzo_scope, numbers, blades, "due_by_week")
+
+  embed = fn chart ->
+    ref = JSON.encode!(%{kind: "chart", ref: to_string(chart.id), title: chart.spec["title"]})
+    "<!-- kotoba:embed #{ref} -->\n\n#{chart.spec["title"]}\n\n<!-- /kotoba:embed -->"
+  end
+
+  body =
+    Kotoba.Content.from_markdown("""
+    The last blades, counted. Each chart reads *Blades in progress*: change a row there, and the bars move here.
+
+    ## How far we have come
+
+    #{embed.(by_status)}
+
+    ## What falls due, and when
+
+    #{embed.(by_week)}
+
+    > Count the folds, not the days. — Hattori Hanzo
+    """)
+
+  {:ok, _} = Pages.update(hanzo_scope, numbers, %{"body" => body})
+end
+
 text.(
   hanzo_scope,
   "The last blade",

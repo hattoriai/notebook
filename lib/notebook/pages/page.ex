@@ -16,6 +16,7 @@ defmodule Notebook.Pages.Page do
     field :kind, :string, default: "text"
     field :board, :map
     has_many :rows, Notebook.Pages.Row
+    has_many :charts, Notebook.Charts.Chart
     belongs_to :author, Notebook.Accounts.User
     # Where the page is: a space, and maybe one of its folders. An archived
     # page leaves the sidebar and the lists, and comes back when restored.

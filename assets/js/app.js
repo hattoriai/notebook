@@ -32,6 +32,7 @@ import {Hooks as IsshoHooks} from "issho"
 import {Hakushi} from "hakushi"
 import {Masu} from "masu"
 import {Narabe} from "narabe"
+import {Fude} from "fude"
 
 enableCollaboration(registerCollaboration)
 
@@ -39,7 +40,7 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, ...IsshoHooks, Kotoba, Koyomi, Jumon, Hakushi, Masu, Narabe},
+  hooks: {...colocatedHooks, ...IsshoHooks, Kotoba, Koyomi, Jumon, Hakushi, Masu, Narabe, Fude},
 })
 
 // Show progress bar on live navigation and form submits

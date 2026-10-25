@@ -78,6 +78,9 @@ config :tailwind,
 # Agents in the pages' rooms: who an MCP caller is (NotebookWeb.AgentAuth
 # signs them in as the account they work for), and the tables they may use.
 config :issho, Issho.MCP, instance: Notebook.Issho, agent: {NotebookWeb.MCP, :agent}
+
+# The rows an agent's chart draws (read_chart): its table's, for whom may read it.
+config :fude, Fude.Issho, data: {Notebook.Charts, :data}
 config :masu, Masu.Issho, grids: {Notebook.Grids, :for_agent}
 
 # Configure Elixir's Logger
