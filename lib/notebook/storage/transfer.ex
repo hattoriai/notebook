@@ -36,7 +36,7 @@ defmodule Notebook.Storage.Transfer do
   end
 
   defp count(%{"state" => "counting"} = transfer) do
-    {:ok, entries} = Storage.all(store(transfer["from"]))
+    {:ok, entries} = Storehouse.list("", adapter: store(transfer["from"]))
 
     {total, bytes} =
       Enum.reduce(entries, {0, 0}, fn entry, {n, bytes} ->
@@ -59,11 +59,10 @@ defmodule Notebook.Storage.Transfer do
   defp move(transfer, deadline) do
     from = store(transfer["from"])
     to = store(transfer["to"])
-    {:ok, entries} = Storage.all(from)
-    cursor = transfer["after"]
+    # From the last key done: a bucket starts there itself.
+    {:ok, entries} = Storehouse.list("", adapter: from, after: transfer["after"])
 
     entries
-    |> Stream.drop_while(&(cursor && &1.key <= cursor))
     |> Stream.chunk_every(@batch)
     |> Enum.reduce_while(transfer, fn batch, transfer ->
       results =

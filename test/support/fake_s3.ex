@@ -101,11 +101,12 @@ defmodule Notebook.FakeS3 do
 
   defp list(conn, agent) do
     prefix = conn.query_params["prefix"] || ""
+    start = conn.query_params["start-after"] || ""
 
     contents =
       agent
       |> Agent.get(& &1)
-      |> Enum.filter(fn {key, _object} -> String.starts_with?(key, prefix) end)
+      |> Enum.filter(fn {key, _object} -> String.starts_with?(key, prefix) and key > start end)
       |> Enum.sort()
       |> Enum.map_join(fn {key, {body, _type}} ->
         "<Contents><Key>#{key}</Key><Size>#{byte_size(body)}</Size><LastModified>2026-10-25T12:00:00.000Z</LastModified><ETag>#{etag(body)}</ETag></Contents>"

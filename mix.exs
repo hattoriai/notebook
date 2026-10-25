@@ -84,7 +84,10 @@ defmodule Notebook.MixProject do
       {:koyomi, "~> 0.2.1"},
       {:fude, "~> 0.8"},
       {:jumon, "~> 0.2"},
-      {:storehouse, "~> 0.2"},
+      # Storehouse's main, until a release after 0.2.0: list/2 of every file
+      # and after a key (for the storage transfers). Its client scripts are
+      # in its repository (priv/static). Kotoba and Hakushi take it too.
+      {:storehouse, github: "hattoriai/storehouse", branch: "main", override: true},
       {:chime, "~> 0.1.0-dev"},
       {:oban, "~> 2.20"},
       # Cardbox's main, until a release after 0.1.0. It ships no assets of its

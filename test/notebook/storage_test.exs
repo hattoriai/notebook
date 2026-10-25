@@ -161,6 +161,31 @@ defmodule Notebook.StorageTest do
     assert Enum.all?(keys, &(&1 in FakeS3.keys(bucket)))
   end
 
+  test "back from a bucket, a slice at a time, each going on after the last key", %{
+    admin: admin,
+    bucket: bucket
+  } do
+    Application.put_env(:notebook, Storage.Transfer, slice: 0)
+    on_exit(fn -> Application.delete_env(:notebook, Storage.Transfer) end)
+    keys = for n <- 1..40, do: local_file("letter-#{n}.txt", "Letter #{n}.")
+    {:ok, _config} = Storage.save(admin, bucket_attrs(bucket))
+    {:ok, transfer} = Storage.start_transfer(admin, "copy")
+    transfer = run(transfer)
+    %{"state" => "done"} = transfer |> run() |> run()
+    {:ok, transfer} = Storage.start_transfer(admin, "remove")
+    %{"state" => "done"} = transfer |> run() |> run() |> run()
+    assert Storage.Usage.files(Storehouse.Local).count == 0
+
+    # The disk again: the bucket's files come back, a batch per slice.
+    {:ok, _config} = Storage.save(admin, %{"kind" => "local"})
+    assert Storage.other() == Storehouse.S3
+    {:ok, transfer} = Storage.start_transfer(admin, "copy")
+    assert %{"done" => 32, "total" => 40} = transfer = run(transfer)
+    assert %{"done" => 40, "moved" => 40} = transfer |> run() |> run()
+    assert Enum.all?(keys, &match?({:ok, _head}, Storehouse.Local.head(&1)))
+    assert length(FakeS3.keys(bucket)) == 40
+  end
+
   test "the room the notebook takes: the disk, the files, the database" do
     assert %{total: total, free: free} = Storage.Usage.disk(Storage.Usage.root())
     assert total > 0 and free <= total

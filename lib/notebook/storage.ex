@@ -405,20 +405,10 @@ defmodule Notebook.Storage do
     transfer
   end
 
-  @doc """
-  Every file of `store`, as `Storehouse.copy_prefix/2` lists them: its own
-  `list/1` of `""`, the keys it gives checked (`Storehouse.list/2` takes
-  no empty prefix before hattoriai/storehouse#62), in the order of their keys.
-  """
-  def all(store) do
-    with {:ok, entries} <- store.list(""),
-         do: {:ok, Stream.filter(entries, &Storehouse.valid_key?(&1.key))}
-  end
-
   @doc "Whether the other store (`other/0`) has any file."
   def other_files? do
     with store when not is_nil(store) <- other(),
-         {:ok, entries} <- all(store) do
+         {:ok, entries} <- Storehouse.list("", adapter: store) do
       Enum.any?(Stream.take(entries, 1))
     else
       _none -> false
