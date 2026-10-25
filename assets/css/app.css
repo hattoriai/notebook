@@ -820,3 +820,39 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 .share-note { margin-top: 10px; }
 .sidebar-shared-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
 .sidebar-shared-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Publishing: a page anyone reads, a blog, a person's index; and the
+   Publish dialog. */
+.public-body { min-height: 100vh; }
+.public-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: min(100% - 32px, 760px); margin: 0 auto; padding: 28px 0 0; font: 12px ui-sans-serif, system-ui, sans-serif; }
+.public-bar .wordmark { font: 1.45rem/1 "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; letter-spacing: -.02em; color: var(--ink); }
+.public-feed { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.public-feed:hover { color: var(--accent); }
+.public-main { width: min(100% - 32px, 760px); margin: 0 auto; padding: clamp(40px, 8vw, 90px) 0 80px; flex: 1; }
+.public-article h1, .public-index h1 { margin: 10px 0 14px; font: 400 clamp(2.4rem, 6vw, 4.2rem)/1.02 "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; letter-spacing: -.045em; }
+.public-byline { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 44px; color: var(--muted); font-size: 1.05rem; }
+.public-byline a { color: var(--ink); }
+.public-byline a:hover, .public-article .eyebrow a:hover { color: var(--accent); }
+.public-body-text { font-size: 1.12rem; }
+.public-frame { height: min(70vh, 640px); border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; background: #fbf9f4; }
+.public-embed-board { height: 420px; border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; }
+.public-posts { list-style: none; margin: 36px 0 0; padding: 0; border-top: 1px solid var(--ink); }
+.public-posts li { padding: 26px 0; border-bottom: 1px solid var(--rule); }
+.public-posts time, .public-kind { display: inline-flex; align-items: center; gap: 5px; font: 600 10.5px/1.4 ui-sans-serif, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.public-posts h2 { margin: 6px 0 8px; font: 400 1.75rem/1.15 "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; letter-spacing: -.025em; color: var(--ink); }
+.public-posts a:hover h2 { color: var(--accent); }
+.public-posts p { margin: 0; color: #5d625c; line-height: 1.55; }
+.public-empty { color: var(--muted); }
+.public-footer { width: min(100% - 32px, 760px); margin: 0 auto; padding: 28px 0 40px; border-top: 1px solid var(--rule); color: var(--muted); font: 12px ui-sans-serif, system-ui, sans-serif; }
+.public-footer a { color: var(--ink); }
+.command-link.is-published, .copy-action.is-published { color: #3f6b3a; }
+.share-avatar.is-published { background: #dcefe2; color: #1f6a3e; }
+.publish-about { margin: -4px 0 16px; color: var(--muted); }
+.publish-live { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--rule); }
+.publish-form { display: grid; gap: 8px; margin-top: 18px; }
+.publish-form label { font: 600 10.5px/1.4 ui-sans-serif, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.publish-slug { display: flex; align-items: stretch; border: 1px solid var(--rule); border-radius: 8px; background: #fff; overflow: hidden; }
+.publish-slug span { display: flex; align-items: center; padding: 0 2px 0 10px; color: var(--muted); font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; max-width: 60%; overflow: hidden; text-overflow: ellipsis; }
+.publish-slug input { flex: 1; min-width: 0; padding: 8px 10px 8px 0; border: 0; outline: 0; background: none; color: var(--ink); font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.publish-error { margin: 0; color: #933126; font-size: 12.5px; }
+.publish-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }

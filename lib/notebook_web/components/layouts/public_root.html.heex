@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <%!-- A published page: its HTML may come through a site's proxy, and its
+    styles, scripts, files and live socket from the notebook's own address. --%>
+    <meta name="live-socket" content={NotebookWeb.Endpoint.url() <> "/public/live"} />
+    <link
+      rel="icon"
+      href={static_url(NotebookWeb.Endpoint, ~p"/images/favicon.svg")}
+      type="image/svg+xml"
+    />
+    <meta name="theme-color" content="#f6f3ec" />
+    <.live_title
+      default={Notebook.Publishing.config().name}
+      suffix={" · " <> Notebook.Publishing.config().name}
+      phx-no-format
+    >{assigns[:page_title]}</.live_title>
+    <meta :if={assigns[:description]} name="description" content={@description} />
+    <link :if={assigns[:canonical]} rel="canonical" href={@canonical} />
+    <meta :if={assigns[:canonical]} property="og:url" content={@canonical} />
+    <meta :if={assigns[:page_title]} property="og:title" content={@page_title} />
+    <meta :if={assigns[:description]} property="og:description" content={@description} />
+    <meta property="og:site_name" content={Notebook.Publishing.config().name} />
+    <link
+      :if={assigns[:feed]}
+      rel="alternate"
+      type="application/rss+xml"
+      title={assigns[:page_title]}
+      href={@feed}
+    />
+    <link
+      phx-track-static
+      rel="stylesheet"
+      href={static_url(NotebookWeb.Endpoint, ~p"/assets/css/app.css")}
+    />
+    <script
+      defer
+      phx-track-static
+      type="text/javascript"
+      src={static_url(NotebookWeb.Endpoint, ~p"/assets/js/app.js")}
+    >
+    </script>
+  </head>
+  <body class="public-body">
+    {@inner_content}
+  </body>
+</html>

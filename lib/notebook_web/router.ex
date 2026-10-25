@@ -22,6 +22,16 @@ defmodule NotebookWeb.Router do
     plug :accepts, ["html"]
   end
 
+  # The published pages (Notebook.Publishing): anyone reads them, at paths
+  # of the notebook's own, under its publishing prefix; a blog's feed too.
+  pipeline :public do
+    plug :accepts, ["html", "xml"]
+    plug :fetch_session
+    plug NotebookWeb.Plugs.Feed
+    plug :put_root_layout, html: {NotebookWeb.Layouts, :public_root}
+    plug :put_secure_browser_headers
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
   end
@@ -65,8 +75,12 @@ defmodule NotebookWeb.Router do
       live "/inbox", InboxLive, :index
       live "/agents", AgentsLive, :index
     end
+  end
 
-    # The files of the pages (Storehouse), for those signed in.
+  # The files of the pages (Storehouse): for those signed in, and anyone's
+  # of a published page.
+  scope "/" do
+    pipe_through [:browser, NotebookWeb.Plugs.Uploads]
     get "/uploads/kotoba/*key", Storehouse.Local.Plug, [at: "/uploads/kotoba"], alias: false
   end
 
@@ -107,6 +121,18 @@ defmodule NotebookWeb.Router do
     scope "/dev" do
       pipe_through :browser
       forward "/mailbox", Plug.Swoosh.MailboxPreview
+    end
+  end
+
+  # Last: every path the notebook has no route for is a published page's,
+  # or no one's (a 404).
+  scope "/", NotebookWeb do
+    pipe_through :public
+
+    live_session :public,
+      root_layout: {NotebookWeb.Layouts, :public_root},
+      on_mount: [Masu.Live] do
+      live "/*path", PublicLive, :show
     end
   end
 end

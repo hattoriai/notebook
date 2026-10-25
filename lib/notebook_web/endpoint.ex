@@ -15,6 +15,13 @@ defmodule NotebookWeb.Endpoint do
     websocket: [connect_info: [session: @session_options]],
     longpoll: [connect_info: [session: @session_options]]
 
+  # The public pages' live socket (Notebook.Publishing): no session, and
+  # it takes the publishing address as an origin, where a site's proxy
+  # serves the pages.
+  socket "/public/live", Phoenix.LiveView.Socket,
+    websocket: [check_origin: {Notebook.Publishing, :origin?, []}],
+    longpoll: [check_origin: {Notebook.Publishing, :origin?, []}]
+
   socket "/issho/socket", NotebookWeb.CollabSocket, websocket: [max_frame_size: 1_000_000]
 
   # Serve at "/" the static files from "priv/static" directory.

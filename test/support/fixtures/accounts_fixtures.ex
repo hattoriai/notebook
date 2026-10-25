@@ -26,6 +26,7 @@ defmodule Notebook.AccountsFixtures do
       %Accounts.User{}
       |> Ecto.Changeset.cast(attrs, [:name])
       |> Accounts.User.email_changeset(attrs)
+      |> Ecto.Changeset.put_change(:handle, Notebook.Publishing.free_handle(attrs.name))
       |> Notebook.Repo.insert()
 
     # As every account: a member of General, with a Private space.

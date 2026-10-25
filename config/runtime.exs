@@ -69,6 +69,15 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
+  # Where published pages are read (Notebook.Publishing): the notebook's
+  # own address unless a site's proxy serves them, under a prefix, by
+  # person (/hanzo/kotoba) or the notebook's alone (/kotoba).
+  config :notebook, :publishing,
+    url: System.get_env("NOTEBOOK_PUBLISH_URL"),
+    prefix: System.get_env("NOTEBOOK_PUBLISH_PREFIX", ""),
+    paths: if(System.get_env("NOTEBOOK_PUBLISH_PATHS") == "solo", do: :solo, else: :people),
+    name: System.get_env("NOTEBOOK_SITE_NAME", "Notebook")
+
   host = System.get_env("PHX_HOST") || "example.com"
 
   config :notebook, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")

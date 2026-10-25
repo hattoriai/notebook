@@ -301,6 +301,7 @@ defmodule NotebookWeb.NotebookLive do
         page_title: page.title,
         can_edit?: Pages.allowed?(scope, :edit, page),
         can_share?: Notebook.Sharing.can_share?(scope, page),
+        publishing?: false,
         in_space?: Notebook.Spaces.allowed?(scope, :read, page.space),
         sharing?: false,
         form: to_form(Pages.change(page)),
@@ -606,6 +607,13 @@ defmodule NotebookWeb.NotebookLive do
     assigns = assign(assigns, :prompts, prompts(assigns.current_scope))
 
     ~H"""
+    <.live_component
+      :if={assigns[:publishing?] && assigns[:page]}
+      module={NotebookWeb.PublishComponent}
+      id="publish-dialog"
+      resource={@page}
+      scope={@current_scope}
+    />
     <.live_component
       :if={assigns[:sharing?] && assigns[:page]}
       module={NotebookWeb.ShareComponent}
@@ -1345,6 +1353,17 @@ defmodule NotebookWeb.NotebookLive do
         <.people id="page-people" grant={@grant} label="On this page" />
         <button
           :if={@can_share?}
+          id="publish-open"
+          type="button"
+          class={["command-link", @page.published_at && "is-published"]}
+          phx-click="publish_open"
+        >
+          <.icon name="hero-globe-alt" class="size-4" />{if @page.published_at,
+            do: "Published",
+            else: "Publish"}
+        </button>
+        <button
+          :if={@can_share?}
           id="share-open"
           type="button"
           class="command-link"
@@ -1766,6 +1785,13 @@ defmodule NotebookWeb.NotebookLive do
   def handle_event("share_close", _params, socket),
     do: {:noreply, assign(socket, sharing?: false)}
 
+  # The Publish dialog (NotebookWeb.PublishComponent).
+  def handle_event("publish_open", _params, socket),
+    do: {:noreply, assign(socket, publishing?: true)}
+
+  def handle_event("publish_close", _params, socket),
+    do: {:noreply, assign(socket, publishing?: false)}
+
   # A database's views, fields, board moves and calendar days.
   def handle_event("db_view", %{"id" => id}, socket),
     do: {:noreply, socket |> assign(day: nil, day_records: []) |> show_view(id)}
@@ -1852,6 +1878,19 @@ defmodule NotebookWeb.NotebookLive do
      |> reload_database()
      |> Koyomi.Live.refresh_days("db-calendar")}
   end
+
+  # Published, or taken back, from its dialog: the page's bar says so.
+  def handle_info({:published, %Page{} = published}, %{assigns: %{page: page}} = socket),
+    do:
+      {:noreply,
+       assign(socket,
+         page: %{
+           page
+           | slug: published.slug,
+             published_at: published.published_at,
+             published_by_id: published.published_by_id
+         }
+       )}
 
   def handle_info(_message, socket), do: {:noreply, socket}
 

@@ -58,6 +58,7 @@ The sample pages (`mix setup`, or `mix run priv/repo/seeds.exs`) are **A tour of
 - **Commissions**, in The forge, is a database (Cardbox): Hanzo's orders, each with its client, status, smith, due day, price and kind. Its views are the same records four ways: a **Table** (Masu) to edit as a spreadsheet, a **Board** (Narabe) to drag a commission to its next status, a **Calendar** (Koyomi) of the days they fall due, and **Worth by status**, a chart (Fude) of the prices. Add a **Field** or a **View**, and everyone on the page sees it. Hanzo keeps a **Reading list** in his Private space too. Ask your agent "What's still being forged in *Commissions*? Move the tantō to Delivered": it reads the database (`read_database`), filtered or by a view, and changes the records (`update_records`) as you, if you edit the page.
 - Hanzo's **Inbox**, in the sidebar, is a page of what concerns him ([Chime](https://github.com/hattoriai/chime)): Masamune mentioned him in a comment on *The last blade*, Yuki replied there and in *Autumn menu*, Masamune handed him a commission, Yuki added him to the Tea house, and *A reply to the museum* is due today. Open one and it's read; archive what you've dealt with. The **bell** beside your avatar shows the latest at a glance. Notifications come from the comments (Issho's), the databases' person fields (Cardbox's) and the spaces, whoever made the change, a person or an agent; nobody hears of what they did, or of a page they may not read. A page's due day reminds its author at 09:00 of the day, and its review time when it comes. An email follows ten minutes later, unless you read it in the Inbox first (in development, at [/dev/mailbox](http://localhost:4000/dev/mailbox)); choose what you hear of, and how, in **Settings**.
 - **Share** a page, in its bar, or a folder, in its header (Sekisho's grants): with a person, to read, comment or edit, or with anyone signed in who has the link, to read or comment (a folder's link, to read). A folder shares its pages. They hear of it in their Inbox, and find it under **Shared with you** in the sidebar, outside their spaces. A page's editors share it, and no one gives more than they have. A link's address shows once, when it's made (the notebook keeps only its hash); making a new one stops the last. Sign in as Masamune: Yuki shared her *Autumn menu* with him, and the seeds print a link to *The forge, planned*.
+- **Publish** a page from its bar, or a folder as a blog from its header: anyone may read it, signed in or not, at an address of the notebook's own. Hanzo published [the tour](http://localhost:4000/hanzo/tour), [the forge in numbers](http://localhost:4000/hanzo/forge-in-numbers) (change a row of *Blades in progress* and its readers' charts move), and his [journal](http://localhost:4000/hanzo/journal), a blog with its [feed](http://localhost:4000/hanzo/journal/feed.xml); [/hanzo](http://localhost:4000/hanzo) lists them. A page reads as it is saved, live: its text, its charts and its tables. Your handle (in **Settings**) is your pages' path.
 - Make a **New page** of each kind. On a board, drag a **Card**, a **Note** or a **Frame** onto the paper, or double-click it; join cards from their sides, and the arrows say *then*; a page card opens its page. Cards snap to the paper's grid, and the controls zoom, fit, tidy up, undo and download the board. On a table, edit a cell as in a spreadsheet, paste rows from one, add and delete rows: the others see each change in the color of who made it, and a cell someone types in is theirs until they are done.
 - **Maximize** a board or a table to the window (Esc restores it), or **Full screen**.
 - Connect an agent (above) and watch it: in the list of people with *AI*, its status beside its name, its cursor, pointer or cell where it works, its changes as it makes them. When it says what it is doing (a task and its steps), the page shows it under its bar, with **Pause**, **Resume** and **Stop** for you.
@@ -78,6 +79,37 @@ The sample pages (`mix setup`, or `mix run priv/repo/seeds.exs`) are **A tour of
 - What each person runs is kept in SQLite (`Jumon.History.Ecto`, the `jumon_history` table), so **Recent** follows you to any browser.
 
 Notebook is a single shared space. Any signed-in account can see and edit every page. The sample app does not have private workspaces or per-page permissions.
+
+## Publishing at your own address
+
+Published pages are read at `/<handle>/<slug>` (a blog's posts at `/<handle>/<blog>/<slug>`, its feed at `/<handle>/<blog>/feed.xml`), never with an `@`. One person's notebook may drop the handle (`/<slug>`). Pages may also be read at another address of yours, under a prefix:
+
+```elixir
+# config/runtime.exs, or NOTEBOOK_PUBLISH_URL, NOTEBOOK_PUBLISH_PREFIX,
+# NOTEBOOK_PUBLISH_PATHS=solo and NOTEBOOK_SITE_NAME in production
+config :notebook, :publishing,
+  url: "https://hattori.ai",   # where readers read (the notebook's own by default)
+  prefix: "/libs",             # what your proxy sends to the notebook ("" by default)
+  paths: :people,              # /libs/hanzo/kotoba; :solo for /libs/kotoba
+  name: "Hattori"              # the site's name, in the pages and the feeds
+```
+
+Only a page's HTML needs to go through your site. Its styles, scripts, files and live socket come from the notebook's own address, which takes your site as an origin. With the notebook at `notebook.hattori.ai`, this Cloudflare Worker on `hattori.ai` serves `hattori.ai/libs/*` from it:
+
+```js
+export default {
+  async fetch(request) {
+    const url = new URL(request.url)
+    if (url.pathname === "/libs" || url.pathname.startsWith("/libs/")) {
+      url.hostname = "notebook.hattori.ai"
+      return fetch(new Request(url, request))
+    }
+    return fetch(request)
+  },
+}
+```
+
+The same pages are at `notebook.hattori.ai/libs/...` too, and their links, canonical addresses and feeds say `hattori.ai/libs/...`.
 
 ## Checks
 
