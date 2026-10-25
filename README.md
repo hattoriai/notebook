@@ -6,7 +6,7 @@ A shared notebook where people and agents work together, live: a Phoenix app bui
 
 ## Run locally
 
-Notebook uses the published Issho, Kotoba, Hakushi, Masu, Koyomi, Jumon, Sekisho, Narabe, Fude and Storehouse from Hex, as your app would, and Cardbox from GitHub until the fix of [hattoriai/cardbox#3](https://github.com/hattoriai/cardbox/pull/3) is released. With Elixir 1.18 or later (`.tool-versions` pins the versions used here):
+Notebook uses the published Issho, Kotoba, Hakushi, Masu, Koyomi, Jumon, Sekisho, Narabe, Fude and Storehouse from Hex, as your app would, and Cardbox from its GitHub main until its next release. With Elixir 1.18 or later (`.tool-versions` pins the versions used here):
 
 ```sh
 mix setup
