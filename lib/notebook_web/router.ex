@@ -61,6 +61,7 @@ defmodule NotebookWeb.Router do
       live "/spaces/:id/folders/:folder_id", SpaceLive, :folder
       live "/spaces/:id/members", SpaceLive, :members
       live "/archive", ArchiveLive, :index
+      live "/inbox", InboxLive, :index
       live "/agents", AgentsLive, :index
     end
 

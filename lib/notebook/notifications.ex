@@ -78,6 +78,36 @@ defmodule Notebook.Notifications do
 
   def may_read?(_nobody, _page_id), do: false
 
+  @doc """
+  Watches a person's notifications for the calling LiveView: it gets
+  `:inbox_changed` when one comes, or is read or archived anywhere.
+  `Chime.Live` takes Chime's messages, so a process linked to the
+  LiveView listens for them.
+  """
+  def watch(%User{} = user) do
+    me = self()
+    ref = make_ref()
+
+    spawn_link(fn ->
+      Chime.subscribe(id(user))
+      send(me, {:watching, ref})
+      relay(me)
+    end)
+
+    # Back once it listens, so that no change after this call is missed.
+    receive do
+      {:watching, ^ref} -> :ok
+    end
+  end
+
+  defp relay(to) do
+    receive do
+      _news ->
+        send(to, :inbox_changed)
+        relay(to)
+    end
+  end
+
   ## Hearing of Issho's comments and Cardbox's records
 
   @doc "Attaches the handlers of Issho's and Cardbox's events (at start)."

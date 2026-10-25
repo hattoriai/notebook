@@ -747,8 +747,12 @@ if Issho.Comments.threads(Notebook.Issho, blade_room) == {:ok, []} do
   )
 end
 
-# What notifies of all this is done before the script ends.
+# What notifies of all this is done before the script ends; Hanzo has
+# read Yuki's invitation to the Tea house already.
 Notebook.Notifications.settle()
+
+for n <- Chime.feed("user:#{hanzo.id}", filter: :all), n.kind == "added_to_space",
+    do: Chime.mark_read("user:#{hanzo.id}", [n.id])
 
 IO.puts("""
 Sign in as one of them:

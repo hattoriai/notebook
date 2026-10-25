@@ -56,10 +56,11 @@ defmodule NotebookWeb.Sidebar do
 
   attr :current, :any,
     default: nil,
-    doc: "what is open: {:page, id}, {:space, id}, {:folder, id}, :home or :archive"
+    doc: "what is open: {:page, id}, {:space, id}, {:folder, id}, :home, :inbox or :archive"
 
   def sidebar(assigns) do
     ~H"""
+    <.bell :if={@chime} chime={@chime} />
     <button
       type="button"
       class="sidebar-show"
@@ -83,7 +84,7 @@ defmodule NotebookWeb.Sidebar do
         <.link navigate={~p"/"} class={["sidebar-link", @current == :home && "is-current"]}>
           <.icon name="hero-home" class="size-4" /> Home
         </.link>
-        <.inbox :if={@chime} chime={@chime} />
+        <.inbox :if={@chime} chime={@chime} current={@current} />
         <.command_button id="sidebar-commands" class="sidebar-link sidebar-search" />
       </div>
 
@@ -139,29 +140,46 @@ defmodule NotebookWeb.Sidebar do
   end
 
   attr :chime, :any, required: true
+  attr :current, :any, default: nil
 
-  # The person's notifications (Chime): a dot while some are unseen, the
-  # number unread, and the feed beside the sidebar while it is open.
+  # The person's notifications (Chime): the Inbox, a page of them, with a
+  # dot while some are unseen and the number unread.
   defp inbox(assigns) do
     ~H"""
-    <div class="sidebar-inbox">
-      <button
-        type="button"
-        id="sidebar-inbox"
-        class={["sidebar-link", @chime.open && "is-current"]}
-        phx-click="chime:toggle"
-        aria-expanded={to_string(@chime.open)}
-      >
-        <span class="sidebar-inbox-icon">
-          <.icon name="hero-inbox" class="size-4" />
-          <span :if={@chime.unseen > 0} class="chime-dot" aria-hidden="true"></span>
-        </span>
-        Inbox
-        <span :if={@chime.unread > 0} class="sidebar-inbox-count" aria-label={"#{@chime.unread} unread"}>
-          {@chime.unread}
-        </span>
-      </button>
-      <Chime.Components.feed chime={@chime} title="Inbox" empty="Nothing new. Back to your pages." />
+    <.link
+      navigate={~p"/inbox"}
+      id="sidebar-inbox"
+      class={["sidebar-link", @current == :inbox && "is-current"]}
+    >
+      <span class="sidebar-inbox-icon">
+        <.icon name="hero-inbox" class="size-4" />
+        <span :if={@chime.unseen > 0} class="chime-dot" aria-hidden="true"></span>
+      </span>
+      Inbox
+      <span :if={@chime.unread > 0} class="sidebar-inbox-count" aria-label={"#{@chime.unread} unread"}>
+        {@chime.unread}
+      </span>
+    </.link>
+    """
+  end
+
+  attr :chime, :any, required: true
+
+  @doc """
+  The bell beside the person's avatar, in the top bar: a dot while some
+  notifications are unseen, and the latest of them at a glance, with the
+  way to the Inbox.
+  """
+  def bell(assigns) do
+    ~H"""
+    <div class="topbar-bell">
+      <Chime.Components.bell chime={@chime} label="Notifications" />
+      <div :if={@chime.open} class="topbar-bell-panel">
+        <Chime.Components.feed chime={@chime} title="Notifications" empty="Nothing new." />
+        <.link navigate={~p"/inbox"} class="topbar-bell-all" phx-click="chime:close">
+          Open the Inbox <.icon name="hero-arrow-right" class="size-3.5" />
+        </.link>
+      </div>
     </div>
     """
   end

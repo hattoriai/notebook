@@ -741,20 +741,54 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 .cardbox-card strong { flex-basis: 100%; }
 .cardbox-card span { font: 12px/1.5 ui-sans-serif, system-ui, sans-serif; color: #6f6a60; }
 
-/* The Inbox (Chime): a row of the sidebar, and its feed beside the sidebar. */
+/* Notifications (Chime): the Inbox, a row of the sidebar and a page; the
+   bell beside the avatar, with the latest at a glance. */
 :root { --chime-ink: var(--ink); --chime-muted: var(--muted); --chime-paper: #fbf9f4; --chime-line: var(--rule); --chime-accent: var(--accent); --chime-unread: #f3ede1; --chime-radius: 10px; }
 .sidebar-inbox-icon { position: relative; display: inline-flex; }
 .sidebar-inbox-icon .chime-dot { top: -2px; right: -3px; width: 7px; height: 7px; box-shadow: 0 0 0 2px var(--paper); }
 .sidebar-inbox-count { margin-left: auto; min-width: 20px; padding: 0 6px; border-radius: 999px; background: #e6dfd0; color: var(--ink); font: 600 11px/18px ui-sans-serif, system-ui, sans-serif; text-align: center; }
-.sidebar-inbox .chime-feed { position: fixed; top: 96px; left: 276px; width: min(26rem, calc(100vw - 300px)); max-height: calc(100vh - 140px); margin: 0; font: 13px/1.4 ui-sans-serif, system-ui, sans-serif; box-shadow: 0 24px 48px -20px rgba(35, 38, 34, .35), 0 0 0 1px var(--rule); border: 0; }
-.sidebar-inbox .chime-feed-header { padding: 16px 18px 6px; }
-.sidebar-inbox .chime-feed-header h2 { font: 400 1.35rem/1.2 "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; letter-spacing: -.02em; }
-.sidebar-inbox .chime-filters { padding: 4px 14px 10px; }
-.sidebar-inbox .chime-item-open { padding: 11px 8px 11px 18px; gap: 3px; }
-.sidebar-inbox .chime-item-title { font-size: 13.5px; }
-.sidebar-inbox .chime-item-body { font: italic 13.5px/1.45 "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; }
-.sidebar-inbox .chime-unread .chime-item-title::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 999px; background: var(--accent); vertical-align: 2px; }
-@media (max-width: 760px) { .sidebar-inbox .chime-feed { left: 16px; right: 16px; width: auto; } }
+.topbar-bell { position: absolute; z-index: 40; top: 19px; right: calc(clamp(24px, 5vw, 88px) + 46px); }
+.topbar-bell .chime-bell { width: 34px; height: 34px; color: var(--ink); }
+.topbar-bell .chime-bell:hover, .topbar-bell .chime-bell[aria-expanded="true"] { background: #e8e0d2; }
+.topbar-bell .chime-dot { top: 6px; right: 7px; width: 8px; height: 8px; box-shadow: 0 0 0 2px var(--paper); }
+.topbar-bell-panel { position: absolute; top: calc(100% + 12px); right: -46px; width: min(25rem, calc(100vw - 32px)); border-radius: 12px; background: #fbf9f4; box-shadow: 0 24px 48px -20px rgba(35, 38, 34, .35), 0 0 0 1px var(--rule); overflow: hidden; font: 13px/1.4 ui-sans-serif, system-ui, sans-serif; }
+.topbar-bell .chime-feed { position: static; width: auto; max-height: min(60vh, 520px); margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+.topbar-bell .chime-feed-header { padding: 16px 18px 6px; }
+.topbar-bell .chime-feed-header h2 { font: 400 1.25rem/1.2 "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; letter-spacing: -.02em; }
+.topbar-bell .chime-filters { padding: 4px 14px 10px; }
+.topbar-bell .chime-item-open { padding: 11px 8px 11px 18px; gap: 3px; }
+.topbar-bell .chime-item-body { font: italic 13.5px/1.45 "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; }
+.topbar-bell .chime-unread .chime-item-title::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 999px; background: var(--accent); vertical-align: 2px; }
+.topbar-bell-all { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; border-top: 1px solid var(--rule); color: var(--accent); font-weight: 600; }
+.topbar-bell-all:hover { background: #f3ede1; }
+.inbox-view { max-width: 820px; }
+.inbox-bar { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: clamp(40px, 6vw, 72px) 0 8px; padding-bottom: 14px; border-bottom: 1px solid var(--ink); }
+.inbox-filters { display: flex; gap: 4px; font: 13px ui-sans-serif, system-ui, sans-serif; }
+.inbox-filters a { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; color: var(--muted); }
+.inbox-filters a:hover { color: var(--ink); background: #ece7dc; }
+.inbox-filters a.is-current { background: var(--ink); color: var(--paper); }
+.inbox-filter-count { min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--accent); color: var(--paper); font: 600 10.5px/17px ui-sans-serif, system-ui, sans-serif; text-align: center; }
+.inbox-read-all { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; color: var(--muted); font: 13px ui-sans-serif, system-ui, sans-serif; cursor: pointer; }
+.inbox-read-all:hover { color: var(--accent); }
+.inbox-day h2 { margin: 34px 0 6px; font: 600 10.5px/1.4 ui-sans-serif, system-ui, sans-serif; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); }
+.inbox-list { list-style: none; margin: 0; padding: 0; }
+.inbox-item { display: flex; align-items: flex-start; gap: 14px; padding: 14px 10px; border-bottom: 1px solid var(--rule); border-radius: 8px; transition: background .15s ease; }
+.inbox-item:hover { background: #efe9dd; }
+.inbox-avatar { flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; margin-top: 1px; border-radius: 999px; background: #e8e0d2; color: var(--ink); font: 600 11px ui-sans-serif, system-ui, sans-serif; letter-spacing: .03em; }
+.inbox-avatar.is-reminder { background: #f1e3d9; color: var(--accent); }
+.inbox-open { flex: 1; min-width: 0; display: grid; gap: 4px; padding: 0; border: 0; background: none; color: var(--ink); text-align: left; cursor: pointer; }
+.inbox-title { font: 14.5px/1.4 ui-sans-serif, system-ui, sans-serif; color: #4a4f49; }
+.inbox-item.is-unread .inbox-title { color: var(--ink); font-weight: 600; }
+.inbox-item.is-unread .inbox-title::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 999px; background: var(--accent); vertical-align: 2px; }
+.inbox-body { font: italic 15px/1.5 "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; color: #5d625c; border-left: 2px solid #e4ddd0; padding-left: 10px; margin: 2px 0; }
+.inbox-open time { font: 11.5px ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
+.inbox-actions { display: flex; gap: 2px; opacity: 0; transition: opacity .15s ease; }
+.inbox-item:hover .inbox-actions, .inbox-actions:focus-within { opacity: 1; }
+.inbox-actions button { display: inline-grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
+.inbox-actions button:hover { background: #e6dfd0; color: var(--ink); }
+.inbox-empty { display: grid; justify-items: center; gap: 10px; padding: 70px 20px; color: var(--muted); text-align: center; }
+.inbox-more { display: block; margin: 24px auto 0; padding: 8px 16px; border: 1px solid var(--rule); border-radius: 999px; background: none; color: var(--muted); cursor: pointer; }
+@media (max-width: 760px) { .topbar-bell { right: calc(24px + 46px); } .inbox-actions { opacity: 1; } }
 .settings-wide { grid-column: 1 / -1; }
 .chime-preferences { font: 13px/1.4 ui-sans-serif, system-ui, sans-serif; }
 .chime-preferences th { font-weight: 600; }
