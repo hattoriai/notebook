@@ -112,6 +112,26 @@ export default {
 
 The same pages are at `notebook.hattori.ai/libs/...` too, and their links, canonical addresses and feeds say `hattori.ai/libs/...`.
 
+## Where files are kept
+
+The notebook's first person is its admin. **Notebook settings** (the account menu, `/admin`) chooses where the pages' images and attachments are kept: on this server's disk, or in a bucket of any store that speaks S3 (Amazon S3, Cloudflare R2, Tigris, Backblaze B2, MinIO). A Google Drive, Dropbox or OneDrive works through [`rclone serve s3`](https://rclone.org/commands/rclone_serve_s3/). A bucket is tried before it is kept, and nothing needs deploying again.
+
+Files keep their addresses (`/uploads/kotoba/…`) wherever they are, so pages never change. The notebook serves each file from the store that has it, behind the same rules as before: sent through the notebook (the bucket stays private) or by links the bucket signs for five minutes. After a move, **Copy them** copies the files of before to the new store, and **Remove them** then frees the room they took where they were, only for the files the new store has, the same size. Either runs in the background a slice at a time with a progress bar, the time left and a **Stop**: it may take hours, and it carries on after a restart.
+
+The page also shows this server's disk: what the files, the database and everything else take, and what is free.
+
+### Secrets
+
+The notebook's secrets (a bucket's key, and the tokens and webhook secrets to come) are encrypted in the database with [Cloak](https://hexdocs.pm/cloak_ecto) (AES-256-GCM, `Notebook.Secrets`). The key is `NOTEBOOK_VAULT_KEY` (`openssl rand -base64 32`); without it, one is derived from `SECRET_KEY_BASE`, so a notebook needs nothing more to start. To rotate, set the new key, keep the old ones in `NOTEBOOK_VAULT_RETIRED_KEYS` (comma-separated), restart, and encrypt them again:
+
+```sh
+bin/notebook eval "Notebook.Secrets.rotate()"
+```
+
+Each secret names the key it was encrypted with, and the key derived from `SECRET_KEY_BASE` is always kept among the retired, so setting `NOTEBOOK_VAULT_KEY` for the first time needs no more. A secret no key opens any more is asked for again.
+
+The SQLite database stays on the server's disk: on Fly.io, give it a volume.
+
 ## Checks
 
 ```sh

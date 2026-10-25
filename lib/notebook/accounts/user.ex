@@ -11,6 +11,8 @@ defmodule Notebook.Accounts.User do
     field :password, :string, virtual: true, redact: true
     field :hashed_password, :string, redact: true
     field :confirmed_at, :utc_datetime
+    # Who keeps the notebook's own settings (its storage): its first person.
+    field :admin, :boolean, default: false
     field :authenticated_at, :utc_datetime, virtual: true
 
     timestamps(type: :utc_datetime)

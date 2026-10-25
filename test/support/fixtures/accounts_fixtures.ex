@@ -24,7 +24,7 @@ defmodule Notebook.AccountsFixtures do
 
     {:ok, user} =
       %Accounts.User{}
-      |> Ecto.Changeset.cast(attrs, [:name])
+      |> Ecto.Changeset.cast(attrs, [:name, :admin])
       |> Accounts.User.email_changeset(attrs)
       |> Ecto.Changeset.put_change(:handle, Notebook.Publishing.free_handle(attrs.name))
       |> Notebook.Repo.insert()

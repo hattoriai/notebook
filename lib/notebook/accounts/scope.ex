@@ -39,4 +39,8 @@ defmodule Notebook.Accounts.Scope do
     do: %{scope | link_tokens: tokens}
 
   def with_links(nil, _tokens), do: nil
+
+  @doc "Whether the scope's person keeps the notebook's own settings."
+  def admin?(%__MODULE__{user: %User{admin: true}}), do: true
+  def admin?(_scope), do: false
 end

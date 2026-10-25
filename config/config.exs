@@ -109,7 +109,8 @@ config :notebook, Oban,
   engine: Oban.Engines.Lite,
   notifier: Oban.Notifiers.PG,
   repo: Notebook.Repo,
-  queues: [default: 10],
+  # Storage: one transfer of the files at a time (Notebook.Storage.Transfer).
+  queues: [default: 10, storage: 1],
   plugins: [Oban.Plugins.Pruner]
 
 # Who the notifications' emails are from.

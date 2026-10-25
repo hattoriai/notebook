@@ -49,6 +49,15 @@ defmodule Notebook.AccountsTest do
   end
 
   describe "register_user/1" do
+    test "the notebook's first person is its admin; those after are not" do
+      attrs = fn ->
+        %{name: "Hattori Hanzo", email: unique_user_email(), password: "no more swords"}
+      end
+
+      assert {:ok, %{admin: true}} = Accounts.register_user(attrs.())
+      assert {:ok, %{admin: false}} = Accounts.register_user(%{attrs.() | name: "Yuki Hattori"})
+    end
+
     test "requires email to be set" do
       {:error, changeset} = Accounts.register_user(%{})
 

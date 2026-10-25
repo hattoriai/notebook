@@ -77,11 +77,11 @@ defmodule NotebookWeb.Router do
     end
   end
 
-  # The files of the pages (Storehouse): for those signed in, and anyone's
-  # of a published page.
+  # The files of the pages (Storehouse), from the store that has each: for
+  # those signed in, and anyone's of a published page.
   scope "/" do
     pipe_through [:browser, NotebookWeb.Plugs.Uploads]
-    get "/uploads/kotoba/*key", Storehouse.Local.Plug, [at: "/uploads/kotoba"], alias: false
+    get "/uploads/kotoba/*key", NotebookWeb.Plugs.Files, []
   end
 
   # Other scopes may use custom stacks.
@@ -97,6 +97,7 @@ defmodule NotebookWeb.Router do
     live_session :require_authenticated_user,
       on_mount: [{NotebookWeb.UserAuth, :require_authenticated}, Chime.Live] do
       live "/users/settings", UserLive.Settings, :edit
+      live "/admin", AdminLive, :index
     end
 
     post "/users/update-password", UserSessionController, :update_password
