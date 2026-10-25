@@ -1,7 +1,10 @@
 defmodule NotebookWeb.Sidebar do
   @moduledoc """
   The notebook's sidebar: Home, the spaces the person may read, each with
-  its folders and pages, and the Archive. Every LiveView of the notebook
+  its folders and pages, and the Archive. Each space is a Narabe tree
+  (`Notebook.Spaces.order/1`): its editors drag a page or a folder, or move
+  it from the keyboard (Space, the arrows, Space), within and across its
+  folders, and the order stays as they leave it. Every LiveView of the notebook
   mounts it (`on_mount`): it loads the person's tree, and loads it again
   when someone makes, renames, moves or archives a page, a folder or a
   space (`Notebook.Spaces.subscribe_tree/0`), so that it is the same for
@@ -10,6 +13,7 @@ defmodule NotebookWeb.Sidebar do
   use NotebookWeb, :html
 
   import Phoenix.LiveView
+  import Narabe.Components, only: [tree: 1]
 
   alias Notebook.Spaces
 
@@ -23,9 +27,26 @@ defmodule NotebookWeb.Sidebar do
         :tree_changed, socket -> {:halt, assign_tree(socket)}
         _message, socket -> {:cont, socket}
       end)
+      |> attach_hook(:sidebar_move, :handle_event, &handle_move/3)
 
     {:cont, socket}
   end
+
+  # A move in a space's tree: the space's editors may; the browser puts the
+  # items back on an error.
+  defp handle_move("sidebar_move:" <> space_id, params, socket) do
+    node = Enum.find(socket.assigns.tree, &(to_string(&1.space.id) == space_id))
+
+    result =
+      with %{space: space} <- node || {:error, :not_found},
+           {:ok, move} <- Narabe.Move.parse(params) do
+        Spaces.move(socket.assigns.current_scope, space, move)
+      end
+
+    {:halt, Narabe.Live.reply(result), assign_tree(socket)}
+  end
+
+  defp handle_move(_event, _params, socket), do: {:cont, socket}
 
   @doc "Loads the person's tree again, after a change this LiveView made."
   def assign_tree(socket), do: assign(socket, :tree, Spaces.tree(socket.assigns.current_scope))
@@ -63,15 +84,23 @@ defmodule NotebookWeb.Sidebar do
             <.icon name="hero-plus" class="size-3.5" />
           </.link>
         </div>
-        <ul class="sidebar-tree">
-          <li :for={folder <- node.folders}>
-            <.folder_branch node={folder} current={@current} />
-          </li>
-          <li :for={page <- node.pages}>
-            <.page_link page={page} current={@current} />
-          </li>
-          <li :if={node.folders == [] and node.pages == []} class="sidebar-empty">No pages yet</li>
-        </ul>
+        <.tree
+          :if={node.items != []}
+          id={"space-tree-#{space.id}"}
+          class="sidebar-tree"
+          items={node.items}
+          item_kind={:kind}
+          item_label={&label/1}
+          rules={node.order.rules}
+          expanded={for item <- node.items, item.kind == "folder", do: item.id}
+          on_move={"sidebar_move:#{space.id}"}
+          readonly={not node.can_edit?}
+          handle
+          label={space.name}
+        >
+          <:item :let={item}><.tree_item item={item} current={@current} /></:item>
+        </.tree>
+        <p :if={node.items == []} class="sidebar-empty">No pages yet</p>
       </section>
 
       <div class="sidebar-bottom">
@@ -89,30 +118,27 @@ defmodule NotebookWeb.Sidebar do
     """
   end
 
-  attr :node, :map, required: true
+  attr :item, :map, required: true
   attr :current, :any, default: nil
 
-  defp folder_branch(assigns) do
+  # A row of a space's tree: a folder, or a page, as a link.
+  defp tree_item(%{item: %{kind: "folder", record: folder}} = assigns) do
+    assigns = assign(assigns, :folder, folder)
+
     ~H"""
-    <details class="sidebar-folder" open>
-      <summary class={@current == {:folder, @node.folder.id} && "is-current"}>
-        <.icon name="hero-folder" class="size-4" />
-        <.link navigate={~p"/spaces/#{@node.folder.space_id}/folders/#{@node.folder.id}"}>
-          {@node.folder.name}
-        </.link>
-      </summary>
-      <ul class="sidebar-tree">
-        <li :for={child <- @node.folders}><.folder_branch node={child} current={@current} /></li>
-        <li :for={page <- @node.pages}><.page_link page={page} current={@current} /></li>
-      </ul>
-    </details>
+    <.link
+      navigate={~p"/spaces/#{@folder.space_id}/folders/#{@folder.id}"}
+      class={["sidebar-folder-link", @current == {:folder, @folder.id} && "is-current"]}
+    >
+      <.icon name="hero-folder" class="size-4" />
+      <span>{@folder.name}</span>
+    </.link>
     """
   end
 
-  attr :page, :map, required: true
-  attr :current, :any, default: nil
+  defp tree_item(%{item: %{record: page}} = assigns) do
+    assigns = assign(assigns, :page, page)
 
-  defp page_link(assigns) do
     ~H"""
     <.link
       navigate={~p"/pages/#{@page.id}"}
@@ -123,6 +149,9 @@ defmodule NotebookWeb.Sidebar do
     </.link>
     """
   end
+
+  defp label(%{kind: "folder", record: folder}), do: folder.name
+  defp label(%{record: page}), do: page.title
 
   @doc "The icon of a space."
   def space_icon(%{kind: "general"}), do: "hero-building-office-2"

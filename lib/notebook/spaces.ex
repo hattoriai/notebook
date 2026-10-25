@@ -200,6 +200,7 @@ defmodule Notebook.Spaces do
          :ok <- parent_ok(parent, space) do
       %Folder{space_id: space.id, parent_id: parent && parent.id}
       |> Folder.changeset(attrs)
+      |> Narabe.Ecto.Mixed.put_position(Repo, order(space))
       |> Repo.insert()
       |> changed()
     end
@@ -243,44 +244,88 @@ defmodule Notebook.Spaces do
   ## The sidebar
 
   @doc """
-  The spaces the scope may read, each with its folders (and theirs) and
-  the pages in each, archived pages left out: what the sidebar draws.
+  A space's folders and pages as one ordered tree (`Narabe.Ecto.Mixed`):
+  its folders (two levels deep at most) and its pages that are not
+  archived, each sibling list in the order people put it in.
+  """
+  def order(%Space{id: id}) do
+    Narabe.Ecto.Mixed.new(
+      [
+        folder: [from: where(Folder, space_id: ^id), parent: :parent_id],
+        page: [
+          from: where(Page, [p], p.space_id == ^id and is_nil(p.archived_at)),
+          parent: :folder_id
+        ]
+      ],
+      parents: :folder,
+      rules: [max_depth: 3]
+    )
+  end
 
-      [%{space: %Space{}, folders: [%{folder: %Folder{}, folders: [...], pages: [...]}], pages: [...]}]
+  @doc """
+  Moves pages and folders within a space's tree, as its sidebar sends it
+  (`Narabe.Move`, ids such as `"page:9"`): the space's editors may. A
+  folder in a folder holds only pages, so a folder goes at most one level
+  down, and a folder that holds folders stays at the top.
+  """
+  def move(scope, %Space{} = space, %Narabe.Move{} = move) do
+    tree = order(space)
+
+    with :ok <- Permissions.authorize(scope, :edit, space),
+         :ok <- shallow(tree, move) do
+      tree_result = Narabe.Ecto.Mixed.move(Repo, tree, move)
+      changed(tree_result)
+    end
+  end
+
+  # Moved folders end at most two levels deep, their own folders counted.
+  defp shallow(tree, %Narabe.Move{ids: ids, parent: parent}) do
+    folders =
+      for id <- ids,
+          {:ok, {"folder", pk}} <- [Narabe.Ecto.Mixed.parse_id(tree, to_string(id))],
+          do: pk
+
+    parent_depth =
+      case parent && Narabe.Ecto.Mixed.parse_id(tree, to_string(parent)) do
+        {:ok, {"folder", pk}} -> if Repo.get!(Folder, pk).parent_id, do: 2, else: 1
+        _top -> 0
+      end
+
+    holds_folders? = Repo.exists?(from f in Folder, where: f.parent_id in ^folders)
+    height = if holds_folders?, do: 2, else: 1
+
+    if folders == [] or parent_depth + height <= 2, do: :ok, else: {:error, :too_deep}
+  end
+
+  @doc """
+  The spaces the scope may read, each with its tree: the items the
+  sidebar's `<.tree>` draws (`Narabe.Ecto.Mixed.items/2`), the same as
+  folders (and theirs) and pages, whether the scope may move them, and
+  its order.
+
+      [%{space: %Space{}, items: [...], folders: [%{folder: %Folder{}, folders: [...], pages: [...]}], pages: [...], can_edit?: true, order: %Narabe.Ecto.Mixed{}}]
   """
   def tree(scope) do
-    spaces = list(scope)
-    ids = Enum.map(spaces, & &1.id)
+    for space <- list(scope) do
+      order = order(space)
+      items = Narabe.Ecto.Mixed.items(Repo, order)
+      children = Enum.group_by(items, & &1.parent_id)
 
-    folders = Repo.all(from f in Folder, where: f.space_id in ^ids, order_by: f.name)
+      node = fn parent, node ->
+        kids = Map.get(children, parent, [])
 
-    pages =
-      Repo.all(
-        from p in Page,
-          where: p.space_id in ^ids and is_nil(p.archived_at),
-          order_by: [asc: fragment("lower(?)", p.title)],
-          select: struct(p, [:id, :title, :kind, :space_id, :folder_id, :updated_at])
-      )
+        %{
+          folders:
+            for %{kind: "folder"} = item <- kids do
+              Map.put(node.(item.id, node), :folder, item.record)
+            end,
+          pages: for(%{kind: "page", record: page} <- kids, do: page)
+        }
+      end
 
-    pages_in = Enum.group_by(pages, &{&1.space_id, &1.folder_id})
-    children = Enum.group_by(folders, & &1.parent_id)
-
-    folder_node = fn folder, node ->
-      %{
-        folder: folder,
-        folders: Enum.map(Map.get(children, folder.id, []), &node.(&1, node)),
-        pages: Map.get(pages_in, {folder.space_id, folder.id}, [])
-      }
-    end
-
-    for space <- spaces do
-      top = Enum.filter(folders, &(&1.space_id == space.id and is_nil(&1.parent_id)))
-
-      %{
-        space: space,
-        folders: Enum.map(top, &folder_node.(&1, folder_node)),
-        pages: Map.get(pages_in, {space.id, nil}, [])
-      }
+      space
+      |> then(&%{space: &1, items: items, order: order, can_edit?: allowed?(scope, :edit, &1)})
+      |> Map.merge(node.(nil, node))
     end
   end
 end

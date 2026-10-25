@@ -81,6 +81,10 @@ defmodule Notebook.MixProject do
       {:koyomi, "~> 0.1.2"},
       {:jumon, "~> 0.1.1"},
       {:sekisho, "~> 0.1.1"},
+      # Until a tree of several tables (Narabe.Ecto.Mixed) is on Hex: its
+      # branch (and, in config.exs and app.css, its sources in place of the
+      # package's built files).
+      {:narabe, github: "hattoriai/narabe", branch: "claude/nifty-hawking-kbfb90"},
       {:tz, "~> 0.28"}
     ]
   end

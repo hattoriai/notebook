@@ -9,6 +9,8 @@ defmodule Notebook.Spaces.Folder do
 
   schema "folders" do
     field :name, :string
+    # Its place among its siblings, folders and pages alike (Narabe).
+    field :position, :string
     belongs_to :space, Notebook.Spaces.Space
     belongs_to :parent, __MODULE__
     has_many :children, __MODULE__, foreign_key: :parent_id

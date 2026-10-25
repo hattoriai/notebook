@@ -48,13 +48,63 @@ defmodule NotebookWeb.SpacesLiveTest do
 
     {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/")
     assert has_element?(view, "#sidebar .sidebar-space-name", "The forge")
-    assert has_element?(view, "#sidebar .sidebar-folder", "Plans")
+    assert has_element?(view, "#sidebar .sidebar-folder-link", "Plans")
     assert has_element?(view, "#sidebar .sidebar-page", "The last blade")
     assert has_element?(view, "#sidebar .sidebar-page", letter.title)
 
     {:ok, view, _html} = live(log_in_user(build_conn(), yuki), ~p"/")
     assert has_element?(view, "#sidebar .sidebar-page", "The last blade")
     refute has_element?(view, "#sidebar .sidebar-page", letter.title)
+  end
+
+  test "an editor moves pages and folders in the sidebar's tree", %{
+    conn: conn,
+    hanzo: hanzo,
+    scope: scope,
+    forge: forge,
+    plans: plans,
+    blade: blade
+  } do
+    {:ok, curve} = Pages.create(scope, %{"title" => "Notes on the curve", "space_id" => forge.id})
+    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/")
+    tree = "space-tree-#{forge.id}"
+
+    assert Narabe.Test.outline(view, tree) == [
+             {"Plans", 1},
+             {"The last blade", 2},
+             {"Notes on the curve", 1}
+           ]
+
+    Narabe.Test.move(view, tree, "page:#{curve.id}",
+      parent: "folder:#{plans.id}",
+      before: "page:#{blade.id}"
+    )
+
+    assert Narabe.Test.outline(view, tree) == [
+             {"Plans", 1},
+             {"Notes on the curve", 2},
+             {"The last blade", 2}
+           ]
+
+    assert Pages.get!(scope, curve.id).folder_id == plans.id
+
+    # The order stays as it was left, for everyone.
+    {:ok, other, _html} = live(log_in_user(build_conn(), hanzo), ~p"/spaces/#{forge.id}")
+    assert Narabe.Test.items(other, tree) == ["Plans", "Notes on the curve", "The last blade"]
+  end
+
+  test "a commenter's tree does not move", %{
+    conn: conn,
+    yuki: yuki,
+    forge: forge,
+    blade: blade,
+    scope: scope
+  } do
+    {:ok, view, _html} = live(log_in_user(conn, yuki), ~p"/")
+    assert has_element?(view, "#space-tree-#{forge.id}[data-config*='\"readonly\":true']")
+
+    Narabe.Test.move(view, "space-tree-#{forge.id}", "page:#{blade.id}", parent: nil)
+    refute is_nil(Pages.get!(scope, blade.id).folder_id)
   end
 
   test "the sidebar follows changes others make", %{

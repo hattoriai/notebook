@@ -85,6 +85,7 @@ defmodule Notebook.Pages do
          {:ok, page} <-
            %Page{author_id: user.id, space_id: space.id, folder_id: folder_id}
            |> Page.changeset(attrs)
+           |> Narabe.Ecto.Mixed.put_position(Repo, Spaces.order(space))
            |> Repo.insert() do
       Spaces.tree_changed()
       {:ok, Repo.preload(page, [:author, :space, :folder])}
@@ -152,7 +153,8 @@ defmodule Notebook.Pages do
          :ok <- Permissions.authorize(scope, :edit, space),
          {:ok, page} <-
            page
-           |> Ecto.Changeset.change(space_id: space.id, folder_id: folder_id)
+           |> Ecto.Changeset.change(space_id: space.id, folder_id: folder_id, position: nil)
+           |> Narabe.Ecto.Mixed.put_position(Repo, Spaces.order(space))
            |> Repo.update() do
       Spaces.tree_changed()
       {:ok, Repo.preload(page, [:author, :space, :folder], force: true)}
