@@ -602,6 +602,13 @@ html.space-maximized { overflow: hidden; }
 .memory-file textarea { width: 100%; min-height: 360px; padding: 14px 16px; border: 1px solid var(--rule); background: #fcfbf7; font: 13.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); resize: vertical; }
 .memory-file textarea:focus { outline: none; border-color: var(--accent); }
 .memory-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+.memory-entry.is-hidden span { color: var(--muted); text-decoration: line-through; text-decoration-color: rgba(0,0,0,.25); }
+.memory-hidden-mark { color: var(--muted) !important; }
+.memory-sources { margin: -4px 0 12px; color: var(--muted); font: 12.5px ui-sans-serif, system-ui, sans-serif; }
+.memory-sources a { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+.memory-hidden { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; padding: 12px 14px; border: 1px solid var(--rule); background: #f3efe6; color: var(--muted); font: 13px/1.45 ui-sans-serif, system-ui, sans-serif; }
+.memory-hidden-text { flex: 1; text-align: left; }
+.memory-hidden .button { flex: none; }
 .memory-outdated { margin: 0 0 10px; padding: 10px 12px; border-left: 3px solid var(--accent); background: #f3e9df; font: 13px ui-sans-serif, system-ui, sans-serif; }
 .memory-outdated a { text-decoration: underline; }
 @media (max-width: 760px) { .memory-layout { grid-template-columns: 1fr; } }

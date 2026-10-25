@@ -9,10 +9,16 @@ defmodule Notebook.Memory.Store do
   what its person changed meanwhile is what the agent reads.
   """
   @enforce_keys [:agent_id]
-  defstruct [:agent_id, snapshot: nil]
+  defstruct [:agent_id, scope: nil, sources: [], snapshot: nil]
 
-  @doc "The memory of an agent, as a mount."
-  def new(agent_id), do: %__MODULE__{agent_id: agent_id}
+  @doc """
+  The memory of an agent, as a mount. Options: `:scope`, the agent's
+  (`Scope.for_agent/2`): a file learned on a page it may not read is not
+  there (`Notebook.Memory.hidden/2`); `:sources`, the pages it is on, which
+  the files it writes keep.
+  """
+  def new(agent_id, opts \\ []),
+    do: %__MODULE__{agent_id: agent_id, scope: opts[:scope], sources: opts[:sources] || []}
 
   @doc false
   # The agent's files and directories, by path, read once per command.
@@ -52,7 +58,8 @@ defmodule Notebook.Memory.Store do
   end
 
   defp read(%__MODULE__{agent_id: id} = store) do
-    rows = Notebook.Memory.files(id)
+    hidden = if store.scope, do: Notebook.Memory.hidden(id, store.scope), else: MapSet.new()
+    rows = id |> Notebook.Memory.files() |> Enum.reject(&MapSet.member?(hidden, &1.path))
     files = for f <- rows, not f.directory, into: %{}, do: {f.path, f}
 
     dirs =
@@ -63,7 +70,7 @@ defmodule Notebook.Memory.Store do
       |> MapSet.new()
       |> MapSet.put("/")
 
-    %{store | snapshot: %{files: files, dirs: dirs}}
+    %{store | snapshot: %{files: files, dirs: dirs, hidden: hidden}}
   end
 
   @doc false
@@ -162,9 +169,13 @@ defimpl VFS.Mountable, for: Notebook.Memory.Store do
   end
 
   def write_file(store, path, content, _opts) when is_binary(content) do
+    %{snapshot: snap} = store = Store.load(store)
     p = VFS.Path.normalize(path)
 
-    case Memory.write(store.agent_id, p, content) do
+    case if(MapSet.member?(snap.hidden, p),
+           do: {:error, :hidden},
+           else: Memory.write(store.agent_id, p, content, store.sources)
+         ) do
       {:ok, _file} -> {:ok, Store.forget(store)}
       {:error, kind} -> {:error, error(kind, p)}
     end
@@ -179,10 +190,29 @@ defimpl VFS.Mountable, for: Notebook.Memory.Store do
     end
   end
 
+  # A directory holding a file hidden from the agent is removed but for it.
   def rm(store, path, opts) do
+    %{snapshot: snap} = store = Store.load(store)
     p = VFS.Path.normalize(path)
 
-    case Memory.rm(store.agent_id, p, recursive: Keyword.get(opts, :recursive, false)) do
+    result =
+      cond do
+        MapSet.member?(snap.hidden, p) ->
+          {:error, :enoent}
+
+        Enum.any?(snap.hidden, &String.starts_with?(&1, p <> "/")) and
+            Keyword.get(opts, :recursive, false) ->
+          for f <- Map.keys(snap.files),
+              String.starts_with?(f, p <> "/"),
+              do: Memory.rm(store.agent_id, f)
+
+          {:ok, nil}
+
+        true ->
+          Memory.rm(store.agent_id, p, recursive: Keyword.get(opts, :recursive, false))
+      end
+
+    case result do
       {:ok, _} -> {:ok, Store.forget(store)}
       {:error, kind} -> {:error, error(kind, p)}
     end
@@ -207,6 +237,9 @@ defimpl VFS.Mountable, for: Notebook.Memory.Store do
 
   defp error(:enospc, p),
     do: Error.new(:eio, path: p, message: "#{p}: your memory is full, tidy it first")
+
+  defp error(:hidden, p),
+    do: Error.new(:eacces, path: p, message: "#{p}: learned on a page you may no longer read")
 
   defp error(kind, p), do: Error.new(kind, path: p)
 end

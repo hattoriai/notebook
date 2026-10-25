@@ -36,6 +36,32 @@ defmodule NotebookWeb.AgentMemoryLiveTest do
     refute has_element?(view, "#memory-tree", "hanzo.md")
   end
 
+  test "a note shows where it was learned, and one hidden from the agent says so", %{
+    conn: conn,
+    agent: agent
+  } do
+    hanzo = Notebook.Repo.get!(Notebook.Accounts.User, agent.user_id)
+    scope = Scope.for_user(hanzo)
+
+    {:ok, page} =
+      Notebook.Pages.create(scope, %{
+        "title" => "Letters I never sent",
+        "space_id" => Notebook.Spaces.private!(hanzo).id
+      })
+
+    {:ok, _} = Memory.write(agent.id, "/letters.md", "- to the museum: no\n", [page.id])
+    {:ok, _} = Notebook.Pages.set_closed_to_agents(scope, page, true)
+
+    {:ok, view, _html} = live(conn, ~p"/agents/#{agent.id}?file=/letters.md")
+    assert has_element?(view, "#memory-sources a", "Letters I never sent")
+    assert has_element?(view, "#memory-tree .is-hidden", "letters.md")
+    assert has_element?(view, "#memory-hidden")
+
+    view |> element("#memory-hidden button") |> render_click()
+    refute has_element?(view, "#memory-hidden")
+    refute has_element?(view, "#memory-sources")
+  end
+
   test "another's agent's memory is not there", %{agent: agent} do
     other = log_in_user(build_conn(), user_fixture(%{name: "Yuki Hattori"}))
     assert {:error, {:live_redirect, %{to: "/agents"}}} = live(other, ~p"/agents/#{agent.id}")

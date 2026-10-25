@@ -15,13 +15,14 @@ defmodule Notebook.Memory.Shell do
 
   @doc """
   Runs a command line for the agent: `%{"stdout", "stderr", "exit_code"}`,
-  each output cut to its last 16,000 characters if longer.
+  each output cut to its last 16,000 characters if longer. Options:
+  `:scope` and `:sources`, as `Notebook.Memory.Store.new/2` takes them.
   """
-  def run(agent_id, command) when is_binary(command) do
+  def run(agent_id, command, opts \\ []) when is_binary(command) do
     bash =
       [cwd: @mount, limits: :default]
       |> JustBash.new()
-      |> JustBash.mount(@mount, Notebook.Memory.Store.new(agent_id))
+      |> JustBash.mount(@mount, Notebook.Memory.Store.new(agent_id, opts))
 
     {result, _bash} = Notebook.Memory.Store.command(fn -> JustBash.exec(bash, command) end)
 
