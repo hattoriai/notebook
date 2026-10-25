@@ -55,6 +55,14 @@ config :esbuild,
       ]
     }
   ],
+  # Issho's browser client, from its sources in deps/issho (its main):
+  # `mix notebook.issho`.
+  issho: [
+    args:
+      ~w(src/index.ts --bundle --minify --target=es2020 --external:phoenix --format=esm --outfile=../priv/static/issho.esm.js),
+    cd: Path.expand("../deps/issho/assets", __DIR__),
+    env: %{"NODE_PATH" => nil}
+  ],
   kotoba_extensions: [
     args:
       ~w(js/kotoba/extensions/*.js --bundle --format=esm --target=es2022 --outdir=../priv/static/assets/kotoba/extensions),
