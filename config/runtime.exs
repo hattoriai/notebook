@@ -1,8 +1,12 @@
 import Config
 
 if config_env() == :prod do
-  config :kotoba, Kotoba.Storage.Local,
-    root: System.get_env("KOTOBA_UPLOADS", "/var/lib/notebook/uploads"),
+  config :storehouse, Storehouse.Local,
+    root:
+      System.get_env(
+        "NOTEBOOK_UPLOADS",
+        System.get_env("KOTOBA_UPLOADS", "/var/lib/notebook/uploads")
+      ),
     url_prefix: "/uploads/kotoba"
 
   config :notebook, Notebook.Repo,

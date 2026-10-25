@@ -44,10 +44,8 @@ config :phoenix_live_view,
 config :esbuild,
   version: "0.25.4",
   notebook: [
-    # --alias:issho: until Issho 0.4.0 is on Hex, its TypeScript sources
-    # (a git dependency has no built files).
     args:
-      ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=. --alias:issho=../deps/issho/assets/src/index.ts),
+      ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
     env: %{
       "NODE_PATH" => [
@@ -92,9 +90,7 @@ config :logger, :default_formatter,
 config :phoenix, :json_library, Jason
 config :swoosh, :api_client, false
 
-config :kotoba,
-  storage: Kotoba.Storage.Local,
-  nodes: [Notebook.Kotoba.Nodes.Callout]
+config :kotoba, nodes: [Notebook.Kotoba.Nodes.Callout]
 
 # Koyomi's pickers write dates for a reader in Lisbon: "today", the review
 # times and the wall clock of the review picker are in this zone.

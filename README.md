@@ -6,7 +6,7 @@ A shared notebook where people and agents work together, live: a Phoenix app bui
 
 ## Run locally
 
-Notebook uses the published Kotoba, Hakushi, Masu, Koyomi, Jumon, Sekisho, Narabe and Fude from Hex, as your app would, and Issho's main branch until Issho 0.4.0 is on Hex (`mix.exs`, the `issho` alias in `config/config.exs`, and Issho's style sheet in `app.css`). With Elixir 1.18 or later (`.tool-versions` pins the versions used here):
+Notebook uses the published Issho, Kotoba, Hakushi, Masu, Koyomi, Jumon, Sekisho, Narabe, Fude and Storehouse from Hex, as your app would. With Elixir 1.18 or later (`.tool-versions` pins the versions used here):
 
 ```sh
 mix setup
@@ -15,7 +15,7 @@ mix phx.server
 
 Open <http://localhost:4000>, create an account with a name, email, and password, and start a page. Signup logs you in immediately; no email service is needed: a new account is in General, with a Private space of its own. To see live collaboration, register a second account in another browser profile and open the same page in both, or sign in as two of the sample people (below).
 
-`mix setup` creates `tmp/notebook_dev.db`, runs the migrations and adds the sample pages. Attachments go to `tmp/uploads`. Set `NOTEBOOK_DATABASE` to use a different SQLite file. Both paths are ignored by Git.
+`mix setup` creates `tmp/notebook_dev.db`, runs the migrations and adds the sample pages. Attachments go to `tmp/uploads` (Storehouse; `NOTEBOOK_UPLOADS` in production). Set `NOTEBOOK_DATABASE` to use a different SQLite file. Both paths are ignored by Git.
 
 ## Connect an agent
 

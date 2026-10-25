@@ -53,7 +53,10 @@ config :notebook, NotebookWeb.Endpoint,
 # Enable dev routes for dashboard and mailbox
 config :notebook, dev_routes: true
 config :notebook, Notebook.Mailer, adapter: Swoosh.Adapters.Local
-config :kotoba, Kotoba.Storage.Local, root: Path.expand("../tmp/uploads", __DIR__)
+# Uploads (Kotoba's, with Storehouse), at the URLs the pages already have.
+config :storehouse, Storehouse.Local,
+  root: Path.expand("../tmp/uploads", __DIR__),
+  url_prefix: "/uploads/kotoba"
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"
