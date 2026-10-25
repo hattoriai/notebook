@@ -18,6 +18,9 @@ defmodule NotebookWeb.MCP do
         cursor, selection or pointer, and your changes as you make them. Say
         what you do with set_status, and work as a person would: select before
         you format, type where the caret is, move a note by dragging it.
+        You have a memory of your own that lasts between sessions (the memory
+        tool): begin with `cat self.md` there, what your person tells you to
+        be, then look at what you noted before; note what you learn.
       """ <> Issho.MCP.instructions(),
     tools: Notebook.Tools.all()
 

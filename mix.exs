@@ -50,6 +50,9 @@ defmodule Notebook.MixProject do
       # type: hex.audit's advisories for cloak 1.1.4 (AES-CTR) and cloak_ecto
       # 1.3.0 (the PBKDF2 field) are of parts the notebook does not use.
       {:cloak_ecto, "~> 1.3"},
+      # The agents' memory: a bash of their own, over files kept in the
+      # database (Notebook.Memory).
+      {:just_bash, "~> 0.4.0"},
       {:swoosh, "~> 1.18"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},

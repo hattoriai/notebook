@@ -579,6 +579,33 @@ html.space-maximized { overflow: hidden; }
 .share-agents select:disabled { opacity: .6; cursor: not-allowed; }
 .copy-action.is-closed-to-agents { color: var(--accent); }
 
+/* An agent's memory, for its person: its files and one open. */
+.agent-memory-link { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; color: var(--ink); font: 12.5px ui-sans-serif, system-ui, sans-serif; }
+.agent-memory-link:hover { color: var(--accent); }
+.memory-layout { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); gap: 28px; margin-top: 30px; align-items: start; }
+.memory-tree { display: flex; flex-direction: column; gap: 1px; padding-top: 6px; border-top: 1px solid var(--ink); font: 13.5px ui-sans-serif, system-ui, sans-serif; }
+.memory-entry { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px; color: var(--ink); }
+.memory-entry span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.memory-entry small { color: var(--muted); font-size: 11.5px; }
+.memory-entry .size-4 { flex: none; color: var(--muted); }
+.memory-entry.is-dir { color: var(--muted); cursor: default; }
+.memory-entry.is-dir .size-4 { color: var(--accent); }
+.memory-entry.is-self .size-4 { color: var(--accent); }
+.memory-entry:not(.is-dir):hover { background: #ece7dc; }
+.memory-entry.is-current { background: #e6dfd0; font-weight: 600; }
+.memory-empty { margin: 8px 10px; color: var(--muted); font: italic 14px "Palatino Linotype", Palatino, Georgia, serif; }
+.memory-new { display: flex; gap: 6px; margin-top: 14px; }
+.memory-new input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--rule); background: #fcfbf7; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.memory-file { border-top: 1px solid var(--ink); padding-top: 14px; }
+.memory-file header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; margin-bottom: 12px; font: 13px ui-sans-serif, system-ui, sans-serif; }
+.memory-file header small { color: var(--muted); }
+.memory-file textarea { width: 100%; min-height: 360px; padding: 14px 16px; border: 1px solid var(--rule); background: #fcfbf7; font: 13.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); resize: vertical; }
+.memory-file textarea:focus { outline: none; border-color: var(--accent); }
+.memory-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+.memory-outdated { margin: 0 0 10px; padding: 10px 12px; border-left: 3px solid var(--accent); background: #f3e9df; font: 13px ui-sans-serif, system-ui, sans-serif; }
+.memory-outdated a { text-decoration: underline; }
+@media (max-width: 760px) { .memory-layout { grid-template-columns: 1fr; } }
+
 /* A person's agents: each connected with its name and token, its token
    shown once. */
 .agent-connected { margin-top: 30px; padding: 22px 24px; border: 1px solid #c9d6b8; background: #f2f5ec; }
