@@ -51,7 +51,8 @@ defmodule NotebookWeb.Router do
       live "/agents", AgentsLive, :index
     end
 
-    get "/uploads/kotoba/*key", Kotoba.Storage.Local.Plug, [at: "/uploads/kotoba"], alias: false
+    # The files of the pages (Storehouse), for those signed in.
+    get "/uploads/kotoba/*key", Storehouse.Local.Plug, [at: "/uploads/kotoba"], alias: false
   end
 
   # Other scopes may use custom stacks.

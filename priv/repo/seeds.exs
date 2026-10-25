@@ -47,9 +47,9 @@ unless Notebook.Repo.get_by(Page, title: tour_title) do
   attachment = fn file, name ->
     path = Path.join(images, file)
     {:ok, description} = Kotoba.Attachments.describe(path, MIME.from_path(path))
-    key = Kotoba.Storage.key(file, description.content_type)
+    key = Storehouse.key(file, description.content_type)
     meta = %{name: name, content_type: description.content_type, bytes: description.bytes}
-    {:ok, url} = Kotoba.Storage.adapter().put(key, path, meta)
+    {:ok, url} = Storehouse.adapter().put(key, path, meta)
 
     description
     |> Kotoba.Attachments.node(key: key, url: url, name: name)

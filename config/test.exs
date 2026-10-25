@@ -36,4 +36,6 @@ config :phoenix_live_view,
 config :phoenix,
   sort_verified_routes_query_params: true
 
-config :kotoba, Kotoba.Storage.Local, root: Path.expand("../tmp/test_uploads", __DIR__)
+config :storehouse, Storehouse.Local,
+  root: Path.expand("../tmp/test_uploads", __DIR__),
+  url_prefix: "/uploads/kotoba"

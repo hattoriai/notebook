@@ -71,16 +71,15 @@ defmodule Notebook.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
-      # Until Issho 0.4.0 is on Hex: its main branch (and, in config.exs and
-      # app.css, its sources in place of the Hex package's built files).
-      {:issho, github: "hattoriai/issho", branch: "main", override: true},
-      {:kotoba, "~> 0.7"},
-      {:hakushi, "~> 0.3"},
-      {:masu, "~> 0.5"},
+      {:issho, "~> 0.4.2"},
+      {:kotoba, "~> 0.8"},
+      {:hakushi, "~> 0.6"},
+      {:masu, "~> 0.7"},
       {:sake, "~> 0.4.4"},
       {:koyomi, "~> 0.2.1"},
       {:fude, "~> 0.8"},
-      {:jumon, "~> 0.1.1"},
+      {:jumon, "~> 0.2"},
+      {:storehouse, "~> 0.2"},
       {:sekisho, "~> 0.1.1"},
       {:narabe, "~> 0.2"},
       {:tz, "~> 0.28"}
