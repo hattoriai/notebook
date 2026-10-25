@@ -64,6 +64,23 @@ defmodule NotebookWeb.CommentsTest do
     assert has_element?(view, "#page-agents[phx-hook=IsshoAgents]")
   end
 
+  test "a thread says where it is on the page, and what, in its component's words", %{
+    conn: conn,
+    page: page,
+    nina: nina
+  } do
+    room = Notebook.Collaboration.room(page)
+    place = %{"doc" => room <> "/body", "at" => %{"block" => 0}, "label" => "Fold it, again"}
+    {:ok, _} = Issho.Comments.start(Notebook.Issho, room, nina, place, "Too long?")
+    {:ok, _} = Issho.Comments.start(Notebook.Issho, room, nina, %{"doc" => room}, "And here?")
+
+    {:ok, view, _html} = live(conn, ~p"/pages/#{page.id}")
+    html = view |> element("#page-comments") |> render()
+
+    assert html =~ "In the text: “Fold it, again”"
+    assert html =~ "On the board"
+  end
+
   test "a comment may mention every account, and every agent by its name", %{
     conn: conn,
     page: page,
