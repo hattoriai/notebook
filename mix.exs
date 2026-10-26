@@ -79,28 +79,18 @@ defmodule Notebook.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
-      # Issho's main, until a release after 0.4.2: the libraries that take it
-      # (Kotoba, Hakushi, Masu, Narabe, Fude) take this one. Kotoba's,
-      # Hakushi's and Masu's mains too, until releases after 0.8.0, 0.6.0 and
-      # 0.7.0 (labels on places, and what takes Issho's main). Their browser
-      # clients are built from their sources (`mix notebook.libraries`).
-      {:issho, github: "hattoriai/issho", branch: "main", override: true},
-      {:kotoba, github: "hattoriai/kotoba", branch: "main", override: true},
-      {:hakushi, github: "hattoriai/hakushi", branch: "main", override: true},
-      {:masu, github: "hattoriai/masu", branch: "main", override: true},
+      {:issho, "~> 0.5"},
+      {:kotoba, "~> 0.9"},
+      {:hakushi, "~> 0.7"},
+      {:masu, "~> 0.8"},
       {:sake, "~> 0.4.4"},
       {:koyomi, "~> 0.2.1"},
       {:fude, "~> 0.8"},
       {:jumon, "~> 0.2"},
-      # Storehouse's main, until a release after 0.2.0: list/2 of every file
-      # and after a key (for the storage transfers). Its client scripts are
-      # in its repository (priv/static). Kotoba and Hakushi take it too.
-      {:storehouse, github: "hattoriai/storehouse", branch: "main", override: true},
+      {:storehouse, "~> 0.3"},
       {:chime, "~> 0.1.0-dev"},
       {:oban, "~> 2.20"},
-      # Cardbox's main, until a release after 0.1.0. It ships no assets of its
-      # own: its views use Masu's, Narabe's, Koyomi's and Fude's.
-      {:cardbox, github: "hattoriai/cardbox", branch: "main"},
+      {:cardbox, "~> 0.2"},
       {:sekisho, "~> 0.1.1"},
       {:narabe, "~> 0.2"},
       {:tz, "~> 0.28"},
@@ -127,13 +117,11 @@ defmodule Notebook.MixProject do
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": [
         "compile",
-        "notebook.libraries",
         "esbuild kotoba_extensions",
         "tailwind notebook",
         "esbuild notebook"
       ],
       "assets.deploy": [
-        "notebook.libraries",
         "tailwind notebook --minify",
         "esbuild kotoba_extensions --minify",
         "esbuild notebook --minify",
