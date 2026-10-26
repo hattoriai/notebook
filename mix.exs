@@ -84,9 +84,7 @@ defmodule Notebook.MixProject do
       # Hakushi's and Masu's mains too, until releases after 0.8.0, 0.6.0 and
       # 0.7.0 (labels on places, and what takes Issho's main). Their browser
       # clients are built from their sources (`mix notebook.libraries`).
-      # An action's reads, and an exception's message for its refusal, are
-      # in hattoriai/issho#59: main once it merges.
-      {:issho, github: "hattoriai/issho", branch: "claude/issho-action-read", override: true},
+      {:issho, github: "hattoriai/issho", branch: "main", override: true},
       {:kotoba, github: "hattoriai/kotoba", branch: "main", override: true},
       # A canvas's actions are in hattoriai/hakushi#49: main once it merges.
       {:hakushi,
