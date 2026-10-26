@@ -4,13 +4,16 @@ defmodule Notebook.Tools do
   of the pages' rooms (Issho's), of their parts (Kotoba's text, Hakushi's
   board, Masu's table, Fude's charts), and the Notebook's own: to find the
   pages, to make one, to read and write a database's records
-  (`Notebook.Tools.Databases`), and its own memory (`Notebook.Tools.Memory`).
+  (`Notebook.Tools.Databases`), and its own memory (`Notebook.Tools.Memory`);
+  and what a person does on a page too, by the same way
+  (`Notebook.Actions`: rename it, give it a due date, add records).
   """
 
   @doc "Every tool of the Notebook, for MCP (NotebookWeb.MCP) or an app's own model."
   def all do
     [Notebook.Tools.ListPages, Notebook.Tools.CreatePage, Notebook.Tools.Memory] ++
-      [Notebook.Tools.ReadDatabase, Notebook.Tools.AddRecords, Notebook.Tools.UpdateRecords] ++
+      [Notebook.Tools.ReadDatabase, Notebook.Tools.UpdateRecords] ++
+      Notebook.Actions.all() ++
       Issho.Tools.room() ++
       Kotoba.Issho.tools() ++ Hakushi.Issho.tools() ++ Masu.Issho.tools() ++ Fude.Issho.tools()
   end
@@ -44,6 +47,8 @@ defmodule Notebook.Tools do
       "folder" => page.folder && page.folder.name,
       "room" => room,
       "url" => NotebookWeb.Endpoint.url() <> "/pages/#{page.id}",
+      "due" => page.due_on && Date.to_iso8601(page.due_on),
+      "page_tools" => "rename_page, set_due_date",
       "use" =>
         case page.kind do
           "board" ->

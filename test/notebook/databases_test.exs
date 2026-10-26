@@ -6,7 +6,8 @@ defmodule Notebook.DatabasesTest do
 
   alias Notebook.Accounts.Scope
   alias Notebook.Cardbox, as: Box
-  alias Notebook.Tools.{AddRecords, CreatePage, ListPages, ReadDatabase, UpdateRecords}
+  alias Notebook.Actions.AddRecords
+  alias Notebook.Tools.{CreatePage, ListPages, ReadDatabase, UpdateRecords}
   alias Notebook.{Databases, Pages, Spaces}
 
   setup do
@@ -25,6 +26,12 @@ defmodule Notebook.DatabasesTest do
       })
 
     collection = Databases.collection(page)
+
+    # Adding records joins the agent to the page's room: it leaves after.
+    on_exit(fn ->
+      for user <- [hanzo, yuki],
+          do: Issho.Agents.leave(Notebook.Issho, "agent:#{user.id}", "page:#{page.id}")
+    end)
 
     {:ok, _} =
       Box.insert(collection, %{"Name" => "The rain blade", "Status" => "Done"}, actor: scope)
@@ -213,7 +220,7 @@ defmodule Notebook.DatabasesTest do
     } do
       assert {:ok, %{"editable" => false}} = ReadDatabase.call(%{page_id: page.id}, ctx(yuki))
 
-      assert {:error, "The person you work for may not change this database" <> _} =
+      assert {:error, "The room's policy does not allow this."} =
                AddRecords.call(%{page_id: page.id, records: [%{"Name" => "No"}]}, ctx(yuki))
 
       assert {:error, "No database page of that id" <> _} =

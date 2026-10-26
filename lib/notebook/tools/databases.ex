@@ -1,9 +1,10 @@
 defmodule Notebook.Tools.Databases do
   @moduledoc """
   An agent's tools for database pages (Cardbox): it reads a database's
-  fields, views and records, and adds and changes records, as the person
-  it works for. Who may read a database and who may change it is who may
-  read and edit its page.
+  fields, views and records, and changes records, as the person it works
+  for; it adds them as a person does (`Notebook.Actions.AddRecords`).
+  Who may read a database and who may change it is who may read and edit
+  its page.
   """
   alias Notebook.{Databases, Pages}
 
@@ -134,44 +135,6 @@ defmodule Notebook.Tools.ReadDatabase do
         wire = (view && view.query) || %{}
         filters = Enum.reject([wire["filter"], filter], &is_nil/1)
         {:ok, Map.put(wire, "filter", %{"and" => filters})}
-    end
-  end
-end
-
-defmodule Notebook.Tools.AddRecords do
-  @moduledoc false
-  use Issho.Tool,
-    name: "add_records",
-    description: """
-    Adds records to a database page, as the person you work for (they edit
-    the page): each one an object of values by field name or key, as
-    read_database describes them. All of them are added, or none. Gives
-    the records, with their ids.
-    """,
-    annotations: []
-
-  arg(:page_id, :integer,
-    required: true,
-    description: "The database page, as list_pages gives it"
-  )
-
-  arg(:records, {:array, :any},
-    required: true,
-    description: ~s(The records' values, e.g. [{"Blade": "A short sword", "Status": "Asked"}])
-  )
-
-  alias Notebook.Cardbox, as: Box
-  alias Notebook.Tools.Databases, as: T
-
-  @impl true
-  def call(%{page_id: page_id, records: records}, ctx) do
-    with {:ok, scope, page, collection} <- T.open(ctx, page_id) do
-      T.guard(ctx, page, fn ->
-        case Box.insert_all(collection, records, actor: scope) do
-          {:ok, records} -> T.written(collection, records)
-          {:error, error} -> T.error(error)
-        end
-      end)
     end
   end
 end

@@ -39,6 +39,23 @@ defmodule Notebook.DataCase do
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
     # What notifies of the test's changes is done before its sandbox goes.
     on_exit(fn -> Notebook.Notifications.settle() end)
+    # So are the test's agents and people in Issho's rooms, and its
+    # documents: their policy and their store read and write the database,
+    # and one left running holds it in the next test (Database busy).
+    unless tags[:async], do: on_exit(&stop_collaboration/0)
+  end
+
+  @doc "Stops every agent, participant, stream and document of Notebook.Issho, and waits."
+  def stop_collaboration do
+    for part <- [Agents, Participants, Streams, Documents] do
+      supervisor = Module.concat(Notebook.Issho, part)
+
+      for {_id, pid, _type, _modules} <- DynamicSupervisor.which_children(supervisor),
+          is_pid(pid),
+          do: DynamicSupervisor.terminate_child(supervisor, pid)
+    end
+
+    :ok
   end
 
   @doc """
