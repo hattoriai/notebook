@@ -92,6 +92,8 @@ defmodule Notebook.MixProject do
       {:oban, "~> 2.20"},
       {:cardbox, "~> 0.2"},
       {:sekisho, "~> 0.1.1"},
+      # Webhooks: the notebook's events to its admins' endpoints.
+      {:kunai, path: "../kunai"},
       {:narabe, "~> 0.2"},
       {:tz, "~> 0.28"},
       # 0.43 frees a statement without waiting for its connection's lock,

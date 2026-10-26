@@ -166,7 +166,10 @@ defmodule NotebookWeb.AdminLive do
         <p class="eyebrow">This notebook</p>
         <h1>Notebook settings</h1>
         <p>What is the whole notebook's, for everyone in it. Only its admins see this.</p>
-        <p><.link navigate={~p"/bots"} class="copy-action">The notebook's bots →</.link></p>
+        <nav class="settings-links">
+          <.link navigate={~p"/bots"} class="copy-action">The notebook's bots →</.link>
+          <.link navigate="/admin/webhooks" class="copy-action">The notebook's webhooks →</.link>
+        </nav>
       </div>
       <Layouts.flash_group flash={@flash} />
 

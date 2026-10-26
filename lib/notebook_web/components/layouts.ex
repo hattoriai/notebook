@@ -82,6 +82,27 @@ defmodule NotebookWeb.Layouts do
   end
 
   @doc """
+  The frame of a settings page mounted from a library (the webhooks):
+  the settings page's back link and flash, around the library's page.
+  """
+  attr :flash, :map, required: true
+  attr :current_scope, :map, default: nil
+  slot :inner_block, required: true
+
+  def settings(assigns) do
+    ~H"""
+    <main class="settings-page admin-page">
+      <div class="page-nav">
+        <.link navigate={~p"/admin"}>← Notebook settings</.link>
+        <span>NOTEBOOK</span>
+      </div>
+      {render_slot(@inner_block)}
+    </main>
+    <.flash_group flash={@flash} />
+    """
+  end
+
+  @doc """
   Shows the flash group with standard titles and content.
 
   ## Examples

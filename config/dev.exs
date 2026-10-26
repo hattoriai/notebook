@@ -75,3 +75,6 @@ config :phoenix_live_view,
   debug_attributes: true,
   # Enable helpful, but potentially expensive runtime checks
   enable_expensive_runtime_checks: true
+
+# Webhooks to endpoints on this machine, in development.
+config :kunai, egress: [allow_http: true, allow_private: true]

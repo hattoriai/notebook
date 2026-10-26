@@ -33,6 +33,8 @@ import {Hakushi} from "hakushi"
 import {Masu} from "masu"
 import {Narabe} from "narabe"
 import {Fude} from "fude"
+// Kunai's pages (Notebook settings → Webhooks): copying a secret or an id.
+import "../../deps/kunai/priv/static/kunai.js"
 
 enableCollaboration(registerCollaboration)
 

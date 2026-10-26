@@ -4,6 +4,7 @@ defmodule NotebookWeb.Router do
   import NotebookWeb.UserAuth
   import Sake.Router
   import Chime.Router
+  import Kunai.Router
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -104,6 +105,17 @@ defmodule NotebookWeb.Router do
     end
 
     post "/users/update-password", UserSessionController, :update_password
+  end
+
+  # The notebook's webhooks (Kunai), with its settings: for its admins.
+  scope "/admin" do
+    pipe_through [:browser, :require_authenticated_user]
+
+    kunai("/webhooks",
+      on_mount: [{NotebookWeb.UserAuth, :require_authenticated}, NotebookWeb.RequireAdmin],
+      app_layout: {NotebookWeb.Layouts, :settings},
+      eyebrow: "This notebook"
+    )
   end
 
   scope "/", NotebookWeb do

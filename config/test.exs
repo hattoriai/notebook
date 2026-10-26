@@ -31,6 +31,7 @@ config :notebook, Notebook.Mailer, adapter: Swoosh.Adapters.Test
 
 # The notifications' deliveries wait for Chime.Test.deliver/1.
 config :notebook, Oban, testing: :manual
+config :kunai, egress: [allow_http: true, allow_private: true]
 config :notebook, :chime_scheduler, false
 
 # Initialize plugs at runtime for faster test compilation

@@ -105,7 +105,8 @@ defmodule Notebook.Pages do
              |> Page.changeset(attrs)
              |> Narabe.Ecto.Mixed.put_position(Repo, Spaces.order(space))
              |> Repo.insert(),
-           :ok <- with_collection(scope, page, attrs["fields"]) do
+           :ok <- with_collection(scope, page, attrs["fields"]),
+           :ok <- Notebook.Webhooks.page_event("page.created", scope, page) do
         {:ok, page}
       end
     end)
@@ -147,12 +148,33 @@ defmodule Notebook.Pages do
   @doc "Changes a page: its space's editors may."
   def update(scope, page, attrs) do
     with :ok <- Permissions.authorize(scope, :edit, page),
-         {:ok, updated} <- page |> Page.changeset(attrs) |> Repo.update() do
+         {:ok, updated} <- update_with_event(scope, page, Page.changeset(page, attrs)) do
       if updated.title != page.title, do: Spaces.tree_changed()
       Notebook.Notifications.dates_changed(page, updated)
       saved({:ok, updated})
       {:ok, Repo.preload(updated, [:author, :space, :folder], force: true)}
     end
+  end
+
+  # The change, and its webhook when the title or a date changed
+  # (Notebook.Webhooks), in one transaction.
+  @tracked [:title, :due_on, :covers, :review_at]
+
+  defp update_with_event(scope, page, changeset) do
+    Repo.transact(fn ->
+      with {:ok, updated} <- Repo.update(changeset) do
+        previous =
+          for field <- @tracked,
+              Map.get(page, field) != Map.get(updated, field),
+              into: %{},
+              do: {field, Map.get(page, field)}
+
+        if previous != %{},
+          do: Notebook.Webhooks.page_event("page.updated", scope, updated, previous)
+
+        {:ok, updated}
+      end
+    end)
   end
 
   @doc "Publishes the accepted content of a page's shared text: its editors may."
@@ -203,8 +225,16 @@ defmodule Notebook.Pages do
   def restore(scope, page), do: set_archived(scope, page, nil)
 
   defp set_archived(scope, page, at) do
+    event = if at, do: "page.archived", else: "page.restored"
+
     with :ok <- Permissions.authorize(scope, :edit, page),
-         {:ok, updated} <- page |> Ecto.Changeset.change(archived_at: at) |> Repo.update() do
+         {:ok, updated} <-
+           Repo.transact(fn ->
+             with {:ok, updated} <-
+                    page |> Ecto.Changeset.change(archived_at: at) |> Repo.update(),
+                  :ok <- Notebook.Webhooks.page_event(event, scope, updated),
+                  do: {:ok, updated}
+           end) do
       Spaces.tree_changed()
       Notebook.Notifications.dates_changed(page, updated)
       {:ok, Repo.preload(updated, [:author, :space, :folder], force: true)}
@@ -221,10 +251,23 @@ defmodule Notebook.Pages do
          :ok <- Permissions.authorize(scope, :edit, page),
          :ok <- Permissions.authorize(scope, :edit, space),
          {:ok, page} <-
-           page
-           |> Ecto.Changeset.change(space_id: space.id, folder_id: folder_id, position: nil)
-           |> Narabe.Ecto.Mixed.put_position(Repo, Spaces.order(space))
-           |> Repo.update() do
+           Repo.transact(fn ->
+             with {:ok, moved} <-
+                    page
+                    |> Ecto.Changeset.change(
+                      space_id: space.id,
+                      folder_id: folder_id,
+                      position: nil
+                    )
+                    |> Narabe.Ecto.Mixed.put_position(Repo, Spaces.order(space))
+                    |> Repo.update(),
+                  :ok <-
+                    Notebook.Webhooks.page_event("page.moved", scope, moved, %{
+                      space_id: page.space_id,
+                      folder_id: page.folder_id
+                    }),
+                  do: {:ok, moved}
+           end) do
       Spaces.tree_changed()
       {:ok, Repo.preload(page, [:author, :space, :folder], force: true)}
     end

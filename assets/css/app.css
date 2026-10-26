@@ -12,6 +12,7 @@
 @import "../../deps/narabe/priv/static/narabe.css";
 @import "../../deps/fude/priv/static/fude.css";
 @import "../../deps/chime/priv/static/chime.css";
+@import "../../deps/kunai/priv/static/kunai.css";
 /* @import "../../deps/jumon/priv/static/jumon-sumi.css"; */
 @source "../css";
 @source "../js";
@@ -338,6 +339,7 @@ a.hattori-mark:hover::before { width: 36px; }
 /* Copy buttons in the reader: the icon turns into a check for a moment. */
 .copy-action { display: inline-flex; align-items: center; gap: 7px; padding: 6px 2px; border: 0; background: none; color: var(--ink); font: inherit; cursor: pointer; transition: color .15s ease; }
 .copy-action:hover { color: var(--accent); }
+.settings-links { display: flex; flex-wrap: wrap; gap: 4px 24px; margin-top: 10px; }
 .copy-action .copied-icon { display: none; color: #4d7a39; }
 .copy-action[data-copied] .copy-icon { display: none; }
 .copy-action[data-copied] .copied-icon { display: inline-block; animation: copy-pop .25s ease-out; }
@@ -1135,3 +1137,58 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 .bot-spaces, .bot-runs { margin-top: 12px; }
 .bot-spaces h3, .bot-runs h3 { margin-bottom: 6px; }
 .bot-editor .label { white-space: normal; }
+
+/* Kunai (Notebook settings → Webhooks) in paper and ink: its pages take the
+   notebook's faces, its rules and its ink buttons, from these tokens. */
+.kunai, .kunai-flashes {
+  --kunai-font: ui-sans-serif, system-ui, sans-serif;
+  --kunai-font-display: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  --kunai-card-title-font: var(--kunai-font-display);
+  --kunai-text: var(--ink);
+  --kunai-muted: var(--muted);
+  --kunai-faint: #9a9d93;
+  --kunai-raised: #fcfbf7;
+  --kunai-surface: #f1ede3;
+  --kunai-border: var(--rule);
+  --kunai-rule: #e6e2d6;
+  --kunai-hover: #f4f0e7;
+  --kunai-selected: #f3e8de;
+  --kunai-accent: var(--accent);
+  --kunai-accent-text: #fcfbf7;
+  --kunai-accent-soft: #f1e4d6;
+  --kunai-eyebrow: var(--accent);
+  --kunai-primary-background: var(--ink);
+  --kunai-primary-text: var(--paper);
+  --kunai-primary-hover: var(--accent);
+  --kunai-secondary-background: transparent;
+  --kunai-secondary-border: var(--ink);
+  --kunai-ok: #3f6b3a;
+  --kunai-ok-soft: #e5eadb;
+  --kunai-ok-chart: #86a173;
+  --kunai-wait: #8a5a1c;
+  --kunai-wait-soft: #f3e7d2;
+  --kunai-wait-chart: #cf9f55;
+  --kunai-fail: #9c382d;
+  --kunai-fail-soft: #f3e0da;
+  --kunai-fail-chart: #b85b4a;
+  --kunai-code-background: #f3efe5;
+  --kunai-radius: 0;
+  --kunai-radius-field: 0;
+  --kunai-radius-pill: 2px;
+  --kunai-button-radius: 0;
+  --kunai-button-height: 2.5rem;
+  --kunai-button-weight: 600;
+  --kunai-shadow: none;
+  --kunai-shadow-pop: 0 16px 40px -18px #22251e40;
+  --kunai-focus: 0 0 0 1px var(--accent);
+  --kunai-title-size: clamp(2.8rem, 5vw, 4.6rem);
+  --kunai-title-weight: 400;
+  --kunai-title-tracking: -0.06em;
+  --kunai-card-title-size: 1.35rem;
+  --kunai-card-title-weight: 400;
+  --kunai-label-size: 10px;
+  --kunai-label-weight: 600;
+  --kunai-label-transform: uppercase;
+  --kunai-label-tracking: 0.14em;
+  --kunai-max-width: 1100px;
+}

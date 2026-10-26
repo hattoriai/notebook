@@ -117,11 +117,27 @@ config :notebook, Oban,
   repo: Notebook.Repo,
   # Storage: one transfer of the files at a time (Notebook.Storage.Transfer).
   # Bots: a few runs at once (Notebook.Bots.Worker), their schedules each minute.
-  queues: [default: 10, storage: 1, bots: 3],
+  queues: [default: 10, storage: 1, bots: 3, kunai: 5],
+  # Webhooks: deliveries whose job a stopped node lost go again every five
+  # minutes, and their history is kept as Kunai's retention says.
   plugins: [
     Oban.Plugins.Pruner,
-    {Oban.Plugins.Cron, crontab: [{"* * * * *", Notebook.Bots.Scheduler}]}
+    Oban.Plugins.Lifeline,
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"* * * * *", Notebook.Bots.Scheduler},
+       {"*/5 * * * *", Kunai.Workers.Recover},
+       {"17 3 * * *", Kunai.Workers.Prune}
+     ]}
   ]
+
+# Webhooks: the notebook's events (Notebook.Webhooks) to the endpoints its
+# admins add, their secrets encrypted with the notebook's own.
+config :kunai,
+  repo: Notebook.Repo,
+  catalog: Notebook.Webhooks,
+  vault: {Kunai.Vault.Cloak, vault: Notebook.Vault},
+  pubsub: Notebook.PubSub
 
 # Who the notifications' emails are from.
 config :notebook, :email_from, {"Notebook", "notebook@localhost"}
