@@ -339,12 +339,14 @@ defmodule NotebookWeb.NotebookLive do
     )
   end
 
-  # The LiveView is in the page's room too, for its comments.
+  # The LiveView is in the page's room too, for its comments, and hears
+  # the page's actions done there (an agent renamed it, gave it a due date).
   defp join_room(socket, page) do
-    if connected?(socket),
-      do:
-        {:ok, _} =
-          Issho.Live.join(Notebook.Issho, user(socket), Notebook.Collaboration.room(page))
+    if connected?(socket) do
+      room = Notebook.Collaboration.room(page)
+      {:ok, _} = Issho.Live.join(Notebook.Issho, user(socket), room)
+      Issho.Live.subscribe(room, :self, events: ["action.done"])
+    end
 
     socket
   end
@@ -2087,6 +2089,25 @@ defmodule NotebookWeb.NotebookLive do
              published_by_id: published.published_by_id
          }
        )}
+
+  # An action done on the page, by anyone (this person's own included):
+  # the page as it is now, when they read it (editing, their form stays
+  # theirs). A database's records come by Cardbox's events.
+  def handle_info(
+        {Issho.Live, "event", _room, %Issho.Event{name: "action.done"}},
+        %{assigns: %{live_action: :show}} = socket
+      ) do
+    case socket.assigns.page && Pages.get(socket.assigns.current_scope, socket.assigns.page.id) do
+      %Page{} = page ->
+        {:noreply,
+         socket
+         |> assign(page: page, page_title: page.title, form: to_form(Pages.change(page)))
+         |> page_actions()}
+
+      _gone ->
+        {:noreply, socket}
+    end
+  end
 
   def handle_info(_message, socket), do: {:noreply, socket}
 

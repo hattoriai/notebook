@@ -69,6 +69,9 @@ defmodule NotebookWeb.ActionsLiveTest do
                       data: %{action: "rename_page"}
                     }}
 
+    # Hanzo's page shows what his agent did, as it is done.
+    assert render(view) =~ "Blades of autumn"
+
     assert {:ok, "Blades of autumn is due on 2026-11-02."} =
              tool("set_due_date", %{"page_id" => page.id, "due" => "2026-11-02"}, hanzo)
 
