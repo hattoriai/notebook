@@ -86,4 +86,90 @@ defmodule NotebookWeb.DatabasesLiveTest do
     assert html =~ "The rain blade"
     refute has_element?(view, ".database-actions")
   end
+
+  test "a money field has its currency, and a repeat its date and status", %{
+    conn: conn,
+    hanzo: hanzo,
+    collection: collection
+  } do
+    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{collection.owner_id}")
+
+    view |> element("button", "Field") |> render_click()
+    refute has_element?(view, "#field-form select[name='field[format]']")
+
+    view |> form("#field-form", field: %{name: "Amount", type: "number"}) |> render_change()
+    assert has_element?(view, "#field-form select[name='field[format]']")
+    refute has_element?(view, "#field-form input[name='field[currency]']")
+
+    view
+    |> form("#field-form", field: %{name: "Amount", type: "number", format: "currency"})
+    |> render_change()
+
+    view
+    |> form("#field-form",
+      field: %{name: "Amount", type: "number", format: "currency", currency: "JPY"}
+    )
+    |> render_submit()
+
+    collection = Box.get_collection!(collection.id)
+    assert %{options: %{"currency" => "JPY"}} = Cardbox.Collection.field(collection, "Amount")
+
+    view |> element("button", "Field") |> render_click()
+    view |> form("#field-form", field: %{name: "Repeats", type: "repeat"}) |> render_change()
+    assert has_element?(view, "#field-form select[name='field[date]'] option", "Moves Due")
+
+    assert has_element?(
+             view,
+             "#field-form select[name='field[done]'] option",
+             "When Status is done"
+           )
+
+    view
+    |> form("#field-form", field: %{name: "Repeats", type: "repeat", date: "due", done: "status"})
+    |> render_submit()
+
+    assert %{options: %{"date" => "due"}} =
+             Cardbox.Collection.field(Box.get_collection!(collection.id), "Repeats")
+  end
+
+  test "its editors attach files to a record", %{
+    conn: conn,
+    hanzo: hanzo,
+    scope: scope,
+    page: page,
+    collection: collection
+  } do
+    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{page.id}")
+    refute has_element?(view, "button", "Attach")
+
+    {:ok, collection} =
+      Databases.add_field(scope, collection, %{"name" => "Invoice", "type" => "file"})
+
+    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{page.id}")
+    [record] = elem(Box.list(collection), 1)
+
+    view |> element("button", "Attach") |> render_click()
+    assert has_element?(view, "#attach-form option", "The rain blade")
+
+    pdf = "%PDF-1.7\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n"
+
+    upload =
+      file_input(view, "#attach-form", :record_files, [
+        %{name: "invoice.pdf", content: pdf, type: "application/pdf"}
+      ])
+
+    render_upload(upload, "invoice.pdf")
+
+    view
+    |> form("#attach-form", attach: %{record: record.id, field: "invoice"})
+    |> render_submit()
+
+    assert [%{"name" => "invoice.pdf", "content_type" => "application/pdf", "key" => key}] =
+             Box.get(collection, record.id).data["invoice"]
+
+    on_exit(fn -> Storehouse.Local.delete(key) end)
+
+    refute has_element?(view, "#attach-form")
+    assert render(view) =~ "Attached."
+  end
 end

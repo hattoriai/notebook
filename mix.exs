@@ -85,7 +85,10 @@ defmodule Notebook.MixProject do
       # 0.7.0 (labels on places, and what takes Issho's main). Their browser
       # clients are built from their sources (`mix notebook.libraries`).
       {:issho, github: "hattoriai/issho", branch: "main", override: true},
-      {:kotoba, github: "hattoriai/kotoba", branch: "main", override: true},
+      # Kotoba's and Cardbox's branches with attach_file, the file field,
+      # app field types and after_update, until they are merged to their main.
+      {:kotoba,
+       github: "hattoriai/kotoba", branch: "claude/notebook-audio-nodes-2t66we", override: true},
       {:hakushi, github: "hattoriai/hakushi", branch: "main", override: true},
       {:masu, github: "hattoriai/masu", branch: "main", override: true},
       {:sake, "~> 0.4.4"},
@@ -100,7 +103,7 @@ defmodule Notebook.MixProject do
       {:oban, "~> 2.20"},
       # Cardbox's main, until a release after 0.1.0. It ships no assets of its
       # own: its views use Masu's, Narabe's, Koyomi's and Fude's.
-      {:cardbox, github: "hattoriai/cardbox", branch: "main"},
+      {:cardbox, github: "hattoriai/cardbox", branch: "claude/notebook-audio-nodes-2t66we"},
       {:sekisho, "~> 0.1.1"},
       {:narabe, "~> 0.2"},
       {:tz, "~> 0.28"},

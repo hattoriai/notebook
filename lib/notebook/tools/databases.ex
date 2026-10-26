@@ -54,6 +54,94 @@ defmodule Notebook.Tools.Databases do
   @doc "The records of a write, after it: by id."
   def written(collection, records),
     do: {:ok, %{"records" => Enum.map(records, &record(collection, &1))}}
+
+  @doc """
+  The values of a write with the files an agent sends stored: in a file
+  field, a file with `data` (its bytes in base64) and a `name` is stored
+  as an upload is, and becomes what the field keeps; a file as
+  read_database gives it stays as it is. Gives the values and the files
+  stored, to discard if the write fails.
+  """
+  def store_files(collection, values) when is_map(values) do
+    Enum.reduce_while(values, {:ok, %{}, []}, fn {ref, value}, {:ok, acc, stored} ->
+      case Cardbox.Collection.field(collection, to_string(ref)) do
+        %Cardbox.Field{type: "file"} ->
+          case files(List.wrap(value)) do
+            {:ok, files, new} -> {:cont, {:ok, Map.put(acc, ref, files), stored ++ new}}
+            {:error, message} -> {:halt, discard(stored, message)}
+          end
+
+        _ ->
+          {:cont, {:ok, Map.put(acc, ref, value), stored}}
+      end
+    end)
+  end
+
+  def store_files(_collection, values), do: {:ok, values, []}
+
+  @doc "`store_files/2` of each record's values: all stored, or none."
+  def store_all(collection, records) do
+    Enum.reduce_while(records, {:ok, [], []}, fn values, {:ok, done, stored} ->
+      case store_files(collection, values) do
+        {:ok, values, new} -> {:cont, {:ok, done ++ [values], stored ++ new}}
+        {:error, message} -> {:halt, discard(stored, message)}
+      end
+    end)
+  end
+
+  defp files(list) do
+    Enum.reduce_while(list, {:ok, [], []}, fn file, {:ok, files, stored} ->
+      case file do
+        %{"data" => data} ->
+          case store(data, file["name"], file["content_type"]) do
+            {:ok, file} -> {:cont, {:ok, files ++ [file], [file | stored]}}
+            {:error, message} -> {:halt, discard(stored, message)}
+          end
+
+        file ->
+          {:cont, {:ok, files ++ [file], stored}}
+      end
+    end)
+  end
+
+  defp store(_data, name, _type) when not is_binary(name) or name == "",
+    do:
+      {:error,
+       "A file sent with its data needs its name: {\"name\": \"edp-2026-11.pdf\", \"data\": \"...\"}"}
+
+  defp store(data, name, content_type) when is_binary(data) do
+    max = Databases.max_file()
+    data = data |> String.replace(~r/\Adata:[^,]*;base64,/, "") |> String.replace(~r/\s+/, "")
+
+    with true <-
+           byte_size(data) <= div(max + 2, 3) * 4 ||
+             {:error, "#{name} is larger than #{div(max, 1_000_000)} MB."},
+         {:ok, bytes} <- decode(data, name) do
+      path = Path.join(System.tmp_dir!(), "notebook-file-#{System.unique_integer([:positive])}")
+
+      try do
+        File.write!(path, bytes)
+        Databases.store_file(path, name, content_type)
+      after
+        File.rm(path)
+      end
+    end
+  end
+
+  defp store(_data, name, _type), do: {:error, "#{name}'s data is its bytes in base64."}
+
+  defp decode(data, name) do
+    case Base.decode64(data) do
+      {:ok, ""} -> {:error, "#{name} is empty."}
+      {:ok, bytes} -> {:ok, bytes}
+      :error -> {:error, "#{name}'s data is not base64."}
+    end
+  end
+
+  defp discard(stored, message) do
+    Databases.discard_files(stored)
+    {:error, message}
+  end
 end
 
 defmodule Notebook.Tools.ReadDatabase do
@@ -66,7 +154,9 @@ defmodule Notebook.Tools.ReadDatabase do
     and its records: those of a view when you name one, or all of them,
     filtered when you give a filter. A record's values are by field name;
     a person is their id (`user:7`), a choice its name, a day
-    `2026-10-25`. Read it before add_records and update_records.
+    `2026-10-25`, a file field its files (each its name, url and type),
+    a repeat field its rule (`FREQ=MONTHLY`). Read it before add_records
+    and update_records.
     """,
     annotations: [read_only: true, idempotent: true]
 
@@ -147,7 +237,10 @@ defmodule Notebook.Tools.UpdateRecords do
     Changes records of a database page, as the person you work for (they
     edit the page): each change names a record's id and the values to
     give it, by field name or key; null empties a value. Gives the records
-    as they are after it.
+    as they are after it. A file field's value is all its files: those it
+    has, as read_database gives them, and new ones you send as
+    {"name": ..., "data": "<base64>"}. A record with a repeat rule that
+    becomes done comes back as a new record on the rule's next day.
     """,
     annotations: [idempotent: true]
 
@@ -172,11 +265,12 @@ defmodule Notebook.Tools.UpdateRecords do
 
   @impl true
   def call(%{page_id: page_id, changes: changes}, ctx) do
-    with {:ok, scope, page, collection} <- T.open(ctx, page_id) do
+    with {:ok, scope, page, collection} <- T.open(ctx, page_id),
+         :ok <- editable(scope, page) do
       # Each change is guarded: paused halfway, the rest is not made.
       changes
       |> Enum.reduce_while({:ok, []}, fn %{id: id, values: values}, {:ok, done} ->
-        case T.guard(ctx, page, fn -> Box.update(collection, id, values, actor: scope) end) do
+        case T.guard(ctx, page, fn -> update(collection, id, values, scope) end) do
           {:ok, record} -> {:cont, {:ok, [record | done]}}
           {:error, message} when is_binary(message) -> {:halt, halted(message, done)}
           {:error, error} -> {:halt, T.error(error)}
@@ -185,6 +279,25 @@ defmodule Notebook.Tools.UpdateRecords do
       |> case do
         {:ok, records} -> T.written(collection, Enum.reverse(records))
         error -> error
+      end
+    end
+  end
+
+  # No file is stored for a person who may not write the database.
+  defp editable(scope, page) do
+    if T.editable?(scope, page), do: :ok, else: T.error(%Cardbox.Error{reason: :unauthorized})
+  end
+
+  # The change's files stored, then the change; the files go if it fails.
+  defp update(collection, id, values, scope) do
+    with {:ok, values, stored} <- T.store_files(collection, values) do
+      case Box.update(collection, id, values, actor: scope) do
+        {:ok, record} ->
+          {:ok, record}
+
+        {:error, error} ->
+          Notebook.Databases.discard_files(stored)
+          {:error, error}
       end
     end
   end

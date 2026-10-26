@@ -794,6 +794,14 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 .cardbox-person i { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 999px; background: var(--cardbox-person, #e4ddd0); color: #3b3f3a; font: 600 9px/1 ui-sans-serif, system-ui, sans-serif; font-style: normal; letter-spacing: .02em; }
 .cardbox-link { display: inline-flex; padding: 1px 8px; border-radius: 6px; background: #efebe3; font-size: 12px; }
 
+/* A record's files (Cardbox): each a link with a clip, and its rule in words. */
+.cardbox-file { display: inline-flex; align-items: center; gap: 4px; max-width: 16rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 12px ui-sans-serif, system-ui, sans-serif; color: var(--ink); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.cardbox-file::before { content: "📎"; text-decoration: none; }
+.cardbox-file + .cardbox-file { margin-left: 8px; }
+.cardbox-file:hover { text-decoration-color: currentColor; }
+.cardbox-repeat { font: 12px ui-sans-serif, system-ui, sans-serif; color: #6f6a60; }
+.database-attach input[type="file"] { font: 13px ui-sans-serif, system-ui, sans-serif; }
+
 /* A board's cards (Cardbox): the title, then a line of its fields. */
 .cardbox-card { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
 .cardbox-card strong { flex-basis: 100%; }

@@ -38,14 +38,32 @@ defmodule Notebook.Databases do
     {"status", "Status"},
     {"person", "Person"},
     {"url", "Link"},
-    {"email", "Email"}
+    {"email", "Email"},
+    {"file", "Files"},
+    {"repeat", "Repeats"}
   ]
+
+  @number_formats [
+    {"number", "Number"},
+    {"integer", "Whole number"},
+    {"percent", "Percent"},
+    {"currency", "Money"}
+  ]
+
+  # The largest file a record takes, from a person or an agent.
+  @max_file 25_000_000
 
   @doc "The types of views a database shows: `{type, name, icon}`."
   def view_types, do: @view_types
 
   @doc "The types of fields people add: `{type, name}`."
   def field_types, do: @field_types
+
+  @doc "How a number field shows its numbers: `{format, name}`."
+  def number_formats, do: @number_formats
+
+  @doc "The largest file a record takes."
+  def max_file, do: @max_file
 
   @doc """
   Makes a database page's collection, with the default fields (or
@@ -148,10 +166,116 @@ defmodule Notebook.Databases do
     end
   end
 
-  @doc "Adds a field: the page's editors may."
-  def add_field(scope, collection, %{"name" => name, "type" => type}) do
-    options = if type in ~w(select multi_select), do: %{choices: []}, else: %{}
-    Box.add_field(collection, %{name: name, type: type, options: options}, actor: scope)
+  @doc """
+  Adds a field: the page's editors may. A number takes its `format`, and
+  a `currency` (`"EUR"`) as money; a repeat its `date` and `done` fields
+  (by key), else the database's first date and its first status or
+  checkbox.
+  """
+  def add_field(scope, collection, %{"name" => name, "type" => type} = params) do
+    Box.add_field(
+      collection,
+      %{name: name, type: type, options: options(collection, type, params)},
+      actor: scope
+    )
+  end
+
+  defp options(_collection, type, _params) when type in ~w(select multi_select),
+    do: %{choices: []}
+
+  defp options(_collection, "number", params) do
+    case params["format"] do
+      "currency" -> %{format: "currency", currency: currency(params["currency"])}
+      format when format in ~w(number integer percent) -> %{format: format}
+      _ -> %{}
+    end
+  end
+
+  defp options(collection, "repeat", params) do
+    %{
+      date: present(params["date"]) || key_of(field_of(collection, ~w(date))),
+      done: present(params["done"]) || key_of(field_of(collection, ~w(status checkbox)))
+    }
+  end
+
+  defp options(_collection, _type, _params), do: %{}
+
+  defp currency(code) when is_binary(code), do: code |> String.trim() |> String.upcase()
+  defp currency(_code), do: "EUR"
+
+  defp present(value) when value in [nil, ""], do: nil
+  defp present(value), do: value
+
+  defp key_of(nil), do: nil
+  defp key_of(field), do: field.key
+
+  @doc "The fields of the database of a type: `{key, name}`, for a form's choices."
+  def fields_of(collection, types),
+    do: for(field <- collection.fields, field.type in types, do: {field.key, field.name})
+
+  @doc """
+  Stores a file for a database's records, as an upload of a page's is
+  stored (Storehouse, `Kotoba.Attachments.store/2`: its bytes say what it
+  is). Gives what a file field keeps of it.
+  """
+  def store_file(path, name, content_type \\ nil) do
+    case File.stat(path) do
+      {:ok, %{size: size}} when size > @max_file ->
+        {:error, "#{name} is larger than #{div(@max_file, 1_000_000)} MB."}
+
+      {:ok, _stat} ->
+        opts = [
+          name: name,
+          content_type: content_type || Kotoba.Attachments.content_type(Path.extname(name))
+        ]
+
+        case Kotoba.Attachments.store(path, opts) do
+          {:ok, node} -> {:ok, file(node)}
+          {:error, reason} -> {:error, "#{name} could not be stored (#{inspect(reason)})."}
+        end
+
+      {:error, reason} ->
+        {:error, "#{name} could not be read (#{inspect(reason)})."}
+    end
+  end
+
+  defp file(%Kotoba.Nodes.Attachment{} = node) do
+    %{
+      key: node.key,
+      url: node.url,
+      name: node.name,
+      content_type: node.content_type,
+      bytes: node.bytes
+    }
+    |> then(&if(node.preview, do: Map.put(&1, :preview, node.preview), else: &1))
+  end
+
+  @doc "Removes stored files that no record took (after a write that failed)."
+  def discard_files(files),
+    do: for(%{key: key} <- files, do: Kotoba.Storage.adapter().delete(key))
+
+  @doc """
+  Adds files to a record's file field, after those it has: the page's
+  editors may. `files` are what `store_file/3` gave.
+  """
+  def attach(scope, collection, record_id, field_ref, files) do
+    with %Cardbox.Field{type: "file"} = field <- Cardbox.Collection.field(collection, field_ref),
+         %Cardbox.Record{} = record <- Box.get(collection, record_id) do
+      had = Map.get(record.data, field.key) || []
+
+      case Box.update(collection, record.id, %{field.key => had ++ files}, actor: scope) do
+        {:ok, record} ->
+          {:ok, record}
+
+        {:error, error} ->
+          discard_files(files)
+          {:error, error}
+      end
+    else
+      _ ->
+        discard_files(files)
+        {:error, "No such record or file field."}
+    end
   end
 
   @doc "Whether the scope may change the database: its page's editors."
