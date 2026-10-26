@@ -57,10 +57,12 @@ defmodule Notebook.Bots do
      ~w(add_node move_node connect_nodes update_node delete_items draw_on_canvas draw_shape add_image
         change_document update_state)},
     {"tables", "Change tables and databases",
-     "Edit cells, add and delete rows and records, change charts.",
-     ~w(select_cells edit_cells add_rows delete_rows add_records update_records change_chart)},
-    {"pages", "Make and rename pages", "Make pages, rename them, set their due dates.",
-     ~w(create_page rename_page set_due_date click navigate)}
+     "Edit cells, add, move and delete rows and records, add fields and views, change charts.",
+     ~w(select_cells edit_cells add_rows delete_rows add_records update_records delete_records
+        move_record add_field add_view change_chart)},
+    {"pages", "Make and arrange pages",
+     "Make pages, rename and move them, set their due dates, archive and restore them.",
+     ~w(create_page rename_page set_due_date move_page archive_page restore_page click navigate)}
   ]
 
   # The models' list prices, in dollars a million tokens: input, output and

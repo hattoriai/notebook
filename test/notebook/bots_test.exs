@@ -110,6 +110,26 @@ defmodule Notebook.BotsTest do
       refute Repo.get(Notebook.Accounts.User, bot.user.id)
     end
 
+    test "a bot, like an agent or a visitor, does not run what only a person runs" do
+      person = Issho.Identity.new(%{id: "1", name: "Hanzo"})
+      bot = Issho.Identity.new(%{id: "bot:1", name: "Docs", kind: :service})
+      guest = Issho.Identity.new(%{id: "guest:abc", name: "A visitor", kind: :guest})
+
+      for action <- Notebook.Actions.people() do
+        assert action.authorize(%{}, person) == :ok
+        assert {:error, _} = action.authorize(%{}, bot)
+        assert {:error, _} = action.authorize(%{}, guest)
+      end
+    end
+
+    test "every tool an agent has is in a group, but a person's agent's memory" do
+      grouped = Bots.tool_groups() |> Enum.flat_map(&elem(&1, 3)) |> MapSet.new()
+      names = Notebook.Tools.all() |> Enum.map(& &1.name()) |> MapSet.new()
+
+      assert MapSet.difference(names, grouped) |> Enum.sort() == ["memory"]
+      assert MapSet.subset?(grouped, names)
+    end
+
     test "its tools are its groups', reading always; a schedule needs its task", %{
       admin: admin,
       forge: forge
