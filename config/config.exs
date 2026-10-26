@@ -55,39 +55,6 @@ config :esbuild,
       ]
     }
   ],
-  # The browser clients of the libraries taken from their GitHub main,
-  # from their sources in deps/ (`mix notebook.libraries`), as each
-  # builds its own: their ES modules, what `import "kotoba"` finds.
-  issho: [
-    args:
-      ~w(src/index.ts --bundle --minify --target=es2020 --external:phoenix --format=esm --outfile=../priv/static/issho.esm.js),
-    cd: Path.expand("../deps/issho/assets", __DIR__),
-    env: %{"NODE_PATH" => nil}
-  ],
-  kotoba: [
-    args:
-      ~w(src/index.ts --bundle --minify --target=es2020 --conditions=production --define:process.env.NODE_ENV="production" --external:phoenix --external:phoenix_live_view --external:issho --format=esm --outfile=../priv/static/kotoba.esm.js),
-    cd: Path.expand("../deps/kotoba/assets", __DIR__),
-    env: %{"NODE_PATH" => nil}
-  ],
-  kotoba_collab: [
-    args:
-      ~w(src/collab/index.ts --bundle --minify --target=es2020 --conditions=production --define:process.env.NODE_ENV="production" --external:phoenix --external:phoenix_live_view --external:issho --format=esm --outfile=../priv/static/kotoba-collab.esm.js),
-    cd: Path.expand("../deps/kotoba/assets", __DIR__),
-    env: %{"NODE_PATH" => nil}
-  ],
-  hakushi: [
-    args:
-      ~w(src/index.ts --bundle --minify --target=es2020 --external:phoenix --external:phoenix_live_view --format=esm --outfile=../priv/static/hakushi.esm.js),
-    cd: Path.expand("../deps/hakushi/assets", __DIR__),
-    env: %{"NODE_PATH" => nil}
-  ],
-  masu: [
-    args:
-      ~w(src/index.ts --bundle --minify --target=es2020 --external:phoenix --external:phoenix_live_view --format=esm --outfile=../priv/static/masu.esm.js),
-    cd: Path.expand("../deps/masu/assets", __DIR__),
-    env: %{"NODE_PATH" => nil}
-  ],
   kotoba_extensions: [
     args:
       ~w(js/kotoba/extensions/*.js --bundle --format=esm --target=es2022 --outdir=../priv/static/assets/kotoba/extensions),
