@@ -123,7 +123,11 @@ defmodule Notebook.Sharing do
         _ -> []
       end
 
-    Repo.all(from u in User, where: u.id != ^me.id and u.id not in ^shared, order_by: u.name)
+    Repo.all(
+      from u in User,
+        where: u.id != ^me.id and u.id not in ^shared and not u.bot,
+        order_by: u.name
+    )
   end
 
   @doc """

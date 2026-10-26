@@ -198,7 +198,10 @@ defmodule Notebook.Spaces do
   @doc "The people who are not yet in a space, to add."
   def outsiders(%Space{id: id}) do
     from(u in User,
-      where: u.id not in subquery(from m in Member, where: m.space_id == ^id, select: m.user_id),
+      # A bot's roles are given on the bots' page (Notebook.Bots).
+      where:
+        u.id not in subquery(from m in Member, where: m.space_id == ^id, select: m.user_id) and
+          not u.bot,
       order_by: u.name
     )
     |> Repo.all()

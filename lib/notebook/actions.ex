@@ -102,11 +102,11 @@ defmodule Notebook.Actions do
   def resource("page", id), do: Pages.fetch(id)
   def resource("folder", id), do: Notebook.Repo.get(Notebook.Spaces.Folder, id)
 
-  @doc "Refuses an agent: for an action only a person runs."
-  def person_only(%Issho.Identity{kind: :agent}),
-    do: {:error, "Only a person does this: ask the person you work for."}
+  @doc "Refuses an agent, a bot or a visitor: for an action only a person runs."
+  def person_only(%Issho.Identity{kind: :human}), do: :ok
 
-  def person_only(_who), do: :ok
+  def person_only(_who),
+    do: {:error, "Only a person does this: ask the person you work for."}
 
   @doc "What went wrong in a change, in words a person or a model reads."
   def error(%Ecto.Changeset{} = changeset) do

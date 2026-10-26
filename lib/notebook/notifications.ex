@@ -70,9 +70,10 @@ defmodule Notebook.Notifications do
   def id(%User{id: id}), do: "user:#{id}"
 
   @doc "The account of an id of the notifications, or nil."
+  # A bot's account hears of nothing: what concerns the bot is in its inbox.
   def user("user:" <> id) do
     case Integer.parse(id) do
-      {id, ""} -> Repo.get(User, id)
+      {id, ""} -> Repo.get_by(User, id: id, bot: false)
       _ -> nil
     end
   end
@@ -214,7 +215,7 @@ defmodule Notebook.Notifications do
 
   defp from_ids(ids) do
     import Ecto.Query
-    from(u in User, where: u.id in ^ids)
+    from(u in User, where: u.id in ^ids and not u.bot)
   end
 
   # The people who wrote in a thread, but those already told.

@@ -1087,3 +1087,51 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 .ask-form textarea, .ask-form select { width: 100%; padding: 10px 12px; border: 1px solid var(--rule); background: #fff; font: 15px/1.45 ui-sans-serif, system-ui, sans-serif; }
 .ask-form .button { justify-self: end; }
 .ask-hint { margin: 0; color: var(--muted); font: 12.5px ui-sans-serif, system-ui, sans-serif; }
+
+/* The bots' page (BotsLive): the key, the bots, a bot's form, its spaces and runs. */
+.bots-page .bots-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.bots-key { flex-direction: row; align-items: center; }
+.bots-key input { flex: 1; min-width: 0; padding: 11px 12px; border: 1px solid var(--rule); background: #fbf9f4; font: 14px ui-sans-serif, system-ui, sans-serif; }
+.bots-list { margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.bot-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 8px; background: #fbf9f4; }
+.bot-card > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bot-card small { font: 12px/1.5 ui-sans-serif, system-ui, sans-serif; color: #6f6a60; }
+.bot-card.is-off { opacity: .7; }
+.bot-off { margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: #ebe9e4; font: 500 11px/1.6 ui-sans-serif, system-ui, sans-serif; }
+.bot-editor { display: flex; flex-direction: column; gap: 18px; }
+.bot-tools, .bot-wakes { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 8px; }
+.bot-tools legend, .bot-wakes legend { padding: 0 6px; font: 600 13px ui-sans-serif, system-ui, sans-serif; }
+.bot-tool { display: flex; align-items: flex-start; gap: 10px; font: 14px ui-sans-serif, system-ui, sans-serif; }
+.bot-tool span { display: flex; flex-direction: column; }
+.bot-tool small { color: #6f6a60; font-size: 12px; }
+.bot-actions { flex-direction: row !important; align-items: center; gap: 12px; }
+.copy-action.danger { color: #933126; }
+.bot-space { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); font: 14px ui-sans-serif, system-ui, sans-serif; }
+.bot-space select { padding: 6px 8px; border: 1px solid var(--rule); background: #fbf9f4; }
+.bot-runs table { width: 100%; border-collapse: collapse; font: 13px ui-sans-serif, system-ui, sans-serif; }
+.bot-runs th, .bot-runs td { padding: 6px 8px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+@media (max-width: 640px) { .bots-key { flex-direction: column; align-items: stretch; } .bot-runs table { display: block; overflow-x: auto; } }
+
+/* A published page's bots: a visitor asks, the bot answers (PublicLive). */
+.public-ask { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--rule); }
+.public-ask h2 { font-size: 1.15rem; }
+.public-asked { margin: 12px 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px; }
+.public-question { margin: 0; font-weight: 600; }
+.public-answer { margin: 6px 0 0; white-space: pre-wrap; }
+.public-answer.is-waiting { color: #6f6a60; font-style: italic; }
+.public-ask-form { display: flex; gap: 10px; align-items: flex-end; }
+.public-ask-form textarea { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--rule); background: #fbf9f4; font: 15px/1.5 ui-sans-serif, system-ui, sans-serif; resize: vertical; }
+.public-ask-note { margin-top: 8px; font: 12px ui-sans-serif, system-ui, sans-serif; color: #6f6a60; }
+@media (max-width: 640px) { .public-ask-form { flex-direction: column; align-items: stretch; } }
+.bot-editor input[type="checkbox"] { width: 16px; height: 16px; flex: none; padding: 0; margin: 2px 0 0; accent-color: var(--accent); }
+.bot-editor .bot-tool, .bot-editor .bot-wakes .label { display: flex; align-items: flex-start; gap: 10px; text-transform: none; letter-spacing: normal; font: 14px/1.4 ui-sans-serif, system-ui, sans-serif; color: var(--ink); text-align: left; }
+.bot-editor .bot-tool strong { font-weight: 600; }
+.bot-editor .bot-tool small { font-weight: 400; }
+.bot-editor .bot-wakes .fieldset { margin: 0; }
+.bots-page section + section { margin-top: 28px; }
+.bots-page .bots-head + p, .bots-page .bots-list { margin-top: 12px; }
+.bot-tools, .bot-wakes { min-width: 0; }
+.bot-wakes input:not([type="checkbox"]) { min-width: 0; width: 100%; }
+.bot-spaces, .bot-runs { margin-top: 12px; }
+.bot-spaces h3, .bot-runs h3 { margin-bottom: 6px; }
+.bot-editor .label { white-space: normal; }
