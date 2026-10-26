@@ -86,9 +86,7 @@ defmodule Notebook.MixProject do
       # clients are built from their sources (`mix notebook.libraries`).
       {:issho, github: "hattoriai/issho", branch: "main", override: true},
       {:kotoba, github: "hattoriai/kotoba", branch: "main", override: true},
-      # A canvas's actions are in hattoriai/hakushi#49: main once it merges.
-      {:hakushi,
-       github: "hattoriai/hakushi", branch: "claude/hakushi-canvas-actions", override: true},
+      {:hakushi, github: "hattoriai/hakushi", branch: "main", override: true},
       {:masu, github: "hattoriai/masu", branch: "main", override: true},
       {:sake, "~> 0.4.4"},
       {:koyomi, "~> 0.2.1"},
