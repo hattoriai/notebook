@@ -6,7 +6,10 @@ defmodule Notebook.Actions.UpdateRecords do
     Changes records of a database page, as the person you work for (they
     edit the page): each change names a record's id and the values to give
     it, by field name or key; null empties a value. Gives the records as
-    they are after it.
+    they are after it. A file field's value is all its files: those it
+    has, as read_database gives them, and new ones you send as
+    {"name": ..., "data": "<base64>"}. A record with a repeat rule that
+    becomes done comes back as a new record on the rule's next day.
     """,
     annotations: [idempotent: true]
 
@@ -51,11 +54,21 @@ defmodule Notebook.Actions.UpdateRecords do
     end
   end
 
+  # The change's files stored, then the change; the files go if it fails.
   defp update(collection, %{id: id, values: values} = change, scope) do
     opts =
       if is_map(change[:expect]), do: [actor: scope, expect: change.expect], else: [actor: scope]
 
-    Box.update(collection, id, values, opts)
+    with {:ok, values, stored} <- Notebook.Tools.Databases.store_files(collection, values) do
+      case Box.update(collection, id, values, opts) do
+        {:ok, record} ->
+          {:ok, record}
+
+        {:error, error} ->
+          Notebook.Databases.discard_files(stored)
+          {:error, error}
+      end
+    end
   end
 
   defp guard(%{participant: nil}, fun), do: fun.()

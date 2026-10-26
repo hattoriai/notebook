@@ -232,6 +232,170 @@ defmodule Notebook.DatabasesTest do
     end
   end
 
+  describe "bills: money, files and repeats" do
+    # The files a record kept, removed from the store after the test.
+    defp discard(collection, id) do
+      for %{"key" => key} <- Box.get(collection, id).data["invoice"] || [],
+          do: Storehouse.Local.delete(key)
+    end
+
+    @pdf "%PDF-1.7\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n"
+
+    test "a number field is money in a currency, and a repeat finds its date and status", %{
+      scope: scope,
+      collection: collection
+    } do
+      {:ok, collection} =
+        Databases.add_field(scope, collection, %{
+          "name" => "Amount",
+          "type" => "number",
+          "format" => "currency",
+          "currency" => "eur"
+        })
+
+      assert %{options: %{"format" => "currency", "currency" => "EUR"}} =
+               Cardbox.Collection.field(collection, "Amount")
+
+      {:ok, collection} =
+        Databases.add_field(scope, collection, %{"name" => "Repeats", "type" => "repeat"})
+
+      assert %{options: %{"date" => "due", "done" => "status"}} =
+               Cardbox.Collection.field(collection, "Repeats")
+
+      {:ok, collection} =
+        Databases.add_field(scope, collection, %{"name" => "Invoice", "type" => "file"})
+
+      assert [{"invoice", "Invoice"}] = Databases.fields_of(collection, ["file"])
+    end
+
+    test "a file stored for a record is checked by its bytes, and attached after those it has", %{
+      scope: scope,
+      collection: collection
+    } do
+      {:ok, collection} =
+        Databases.add_field(scope, collection, %{"name" => "Invoice", "type" => "file"})
+
+      {:ok, record} = Box.insert(collection, %{"Name" => "Electricity"}, actor: scope)
+
+      dir = Path.join(System.tmp_dir!(), "notebook-db-#{System.unique_integer([:positive])}")
+      File.mkdir_p!(dir)
+      pdf = Path.join(dir, "edp.pdf")
+      File.write!(pdf, @pdf)
+      page = Path.join(dir, "page.pdf")
+      File.write!(page, "<html><script>alert(1)</script></html>")
+
+      {:ok, invoice} = Databases.store_file(pdf, "edp-2026-11.pdf", "application/pdf")
+      {:ok, fake} = Databases.store_file(page, "invoice.pdf", "application/pdf")
+      on_exit(fn -> Databases.discard_files([invoice, fake]) end)
+      assert invoice.content_type == "application/pdf"
+      assert fake.content_type == "application/octet-stream"
+      assert invoice.url =~ ~r"^/uploads/kotoba/"
+
+      {:ok, _} = Databases.attach(scope, collection, record.id, "invoice", [invoice])
+      {:ok, record} = Databases.attach(scope, collection, record.id, "Invoice", [fake])
+
+      assert [%{"name" => "edp-2026-11.pdf"}, %{"name" => "invoice.pdf"}] = record.data["invoice"]
+    end
+
+    test "an agent sends a file with a record, which is stored as an upload is", %{
+      hanzo: hanzo,
+      yuki: yuki,
+      scope: scope,
+      page: page,
+      collection: collection
+    } do
+      {:ok, _} = Databases.add_field(scope, collection, %{"name" => "Invoice", "type" => "file"})
+
+      assert {:ok, %{"records" => [%{"id" => id, "Invoice" => [invoice]}]}} =
+               AddRecords.call(
+                 %{
+                   page_id: page.id,
+                   records: [
+                     %{
+                       "Name" => "Electricity",
+                       "Invoice" => [
+                         %{"name" => "edp-2026-11.pdf", "data" => Base.encode64(@pdf)}
+                       ]
+                     }
+                   ]
+                 },
+                 ctx(hanzo)
+               )
+
+      on_exit(fn -> discard(collection, id) end)
+
+      assert %{"name" => "edp-2026-11.pdf", "content_type" => "application/pdf", "url" => url} =
+               invoice
+
+      assert url =~ ~r"^/uploads/kotoba/"
+
+      # A file field's value is all its files: the one it has, and a new one.
+      assert {:ok, %{"records" => [%{"Invoice" => [_, %{"name" => "receipt.pdf"}]}]}} =
+               UpdateRecords.call(
+                 %{
+                   page_id: page.id,
+                   changes: [
+                     %{
+                       id: id,
+                       values: %{
+                         "Invoice" => [
+                           invoice,
+                           %{"name" => "receipt.pdf", "data" => Base.encode64(@pdf)}
+                         ]
+                       }
+                     }
+                   ]
+                 },
+                 ctx(hanzo)
+               )
+
+      assert {:error, "receipt.pdf's data is not base64."} =
+               UpdateRecords.call(
+                 %{
+                   page_id: page.id,
+                   changes: [
+                     %{
+                       id: id,
+                       values: %{"Invoice" => [%{"name" => "receipt.pdf", "data" => "%%"}]}
+                     }
+                   ]
+                 },
+                 ctx(hanzo)
+               )
+
+      # Someone who reads the page only stores nothing.
+      assert {:error, "The room's policy does not allow this."} =
+               AddRecords.call(
+                 %{
+                   page_id: page.id,
+                   records: [
+                     %{"Invoice" => [%{"name" => "x.pdf", "data" => Base.encode64(@pdf)}]}
+                   ]
+                 },
+                 ctx(yuki)
+               )
+    end
+
+    test "a bill paid comes back next month", %{scope: scope, collection: collection} do
+      {:ok, collection} =
+        Databases.add_field(scope, collection, %{"name" => "Repeats", "type" => "repeat"})
+
+      {:ok, bill} =
+        Box.insert(
+          collection,
+          %{"Name" => "Water", "Due" => ~D[2026-11-12], "Repeats" => "FREQ=MONTHLY"},
+          actor: scope
+        )
+
+      {:ok, _} = Box.update(collection, bill.id, %{"Status" => "Done"}, actor: scope)
+
+      {:ok, waters} =
+        Box.list(collection, %{"filter" => %{"field" => "Name", "op" => "eq", "value" => "Water"}})
+
+      assert ["2026-11-12", "2026-12-12"] == waters |> Enum.map(& &1.data["due"]) |> Enum.sort()
+    end
+  end
+
   defp eventually(fun, tries \\ 50) do
     case fun.() do
       nil when tries > 0 -> Process.sleep(10) && eventually(fun, tries - 1)

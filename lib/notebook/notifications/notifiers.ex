@@ -208,3 +208,33 @@ defmodule Notebook.Notifications.Review do
   def feed(data, _notification),
     do: %{title: "Time to review #{data["page"]}", url: "/pages/#{data["page_id"]}", icon: "eye"}
 end
+
+defmodule Notebook.Notifications.RecordDue do
+  @moduledoc "A record of a database page has its day today (a date field), for its people."
+  use Notebook.Notifier, category: :dates
+
+  @impl true
+  def recipients(_params), do: []
+
+  @impl true
+  def data(%{page: page, record: record, title: title, field: field, on: on}),
+    do: %{
+      "page_id" => page.id,
+      "page" => page.title,
+      "record" => record,
+      "title" => title,
+      "field" => field,
+      "on" => to_iso8601(on)
+    }
+
+  defp to_iso8601(%Date{} = day), do: Date.to_iso8601(day)
+  defp to_iso8601(%DateTime{} = at), do: DateTime.to_iso8601(at)
+
+  @impl true
+  def feed(data, _notification),
+    do: %{
+      title: "#{data["title"] || "A record"} in #{data["page"]}: #{data["field"]} is today",
+      url: "/pages/#{data["page_id"]}",
+      icon: "calendar"
+    }
+end

@@ -38,6 +38,94 @@ defmodule Notebook.Tools.Databases do
 
   @doc "Whether the scope may change the page's database."
   def editable?(scope, page), do: Databases.editable?(scope, page)
+
+  @doc """
+  The values of a write with the files an agent sends stored: in a file
+  field, a file with `data` (its bytes in base64) and a `name` is stored
+  as an upload is, and becomes what the field keeps; a file as
+  read_database gives it stays as it is. Gives the values and the files
+  stored, to discard if the write fails.
+  """
+  def store_files(collection, values) when is_map(values) do
+    Enum.reduce_while(values, {:ok, %{}, []}, fn {ref, value}, {:ok, acc, stored} ->
+      case Cardbox.Collection.field(collection, to_string(ref)) do
+        %Cardbox.Field{type: "file"} ->
+          case files(List.wrap(value)) do
+            {:ok, files, new} -> {:cont, {:ok, Map.put(acc, ref, files), stored ++ new}}
+            {:error, message} -> {:halt, discard(stored, message)}
+          end
+
+        _ ->
+          {:cont, {:ok, Map.put(acc, ref, value), stored}}
+      end
+    end)
+  end
+
+  def store_files(_collection, values), do: {:ok, values, []}
+
+  @doc "`store_files/2` of each record's values: all stored, or none."
+  def store_all(collection, records) do
+    Enum.reduce_while(records, {:ok, [], []}, fn values, {:ok, done, stored} ->
+      case store_files(collection, values) do
+        {:ok, values, new} -> {:cont, {:ok, done ++ [values], stored ++ new}}
+        {:error, message} -> {:halt, discard(stored, message)}
+      end
+    end)
+  end
+
+  defp files(list) do
+    Enum.reduce_while(list, {:ok, [], []}, fn file, {:ok, files, stored} ->
+      case file do
+        %{"data" => data} ->
+          case store(data, file["name"], file["content_type"]) do
+            {:ok, file} -> {:cont, {:ok, files ++ [file], [file | stored]}}
+            {:error, message} -> {:halt, discard(stored, message)}
+          end
+
+        file ->
+          {:cont, {:ok, files ++ [file], stored}}
+      end
+    end)
+  end
+
+  defp store(_data, name, _type) when not is_binary(name) or name == "",
+    do:
+      {:error,
+       "A file sent with its data needs its name: {\"name\": \"edp-2026-11.pdf\", \"data\": \"...\"}"}
+
+  defp store(data, name, content_type) when is_binary(data) do
+    max = Databases.max_file()
+    data = data |> String.replace(~r/\Adata:[^,]*;base64,/, "") |> String.replace(~r/\s+/, "")
+
+    with true <-
+           byte_size(data) <= div(max + 2, 3) * 4 ||
+             {:error, "#{name} is larger than #{div(max, 1_000_000)} MB."},
+         {:ok, bytes} <- decode(data, name) do
+      path = Path.join(System.tmp_dir!(), "notebook-file-#{System.unique_integer([:positive])}")
+
+      try do
+        File.write!(path, bytes)
+        Databases.store_file(path, name, content_type)
+      after
+        File.rm(path)
+      end
+    end
+  end
+
+  defp store(_data, name, _type), do: {:error, "#{name}'s data is its bytes in base64."}
+
+  defp decode(data, name) do
+    case Base.decode64(data) do
+      {:ok, ""} -> {:error, "#{name} is empty."}
+      {:ok, bytes} -> {:ok, bytes}
+      :error -> {:error, "#{name}'s data is not base64."}
+    end
+  end
+
+  defp discard(stored, message) do
+    Databases.discard_files(stored)
+    {:error, message}
+  end
 end
 
 defmodule Notebook.Tools.ReadDatabase do
@@ -50,7 +138,9 @@ defmodule Notebook.Tools.ReadDatabase do
     and its records: those of a view when you name one, or all of them,
     filtered when you give a filter. A record's values are by field name;
     a person is their id (`user:7`), a choice its name, a day
-    `2026-10-25`. Read it before add_records and update_records.
+    `2026-10-25`, a file field its files (each its name, url and type),
+    a repeat field its rule (`FREQ=MONTHLY`). Read it before add_records
+    and update_records.
     """,
     annotations: [read_only: true, idempotent: true]
 

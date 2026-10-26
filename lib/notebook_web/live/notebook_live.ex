@@ -314,12 +314,19 @@ defmodule NotebookWeb.NotebookLive do
       |> join_room(page)
       |> suggestions()
 
-    allow_upload(socket, :attachments,
+    socket
+    |> allow_upload(:attachments,
       accept: ~w(.png .jpg .jpeg .gif .webp .pdf .mp4 .webm),
       max_file_size: 100_000_000,
       max_entries: 12,
       auto_upload: true,
       progress: &handle_progress/3
+    )
+    # A database record's files: any file, checked by its bytes when stored.
+    |> allow_upload(:record_files,
+      accept: :any,
+      max_file_size: Databases.max_file(),
+      max_entries: 10
     )
   end
 
@@ -398,6 +405,8 @@ defmodule NotebookWeb.NotebookLive do
       collection: collection,
       people: Databases.people(page),
       field_form: nil,
+      attach_form: nil,
+      attach_records: [],
       day: nil,
       day_records: []
     )
@@ -884,25 +893,120 @@ defmodule NotebookWeb.NotebookLive do
               <button type="button" class="database-add" phx-click="db_new_field">
                 <.icon name="hero-plus" class="size-4" /> Field
               </button>
+              <button
+                :if={Databases.fields_of(@collection, ["file"]) != []}
+                type="button"
+                class="database-add"
+                phx-click="db_new_attach"
+              >
+                <.icon name="hero-paper-clip" class="size-4" /> Attach
+              </button>
             </div>
           </div>
+          <.form
+            :if={@attach_form}
+            for={@attach_form}
+            id="attach-form"
+            phx-change="db_attach_change"
+            phx-submit="db_attach"
+            class="folder-form database-attach"
+          >
+            <select name="attach[record]" aria-label="Record" required>
+              <option value="">A record…</option>
+              <option
+                :for={{id, title} <- @attach_records}
+                value={id}
+                selected={to_string(id) == @attach_form[:record].value}
+              >
+                {title}
+              </option>
+            </select>
+            <select name="attach[field]" aria-label="Field">
+              <option
+                :for={{key, name} <- Databases.fields_of(@collection, ["file"])}
+                value={key}
+                selected={key == @attach_form[:field].value}
+              >
+                {name}
+              </option>
+            </select>
+            <.live_file_input upload={@uploads.record_files} />
+            <span :for={entry <- @uploads.record_files.entries} class="field-hint">
+              {entry.client_name}
+              <span :for={error <- upload_errors(@uploads.record_files, entry)}>
+                · {upload_error(error)}
+              </span>
+            </span>
+            <button class="button button-primary" type="submit">Attach</button>
+            <button class="copy-action" type="button" phx-click="db_cancel_attach">Cancel</button>
+          </.form>
           <.form
             :if={@field_form}
             for={@field_form}
             id="field-form"
+            phx-change="db_field_change"
             phx-submit="db_add_field"
             class="folder-form"
           >
             <input
               name="field[name]"
+              value={@field_form[:name].value}
               placeholder="A field's name: Client, Price, Due…"
               maxlength="60"
               required
               autofocus
             />
             <select name="field[type]" aria-label="Type">
-              <option :for={{type, name} <- Databases.field_types()} value={type}>{name}</option>
+              <option
+                :for={{type, name} <- Databases.field_types()}
+                value={type}
+                selected={type == @field_form[:type].value}
+              >
+                {name}
+              </option>
             </select>
+            <select
+              :if={@field_form[:type].value == "number"}
+              name="field[format]"
+              aria-label="Format"
+            >
+              <option
+                :for={{format, name} <- Databases.number_formats()}
+                value={format}
+                selected={format == @field_form[:format].value}
+              >
+                {name}
+              </option>
+            </select>
+            <input
+              :if={@field_form[:type].value == "number" and @field_form[:format].value == "currency"}
+              name="field[currency]"
+              value={@field_form[:currency].value || "EUR"}
+              aria-label="Currency"
+              placeholder="EUR"
+              maxlength="3"
+              size="4"
+            />
+            <%= if @field_form[:type].value == "repeat" do %>
+              <select name="field[date]" aria-label="The date it moves">
+                <option
+                  :for={{key, name} <- Databases.fields_of(@collection, ["date"])}
+                  value={key}
+                  selected={key == @field_form[:date].value}
+                >
+                  Moves {name}
+                </option>
+              </select>
+              <select name="field[done]" aria-label="When it is done">
+                <option
+                  :for={{key, name} <- Databases.fields_of(@collection, ~w(status checkbox))}
+                  value={key}
+                  selected={key == @field_form[:done].value}
+                >
+                  When {name} is done
+                </option>
+              </select>
+            <% end %>
             <button class="button button-primary" type="submit">Add field</button>
             <button class="copy-action" type="button" phx-click="db_cancel_field">Cancel</button>
           </.form>
@@ -1283,6 +1387,11 @@ defmodule NotebookWeb.NotebookLive do
       nil -> "hero-squares-2x2"
     end
   end
+
+  defp upload_error(:too_large), do: "too large"
+  defp upload_error(:too_many_files), do: "too many files"
+  defp upload_error(:not_accepted), do: "not a file it takes"
+  defp upload_error(error), do: to_string(error)
 
   defp record_title(collection, record) do
     case Enum.find(collection.fields, &(&1.type == "text")) do
@@ -2017,8 +2126,80 @@ defmodule NotebookWeb.NotebookLive do
   def handle_event("db_cancel_field", _params, socket),
     do: {:noreply, assign(socket, field_form: nil)}
 
+  def handle_event("db_field_change", %{"field" => params}, socket),
+    do: {:noreply, assign(socket, field_form: to_form(params, as: :field))}
+
+  def handle_event("db_new_attach", _params, socket) do
+    %{collection: collection, current_scope: scope} = socket.assigns
+    {:ok, records} = Box.list(collection, nil, me: Databases.me(scope), limit: 500)
+    [{field, _name} | _] = Databases.fields_of(collection, ["file"])
+
+    {:noreply,
+     assign(socket,
+       attach_form: to_form(%{"record" => "", "field" => field}, as: :attach),
+       attach_records: Enum.map(records, &{&1.id, record_title(collection, &1)})
+     )}
+  end
+
+  def handle_event("db_attach_change", %{"attach" => params}, socket),
+    do: {:noreply, assign(socket, attach_form: to_form(params, as: :attach))}
+
+  def handle_event("db_cancel_attach", _params, socket) do
+    socket =
+      Enum.reduce(socket.assigns.uploads.record_files.entries, socket, fn entry, socket ->
+        cancel_upload(socket, :record_files, entry.ref)
+      end)
+
+    {:noreply, assign(socket, attach_form: nil, attach_records: [])}
+  end
+
+  def handle_event("db_attach", %{"attach" => %{"record" => record, "field" => field}}, socket) do
+    %{collection: collection, current_scope: scope} = socket.assigns
+
+    stored =
+      consume_uploaded_entries(socket, :record_files, fn %{path: path}, entry ->
+        {:ok, Databases.store_file(path, entry.client_name, entry.client_type)}
+      end)
+
+    {files, errors} = Enum.split_with(stored, &match?({:ok, _}, &1))
+    files = Enum.map(files, fn {:ok, file} -> file end)
+
+    result =
+      cond do
+        errors != [] ->
+          Databases.discard_files(files)
+          {:error, errors |> hd() |> elem(1)}
+
+        files == [] ->
+          {:error, "Choose a file to attach."}
+
+        true ->
+          attach(scope, socket.assigns.page, collection, record, field, files)
+      end
+
+    case result do
+      {:ok, _record} ->
+        {:noreply,
+         socket
+         |> assign(attach_form: nil, attach_records: [])
+         |> reload_database()
+         |> put_flash(:info, "Attached.")}
+
+      {:error, %Cardbox.Error{} = error} ->
+        {:noreply, put_flash(socket, :error, Exception.message(error))}
+
+      {:error, message} ->
+        {:noreply, put_flash(socket, :error, message)}
+    end
+  end
+
   def handle_event("db_add_field", %{"field" => params}, socket) do
-    args = %{page_id: socket.assigns.page.id, name: params["name"] || "", type: params["type"]}
+    args =
+      params
+      |> Map.take(~w(format currency date done))
+      |> Map.reject(fn {_key, value} -> value in [nil, ""] end)
+      |> Map.merge(%{"page_id" => socket.assigns.page.id, "name" => params["name"] || ""})
+      |> Map.put("type", params["type"])
 
     case NotebookWeb.Act.act(socket.assigns.current_scope, Notebook.Actions.AddField, args) do
       {:ok, _receipt} -> {:noreply, socket |> assign(field_form: nil) |> reload_database()}
@@ -2140,6 +2321,31 @@ defmodule NotebookWeb.NotebookLive do
   defp keep_place(socket, _params), do: socket
 
   # The space and folder of the form's place ("space:folder").
+  # Files added to a record's file field, after those it has: the
+  # update_records an agent's files go through, as the person. The files
+  # stored go when it is refused.
+  defp attach(scope, page, collection, record_id, field_ref, files) do
+    with %Cardbox.Field{type: "file"} = field <- Cardbox.Collection.field(collection, field_ref),
+         %Cardbox.Record{} = record <- Box.get(collection, record_id) do
+      had = Map.get(record.data, field.key) || []
+      change = %{id: record.id, values: %{field.key => had ++ files}}
+      args = %{page_id: page.id, changes: [change]}
+
+      case NotebookWeb.Act.act(scope, Notebook.Actions.UpdateRecords, args) do
+        {:ok, %{result: {_collection, [record]}}} ->
+          {:ok, record}
+
+        {:error, reason} ->
+          Databases.discard_files(files)
+          {:error, Issho.Action.message(reason)}
+      end
+    else
+      _ ->
+        Databases.discard_files(files)
+        {:error, "No such record or file field."}
+    end
+  end
+
   defp place_attrs(%{"place" => place} = params) do
     [space_id, folder_id] = String.split(place, ":")
     Map.merge(params, %{"space_id" => space_id, "folder_id" => folder_id})

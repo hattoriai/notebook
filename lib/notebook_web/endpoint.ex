@@ -48,9 +48,12 @@ defmodule NotebookWeb.Endpoint do
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
+  # An agent's file comes in base64 in its tool call (attach_file,
+  # add_records): a 25 MB file is about 34 MB of JSON.
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],
+    length: 36_000_000,
     json_decoder: Phoenix.json_library()
 
   plug Plug.MethodOverride

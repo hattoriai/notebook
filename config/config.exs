@@ -125,6 +125,12 @@ config :swoosh, :api_client, false
 
 config :kotoba, nodes: [Notebook.Kotoba.Nodes.Callout]
 
+# The Notebook's own types of database fields: Repeats.
+config :cardbox, types: [Notebook.Cardbox.Repeat]
+
+# An agent's files (attach_file): as large as a database record's.
+config :kotoba, Kotoba.Issho, attach: [max_bytes: 25_000_000]
+
 # Koyomi's pickers write dates for a reader in Lisbon: "today", the review
 # times and the wall clock of the review picker are in this zone.
 config :koyomi, locale: "en-GB", time_zone: "Europe/Lisbon"
