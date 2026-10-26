@@ -8,7 +8,17 @@ defmodule Notebook.NotificationsTest do
   alias Notebook.Accounts.Scope
   alias Notebook.Cardbox, as: Box
   alias Notebook.Notifications
-  alias Notebook.Notifications.{AddedToSpace, Assigned, Due, Mentioned, Replied, Review}
+
+  alias Notebook.Notifications.{
+    AddedToSpace,
+    Assigned,
+    Due,
+    Mentioned,
+    RecordDue,
+    Replied,
+    Review
+  }
+
   alias Notebook.{Collaboration, Databases, Pages, Spaces}
 
   setup do
@@ -198,5 +208,122 @@ defmodule Notebook.NotificationsTest do
     Chime.mark_read(Notifications.id(yuki), [id])
 
     assert [%{status: "skipped", reason: "read in the feed" <> _}] = deliver(at: later, to: yuki)
+  end
+
+  describe "a record's day" do
+    setup %{scope: scope, forge: forge} do
+      {:ok, page} =
+        Pages.create(scope, %{"title" => "Bills", "kind" => "database", "space_id" => forge.id})
+
+      %{page: page, collection: Databases.collection(page)}
+    end
+
+    test "reminds its people at 09:00 of the day, and the day moved replaces it", %{
+      scope: scope,
+      hanzo: hanzo,
+      masamune: masamune,
+      collection: collection
+    } do
+      day = Date.add(Date.utc_today(), 2)
+
+      {:ok, bill} =
+        Box.insert(
+          collection,
+          %{"Name" => "Electricity", "Due" => day, "Owner" => "user:#{masamune.id}"},
+          actor: scope
+        )
+
+      Notifications.settle()
+      assert [%{status: "scheduled"}] = events(RecordDue)
+
+      {:ok, _} = Box.update(collection, bill.id, %{"Due" => Date.add(day, 7)}, actor: scope)
+      Notifications.settle()
+
+      assert ["cancelled", "scheduled"] ==
+               events(RecordDue) |> Enum.map(& &1.status) |> Enum.sort()
+
+      run_scheduled(DateTime.add(DateTime.utc_now(), 4, :day))
+      refute_notified(RecordDue, to: masamune)
+
+      run_scheduled(DateTime.add(DateTime.utc_now(), 11, :day))
+
+      assert_notified(RecordDue,
+        to: masamune,
+        data: %{
+          "title" => "Electricity",
+          "field" => "Due",
+          "on" => Date.to_iso8601(Date.add(day, 7))
+        }
+      )
+
+      refute_notified(RecordDue, to: hanzo)
+    end
+
+    test "with no one in it, reminds who made it; done, it reminds no more", %{
+      scope: scope,
+      hanzo: hanzo,
+      collection: collection
+    } do
+      {:ok, bill} =
+        Box.insert(collection, %{"Name" => "Water", "Due" => Date.add(Date.utc_today(), 1)},
+          actor: scope
+        )
+
+      Notifications.settle()
+      {:ok, _} = Box.update(collection, bill.id, %{"Status" => "Done"}, actor: scope)
+      Notifications.settle()
+      assert ["cancelled"] == events(RecordDue) |> Enum.map(& &1.status)
+
+      run_scheduled(DateTime.add(DateTime.utc_now(), 3, :day))
+      refute_notified(RecordDue, to: hanzo)
+    end
+
+    test "a day gone by reminds of nothing, and a record deleted cancels its own", %{
+      scope: scope,
+      collection: collection
+    } do
+      {:ok, _} =
+        Box.insert(collection, %{"Name" => "Old", "Due" => Date.add(Date.utc_today(), -3)},
+          actor: scope
+        )
+
+      {:ok, later} =
+        Box.insert(collection, %{"Name" => "Later", "Due" => Date.add(Date.utc_today(), 3)},
+          actor: scope
+        )
+
+      Notifications.settle()
+      assert [%{status: "scheduled"}] = events(RecordDue)
+
+      {:ok, _} = Box.delete(collection, later.id, actor: scope)
+      Notifications.settle()
+      assert [%{status: "cancelled"}] = events(RecordDue)
+    end
+
+    test "a bill paid that repeats reminds of its next one", %{
+      scope: scope,
+      hanzo: hanzo,
+      collection: collection
+    } do
+      {:ok, collection} =
+        Databases.add_field(scope, collection, %{"name" => "Repeats", "type" => "repeat"})
+
+      {:ok, bill} =
+        Box.insert(
+          collection,
+          %{"Name" => "Rent", "Due" => Date.add(Date.utc_today(), 1), "Repeats" => "FREQ=WEEKLY"},
+          actor: scope
+        )
+
+      {:ok, _} = Box.update(collection, bill.id, %{"Status" => "Done"}, actor: scope)
+      Notifications.settle()
+
+      run_scheduled(DateTime.add(DateTime.utc_now(), 9, :day))
+
+      assert_notified(RecordDue,
+        to: hanzo,
+        data: %{"title" => "Rent", "on" => Date.to_iso8601(Date.add(Date.utc_today(), 8))}
+      )
+    end
   end
 end

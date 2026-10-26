@@ -32,7 +32,8 @@ defmodule Notebook.Notifications do
     ],
     dates: [
       label: "Due dates and reviews",
-      description: "A page of yours is due today, or it is time to review it."
+      description:
+        "A page of yours is due today, a record of yours has its day, or it is time to review a page."
     ]
   ]
 
@@ -146,7 +147,19 @@ defmodule Notebook.Notifications do
         _
       )
       when type in [:record_inserted, :record_updated],
-      do: run(fn -> record(event) end)
+      do:
+        run(fn ->
+          record(event)
+          record_dates(event)
+        end)
+
+  def handle_event(
+        [:cardbox, :change],
+        _measures,
+        %{event: %Cardbox.Event{type: :record_deleted, record: record}},
+        _
+      ),
+      do: run(fn -> cancel_record_reminders(record.id) end)
 
   def handle_event(_name, _measures, _meta, _config), do: :ok
 
@@ -321,6 +334,112 @@ defmodule Notebook.Notifications do
               where: like(e.key, ^(prefix <> "%")) and e.status == "scheduled"
           ),
         do: Chime.cancel(event)
+  end
+
+  ## Records' days
+
+  # A record's days (its date fields) remind its people (its person
+  # fields, else whoever made it), at 09:00 of the day, or at the time of
+  # a date with one, while the record is not done. Each change of a day,
+  # of who it is for, or of being done sets them again.
+  defp record_dates(%Cardbox.Event{record: record} = event) do
+    collection = Notebook.Cardbox.get_collection(event.collection_id)
+
+    with %{owner_type: "page", owner_id: page_id} <- collection,
+         %Page{archived_at: nil} = page <- Repo.get(Page, page_id),
+         true <- event.type == :record_inserted or reminds?(collection, event.changed) do
+      cancel_record_reminders(record.id)
+      unless done?(collection, record), do: remind_record(page, collection, record)
+    end
+
+    :ok
+  end
+
+  # Whether a change touches what a record's reminders depend on.
+  defp reminds?(collection, changed) do
+    Enum.any?(collection.fields, fn field ->
+      field.key in changed and field.type in ~w(date person status checkbox)
+    end)
+  end
+
+  # Done: its repeat's done field says so, else its first status is of the
+  # done group.
+  defp done?(collection, record) do
+    repeat = Enum.find(collection.fields, &(&1.type == "repeat"))
+
+    field =
+      (repeat && Cardbox.Collection.field(collection, repeat.options["done"])) ||
+        Enum.find(collection.fields, &(&1.type == "status"))
+
+    case field do
+      %{type: "checkbox", key: key} ->
+        record.data[key] == true
+
+      %{type: "status", key: key} = status ->
+        match?(
+          %{"group" => "done"},
+          Cardbox.Choice.find(Cardbox.Field.choices(status), record.data[key])
+        )
+
+      nil ->
+        false
+    end
+  end
+
+  defp remind_record(page, collection, record) do
+    people = record_people(collection, record)
+    title = Cardbox.Records.titles(Notebook.Cardbox, collection.id, [record.id])[record.id]
+    now = DateTime.utc_now()
+    today = now |> DateTime.shift_zone!(time_zone()) |> DateTime.to_date()
+
+    for %{type: "date"} = field <- collection.fields,
+        value = Cardbox.Record.value(record, field),
+        at = record_at(value),
+        on_or_after?(value, today, now),
+        people != [] do
+      Chime.notify(
+        N.RecordDue,
+        %{page: page, record: record.id, title: title, field: field.name, on: value},
+        to: people,
+        at: later(at, now),
+        key: "due:record:#{record.id}:#{field.key}:#{System.os_time(:microsecond)}"
+      )
+    end
+  end
+
+  defp record_at(%Date{} = day),
+    do: day |> DateTime.new!(~T[09:00:00], time_zone()) |> DateTime.shift_zone!("Etc/UTC")
+
+  defp record_at(%DateTime{} = at), do: at
+
+  defp on_or_after?(%Date{} = day, today, _now), do: Date.compare(day, today) != :lt
+  defp on_or_after?(%DateTime{} = at, _today, now), do: DateTime.compare(at, now) != :lt
+
+  # Its person fields' people, else the person who made it.
+  defp record_people(collection, record) do
+    ids =
+      for field <- collection.fields,
+          field.type == "person",
+          id <- List.wrap(Map.get(record.data, field.key)),
+          do: id
+
+    ids = if ids == [], do: List.wrap(record.created_by), else: ids
+    for id <- Enum.uniq(ids), user = user(id), do: user
+  end
+
+  defp cancel_record_reminders(record_id) do
+    import Ecto.Query
+
+    prefix = "due:record:#{record_id}:"
+
+    for event <-
+          Repo.all(
+            from e in Chime.Event,
+              where: like(e.key, ^(prefix <> "%")) and e.status == "scheduled"
+          ),
+        do: Chime.cancel(event)
+
+    :ok
   end
 
   # A reminder's key, of its page and its time; each one set is a new one,
