@@ -34,6 +34,19 @@ defmodule Notebook.Tools.Databases do
   def error(%Cardbox.Error{message: message}), do: {:error, message}
   def error(other), do: {:error, inspect(other)}
 
+  @doc """
+  Runs a write of the page's database unless the agent is paused or
+  stopped in the page's room (`Issho.Tool.Context.guard/3`): its
+  arguments name a page, not a room, so Issho does not refuse the call
+  itself.
+  """
+  def guard(ctx, page, fun) do
+    case Issho.Tool.Context.guard(ctx, Notebook.Collaboration.room(page), fun) do
+      {:error, {:interrupted, _by} = interrupted} -> Issho.Tool.Context.error(interrupted)
+      result -> result
+    end
+  end
+
   @doc "Whether the scope may change the page's database."
   def editable?(scope, page), do: Databases.editable?(scope, page)
 
@@ -152,11 +165,13 @@ defmodule Notebook.Tools.AddRecords do
 
   @impl true
   def call(%{page_id: page_id, records: records}, ctx) do
-    with {:ok, scope, _page, collection} <- T.open(ctx, page_id) do
-      case Box.insert_all(collection, records, actor: scope) do
-        {:ok, records} -> T.written(collection, records)
-        {:error, error} -> T.error(error)
-      end
+    with {:ok, scope, page, collection} <- T.open(ctx, page_id) do
+      T.guard(ctx, page, fn ->
+        case Box.insert_all(collection, records, actor: scope) do
+          {:ok, records} -> T.written(collection, records)
+          {:error, error} -> T.error(error)
+        end
+      end)
     end
   end
 end
@@ -194,11 +209,13 @@ defmodule Notebook.Tools.UpdateRecords do
 
   @impl true
   def call(%{page_id: page_id, changes: changes}, ctx) do
-    with {:ok, scope, _page, collection} <- T.open(ctx, page_id) do
+    with {:ok, scope, page, collection} <- T.open(ctx, page_id) do
+      # Each change is guarded: paused halfway, the rest is not made.
       changes
       |> Enum.reduce_while({:ok, []}, fn %{id: id, values: values}, {:ok, done} ->
-        case Box.update(collection, id, values, actor: scope) do
+        case T.guard(ctx, page, fn -> Box.update(collection, id, values, actor: scope) end) do
           {:ok, record} -> {:cont, {:ok, [record | done]}}
+          {:error, message} when is_binary(message) -> {:halt, halted(message, done)}
           {:error, error} -> {:halt, T.error(error)}
         end
       end)
@@ -208,4 +225,9 @@ defmodule Notebook.Tools.UpdateRecords do
       end
     end
   end
+
+  defp halted(message, []), do: {:error, message}
+
+  defp halted(message, done),
+    do: {:error, "#{message} (#{length(done)} of the changes were made before.)"}
 end
