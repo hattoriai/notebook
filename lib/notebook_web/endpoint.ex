@@ -43,6 +43,9 @@ defmodule NotebookWeb.Endpoint do
     plug Phoenix.LiveReloader
     plug Phoenix.CodeReloader
     plug Phoenix.Ecto.CheckRepoStatus, otp_app: :notebook
+    # Webhooks sent to the notebook itself, in development: Notebook
+    # settings → Webhooks → Inbox.
+    plug Kunai.Dev.Inbox
   end
 
   plug Plug.RequestId
