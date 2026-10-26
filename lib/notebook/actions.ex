@@ -1,39 +1,114 @@
 defmodule Notebook.Actions do
   @moduledoc """
   What people and agents do in the Notebook by the same way
-  (`Issho.Action`): a person from the page (its command palette, a
-  database's Record button), an agent as a tool. Each runs in the page's
-  room, under its policy (`Notebook.Collaboration`: who edits the page,
-  and not on a page off limits to agents), as whoever runs it, and the
-  room hears it done (`"action.done"`). A paused agent changes nothing.
+  (`Issho.Action`): a person from the page (its command palette, its
+  buttons and dialogs, a database's table and board), an agent as a tool.
+  Each runs in a room, under its policy (`Notebook.Collaboration`: who
+  reads and edits the page or the space, and not on what is off limits
+  to agents), as whoever runs it, and the room hears it done
+  (`"action.done"`). A paused agent changes nothing.
 
-    * `Notebook.Actions.RenamePage`: a page's title;
-    * `Notebook.Actions.SetDueDate`: a page's due date;
-    * `Notebook.Actions.AddRecords`: records of a database page.
+  A page's own (its room, `"page:<id>"`):
+
+    * `RenamePage`, `SetDueDate`, `MovePage`, `ArchivePage`,
+      `RestorePage`;
+    * a database page's: `AddRecords`, `UpdateRecords`, `DeleteRecords`,
+      `MoveRecord`, `AddField`, `AddView`.
+
+  A space's (`"space:<id>"`): `CreatePage`.
+
+  A person's only (`people/0`): who has a page or a folder (`Share`,
+  `ShareLink`), whether agents may work on a page (`SetAgents`), and
+  publishing (`Publish`, `Unpublish`). They are actions as the others
+  are, run from the dialogs, and refuse an agent: what agents may reach
+  is their people's to say.
   """
 
   alias Notebook.Pages
 
-  @doc "Every action of the Notebook: the tools they are for an agent."
-  def all, do: [__MODULE__.RenamePage, __MODULE__.SetDueDate, __MODULE__.AddRecords]
+  @doc "Every action an agent may run: its tools."
+  def all do
+    [
+      __MODULE__.CreatePage,
+      __MODULE__.RenamePage,
+      __MODULE__.SetDueDate,
+      __MODULE__.MovePage,
+      __MODULE__.ArchivePage,
+      __MODULE__.RestorePage,
+      __MODULE__.AddRecords,
+      __MODULE__.UpdateRecords,
+      __MODULE__.DeleteRecords,
+      __MODULE__.MoveRecord,
+      __MODULE__.AddField,
+      __MODULE__.AddView
+    ]
+  end
+
+  @doc "The actions only a person runs."
+  def people,
+    do: [
+      __MODULE__.Share,
+      __MODULE__.ShareLink,
+      __MODULE__.SetAgents,
+      __MODULE__.Publish,
+      __MODULE__.Unpublish
+    ]
 
   @doc "The room of the page of that id: the action's target."
   def room(page_id), do: "page:#{page_id}"
+
+  @doc "The room of a page or a folder (its space's), by kind and id."
+  def room("page", id), do: room(id)
+
+  def room("folder", id) do
+    case Notebook.Repo.get(Notebook.Spaces.Folder, id) do
+      %{space_id: space_id} -> "space:#{space_id}"
+      nil -> "space:none"
+    end
+  end
 
   @doc """
   The page and the scope of whoever runs the invocation (`by`), for its
   change. The room's policy has said they edit it.
   """
-  def page(page_id, %Issho.Action.Invocation{by: by}) do
-    with {:ok, scope} <- Notebook.Collaboration.scope_of(by),
+  def page(page_id, %Issho.Action.Invocation{} = invocation) do
+    with {:ok, scope} <- scope(invocation),
          %Pages.Page{} = page <- Pages.fetch(page_id) do
-      {:ok, scope, page}
+      {:ok, scope, Notebook.Repo.preload(page, [:space, :folder])}
     else
       _ -> {:error, "No such page."}
     end
   end
 
-  @doc "What went wrong in a page's change, in words a person or a model reads."
+  @doc "The page of that id and its database's collection, as `page/2`."
+  def database(page_id, invocation) do
+    with {:ok, scope, page} <- page(page_id, invocation) do
+      case Notebook.Databases.collection(page) do
+        %Cardbox.Collection{} = collection -> {:ok, scope, page, collection}
+        nil -> {:error, "That page is not a database."}
+      end
+    end
+  end
+
+  @doc "The scope of whoever runs the invocation."
+  def scope(%Issho.Action.Invocation{by: by}) do
+    case Notebook.Collaboration.scope_of(by) do
+      {:ok, scope} -> {:ok, scope}
+      _error -> {:error, "Only a person, or their agent, does this."}
+    end
+  end
+
+  @doc "A page or a folder, by kind and id."
+  def resource("page", id), do: Pages.fetch(id)
+  def resource("folder", id), do: Notebook.Repo.get(Notebook.Spaces.Folder, id)
+
+  @doc "Refuses an agent: for an action only a person runs."
+  def person_only(%Issho.Identity{kind: :agent}),
+    do: {:error, "Only a person does this: ask the person you work for."}
+
+  def person_only(_who), do: :ok
+
+  @doc "What went wrong in a change, in words a person or a model reads."
   def error(%Ecto.Changeset{} = changeset) do
     changeset
     |> Ecto.Changeset.traverse_errors(fn {message, opts} ->
@@ -46,148 +121,8 @@ defmodule Notebook.Actions do
 
   def error(%Cardbox.Error{reason: :unauthorized}), do: "You may not change this database."
   def error(%Cardbox.Error{message: message}), do: message
+  def error(message) when is_binary(message), do: message
+  def error(%Sekisho.Denied{}), do: "You may not do this here."
+  def error(%{__exception__: true} = exception), do: Exception.message(exception)
   def error(_other), do: "You may not change this page."
-end
-
-defmodule Notebook.Actions.RenamePage do
-  @moduledoc false
-  use Issho.Action,
-    name: "rename_page",
-    description: """
-    Renames a page, as the person you work for (they edit it). Gives its
-    new title.
-    """
-
-  arg(:page_id, :integer, required: true, description: "The page, as list_pages gives it")
-  arg(:title, :string, required: true, min_length: 1, max_length: 160)
-
-  alias Notebook.Actions
-
-  @impl Issho.Action
-  def target(%{page_id: id}), do: Actions.room(id)
-
-  @impl Issho.Action
-  def run(%{page_id: id, title: title}, invocation) do
-    with {:ok, scope, page} <- Actions.page(id, invocation) do
-      case Notebook.Pages.update(scope, page, %{"title" => title}) do
-        {:ok, page} -> {:ok, page}
-        {:error, reason} -> {:error, Actions.error(reason)}
-      end
-    end
-  end
-
-  @impl Issho.Action
-  def summary(page), do: "Renamed: #{page.title}."
-
-  @impl Issho.Action
-  def event(%{page_id: id}, page), do: %{page: id, title: page.title}
-end
-
-defmodule Notebook.Actions.SetDueDate do
-  @moduledoc false
-  use Issho.Action,
-    name: "set_due_date",
-    description: """
-    Gives a page a due date, or takes it away, as the person you work for
-    (they edit it). The page shows it, the calendar lists it, and its
-    people are reminded.
-    """
-
-  arg(:page_id, :integer, required: true, description: "The page, as list_pages gives it")
-
-  arg(:due, :string,
-    required: true,
-    max_length: 10,
-    description: ~s(A day, "2026-11-02"; or "none" to take the due date away)
-  )
-
-  alias Notebook.Actions
-
-  @impl Issho.Action
-  def target(%{page_id: id}), do: Actions.room(id)
-
-  @impl Issho.Action
-  def run(%{page_id: id, due: due}, invocation) do
-    with {:ok, scope, page} <- Actions.page(id, invocation),
-         {:ok, day} <- day(due) do
-      case Notebook.Pages.update(scope, page, %{"due_on" => day}) do
-        {:ok, page} -> {:ok, page}
-        {:error, reason} -> {:error, Actions.error(reason)}
-      end
-    end
-  end
-
-  defp day("none"), do: {:ok, nil}
-
-  defp day(text) do
-    case Date.from_iso8601(text) do
-      {:ok, day} -> {:ok, day}
-      {:error, _} -> {:error, ~s(Give the day as 2026-11-02, or "none".)}
-    end
-  end
-
-  @impl Issho.Action
-  def summary(%{due_on: nil, title: title}), do: "#{title} has no due date now."
-  def summary(%{due_on: day, title: title}), do: "#{title} is due on #{Date.to_iso8601(day)}."
-
-  @impl Issho.Action
-  def event(%{page_id: id}, page),
-    do: %{page: id, due: page.due_on && Date.to_iso8601(page.due_on)}
-end
-
-defmodule Notebook.Actions.AddRecords do
-  @moduledoc false
-  use Issho.Action,
-    name: "add_records",
-    description: """
-    Adds records to a database page, as the person you work for (they edit
-    the page): each one an object of values by field name or key, as
-    read_database describes them. All of them are added, or none. Gives
-    the records, with their ids. A file field takes files you send:
-    [{"name": "edp-2026-11.pdf", "data": "<its bytes in base64>"}], each
-    stored and checked as an upload is (a web page named .pdf is a
-    download).
-    """
-
-  arg(:page_id, :integer,
-    required: true,
-    description: "The database page, as list_pages gives it"
-  )
-
-  arg(:records, {:array, :any},
-    required: true,
-    description: ~s(The records' values, e.g. [{"Blade": "A short sword", "Status": "Asked"}])
-  )
-
-  alias Notebook.Actions
-  alias Notebook.Cardbox, as: Box
-
-  @impl Issho.Action
-  def target(%{page_id: id}), do: Actions.room(id)
-
-  @impl Issho.Action
-  def run(%{page_id: id, records: records}, invocation) do
-    with {:ok, scope, page} <- Actions.page(id, invocation),
-         %Cardbox.Collection{} = collection <- Notebook.Databases.collection(page),
-         {:ok, records, stored} <- Notebook.Tools.Databases.store_all(collection, records) do
-      case Box.insert_all(collection, records, actor: scope) do
-        {:ok, inserted} ->
-          {:ok, {collection, inserted}}
-
-        {:error, error} ->
-          Notebook.Databases.discard_files(stored)
-          {:error, Actions.error(error)}
-      end
-    else
-      nil -> {:error, "That page is not a database."}
-      error -> error
-    end
-  end
-
-  @impl Issho.Action
-  def summary({collection, records}),
-    do: %{"records" => Enum.map(records, &Notebook.Tools.Databases.record(collection, &1))}
-
-  @impl Issho.Action
-  def event(%{page_id: id}, {_collection, records}), do: %{page: id, count: length(records)}
 end
