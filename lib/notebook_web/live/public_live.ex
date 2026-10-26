@@ -16,7 +16,9 @@ defmodule NotebookWeb.PublicLive do
   alias Notebook.{Charts, Pages, Publishing}
 
   @impl true
-  def mount(%{"path" => words}, _session, socket) do
+  def mount(%{"path" => words}, session, socket) do
+    socket = assign(socket, guest: Issho.Guests.new(session["guest"]), bots: [], asked: [])
+
     case Publishing.resolve(words) do
       {:page, page} -> {:ok, page(socket, page)}
       {:blog, folder, posts} -> {:ok, blog(socket, folder, posts)}
@@ -45,7 +47,9 @@ defmodule NotebookWeb.PublicLive do
       page_title: page.title,
       description: Publishing.summary(page),
       canonical: Publishing.url(page),
-      feed: page.folder && page.folder.published_at && Publishing.feed_url(page.folder)
+      feed: page.folder && page.folder.published_at && Publishing.feed_url(page.folder),
+      # The bots that answer visitors here (Notebook.Bots), and what was asked.
+      bots: Notebook.Bots.public_for(page)
     )
     |> embeds()
   end
@@ -137,7 +141,36 @@ defmodule NotebookWeb.PublicLive do
   def handle_info({:chart_changed, _id}, socket), do: {:noreply, embeds(socket)}
   def handle_info({:chart_rows, _source}, socket), do: {:noreply, embeds(socket)}
   def handle_info({:watching, _ref}, socket), do: {:noreply, socket}
+  # A bot's answer to what the visitor asked.
+  def handle_info({:bot_answer, request, words}, socket) do
+    asked =
+      Enum.map(socket.assigns.asked, fn
+        %{request: ^request} = asked -> %{asked | answer: words}
+        asked -> asked
+      end)
+
+    {:noreply, assign(socket, asked: asked)}
+  end
+
   def handle_info(_message, socket), do: {:noreply, socket}
+
+  @impl true
+  def handle_event("ask_bot", %{"bot" => id, "question" => question}, socket) do
+    with %Notebook.Bots.Bot{} = bot <- Enum.find(socket.assigns.bots, &(to_string(&1.id) == id)),
+         question when question != "" <- String.trim(question),
+         {:ok, request} <-
+           Notebook.Bots.ask_public(socket.assigns.page, bot, socket.assigns.guest, question) do
+      asked = %{request: request, bot: bot.name, question: question, answer: nil}
+      {:noreply, assign(socket, asked: socket.assigns.asked ++ [asked])}
+    else
+      {:error, :too_many} ->
+        {:noreply,
+         put_flash(socket, :error, "That is a lot of questions: ask again in a minute.")}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
 
   ## Rendering
 
@@ -151,6 +184,7 @@ defmodule NotebookWeb.PublicLive do
       </a>
     </header>
     <main class={["public-main", "public-#{@kind}"]}>
+      <Layouts.flash_group flash={@flash} />
       <.public_page :if={@kind == :page} {assigns} />
       <.public_blog :if={@kind == :blog} {assigns} />
       <.public_person :if={@kind == :person} {assigns} />
@@ -231,6 +265,37 @@ defmodule NotebookWeb.PublicLive do
           max_height="40rem"
         />
       </div>
+
+      <section
+        :for={bot <- @bots}
+        class="public-ask"
+        id={"ask-#{bot.id}"}
+        aria-label={"Ask #{bot.name}"}
+      >
+        <h2>Ask {bot.name}</h2>
+        <ol class="public-asked">
+          <li :for={asked <- @asked} :if={asked.bot == bot.name} id={"asked-" <> asked.request}>
+            <p class="public-question">{asked.question}</p>
+            <p :if={asked.answer} class="public-answer">{asked.answer}</p>
+            <p :if={!asked.answer} class="public-answer is-waiting">{bot.name} is thinking…</p>
+          </li>
+        </ol>
+        <form id={"ask-form-#{bot.id}"} phx-submit="ask_bot" class="public-ask-form">
+          <input type="hidden" name="bot" value={bot.id} />
+          <textarea
+            name="question"
+            rows="2"
+            maxlength="2000"
+            required
+            placeholder={"A question about this page, for #{bot.name}"}
+            aria-label={"Your question for #{bot.name}"}
+          ></textarea>
+          <button type="submit" class="button">Ask</button>
+        </form>
+        <p class="public-ask-note">
+          {bot.name} is a bot: it reads this page and answers; it may be wrong.
+        </p>
+      </section>
     </article>
     """
   end

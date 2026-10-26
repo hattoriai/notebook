@@ -23,12 +23,16 @@ defmodule Notebook.Application do
       Notebook.Notifications.Queue,
       # The pages' rooms: their people, their shared text and boards, and
       # Issho's own documents (comments, inboxes) in the database.
-      {Issho,
-       name: Notebook.Issho,
-       pubsub: Notebook.PubSub,
-       endpoint: NotebookWeb.Endpoint,
-       policy: Notebook.Collaboration,
-       store: {Notebook.IsshoStore, Notebook.Repo}},
+      {
+        Issho,
+        # A bot's inbox wakes it (Notebook.Bots).
+        name: Notebook.Issho,
+        pubsub: Notebook.PubSub,
+        endpoint: NotebookWeb.Endpoint,
+        policy: Notebook.Collaboration,
+        store: {Notebook.IsshoStore, Notebook.Repo},
+        on_mention: {Notebook.Bots, :wake}
+      },
       # MCP for agents (/mcp): its streams and tasks, on every node.
       {Sake, secret_key_base: {NotebookWeb.AgentAuth, :secret, []}, pubsub: Notebook.PubSub},
       # Start a worker by calling: Notebook.Worker.start_link(arg)

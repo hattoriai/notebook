@@ -23,6 +23,13 @@ defmodule Notebook.Tools do
   token it connected with), as their agent, or nil. The agent may do what
   they may, but not on what is off limits to agents.
   """
+  def scope(%Issho.Tool.Context{actor: %{id: "bot:" <> _ = key}}) do
+    case Notebook.Bots.by_key(key) do
+      %Notebook.Bots.Bot{enabled: true} = bot -> Notebook.Bots.scope(bot)
+      _ -> nil
+    end
+  end
+
   def scope(%Issho.Tool.Context{opts: opts} = ctx) do
     with %{} = person <- opts[:on_behalf_of],
          key = Issho.Identity.new(person).key,

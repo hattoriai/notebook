@@ -382,7 +382,10 @@ defmodule NotebookWeb.NotebookLive do
         else:
           Enum.map(Notebook.Agents.active(), fn agent ->
             %{key: Notebook.Agents.key(agent), name: agent.name, kind: "agent"}
-          end)
+          end) ++
+            Enum.map(Notebook.Bots.mentionable(page), fn bot ->
+              %{key: Notebook.Bots.key(bot), name: bot.name, kind: "agent"}
+            end)
 
     people ++ agents
   end

@@ -27,6 +27,7 @@ defmodule NotebookWeb.Router do
   pipeline :public do
     plug :accepts, ["html", "xml"]
     plug :fetch_session
+    plug NotebookWeb.Plugs.Guest
     plug NotebookWeb.Plugs.Feed
     plug :put_root_layout, html: {NotebookWeb.Layouts, :public_root}
     plug :put_secure_browser_headers
@@ -99,6 +100,7 @@ defmodule NotebookWeb.Router do
       on_mount: [{NotebookWeb.UserAuth, :require_authenticated}, Chime.Live] do
       live "/users/settings", UserLive.Settings, :edit
       live "/admin", AdminLive, :index
+      live "/bots", BotsLive, :index
     end
 
     post "/users/update-password", UserSessionController, :update_password

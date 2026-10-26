@@ -47,3 +47,7 @@ config :phoenix,
 config :storehouse, Storehouse.Local,
   root: Path.expand("../tmp/test_uploads", __DIR__),
   url_prefix: "/uploads/kotoba"
+
+# The bots' Claude API, answered by the tests (Req.Test).
+config :notebook, Notebook.Bots.Claude,
+  req: [plug: {Req.Test, Notebook.Bots.Claude}, retry: false]

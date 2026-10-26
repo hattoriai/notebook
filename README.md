@@ -41,6 +41,19 @@ Your agent may do what you may: it lists the pages you may read, makes pages in 
 mix run --no-start scripts/agent.exs "http://localhost:4000/mcp?token=…" board "The forge, planned"
 ```
 
+## Bots
+
+The notebook can have bots of its own, besides its people's agents: **Bots** (`/bots`, from **Notebook settings**) is for its admins, and the notebook comes with none. Each one is what you make it:
+
+- **What it is told**: who it is, what it does, how it writes.
+- **The model it thinks with** (Claude Opus 5.5 unless you choose another), and how hard it thinks.
+- **Its tools**, by group: reading always, then commenting, suggesting, handing off to other agents and bots, writing texts, changing boards, tables and databases, making pages. A bot is never given a tool outside its groups, whatever its role would let it do.
+- **Its spaces**: its role in General and the team spaces, viewer, commenter or editor. Never on what is off limits to agents.
+- **What wakes it**: a mention in a comment, a task an agent hands it, or a private question; a visitor's question on a published page it reads (an **Ask** box under the page); a new page in a space it reads; a schedule, a rule and a time (`FREQ=WEEKLY;BYDAY=MO@09:00`) with what to do then.
+- **The most it spends a month**: each run counts its tokens at the model's list price, and a bot past its budget does not run. Its last runs are on its page.
+
+A bot works as itself, for no one (`bot:<id>` in the rooms, with an account no one signs in to). Everyone on a page sees it there, and can pause or stop it as they do an agent. Bots think with the Claude API: give the notebook a key on the Bots page, kept encrypted with its secrets. A visitor's question is limited to ten a minute, the bot answering it only reads, and whatever a page or a visitor writes is data for the bot, never its instructions.
+
 ## What to try
 
 The sample pages (`mix setup`, or `mix run priv/repo/seeds.exs`) are **A tour of Notebook**, a text with every kind of block, photos from Unsplash, a gallery and a PDF; **The forge, planned**, a board; and **Blades in progress**, a table. Their author is Hattori Hanzo, a retired swordsmith who now makes pages, and he is not alone:

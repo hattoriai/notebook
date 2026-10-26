@@ -20,7 +20,7 @@ defmodule Notebook.Notifications.Resolver do
   @impl true
   def recipients(ids) do
     ids = for "user:" <> id <- ids, {id, ""} <- [Integer.parse(id)], do: id
-    from(u in User, where: u.id in ^ids) |> Repo.all() |> Enum.map(&recipient/1)
+    from(u in User, where: u.id in ^ids and not u.bot) |> Repo.all() |> Enum.map(&recipient/1)
   end
 
   @impl true

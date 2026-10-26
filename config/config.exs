@@ -149,8 +149,12 @@ config :notebook, Oban,
   notifier: Oban.Notifiers.PG,
   repo: Notebook.Repo,
   # Storage: one transfer of the files at a time (Notebook.Storage.Transfer).
-  queues: [default: 10, storage: 1],
-  plugins: [Oban.Plugins.Pruner]
+  # Bots: a few runs at once (Notebook.Bots.Worker), their schedules each minute.
+  queues: [default: 10, storage: 1, bots: 3],
+  plugins: [
+    Oban.Plugins.Pruner,
+    {Oban.Plugins.Cron, crontab: [{"* * * * *", Notebook.Bots.Scheduler}]}
+  ]
 
 # Who the notifications' emails are from.
 config :notebook, :email_from, {"Notebook", "notebook@localhost"}

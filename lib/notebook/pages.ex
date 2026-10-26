@@ -91,6 +91,8 @@ defmodule Notebook.Pages do
          {:ok, page} <- insert(scope, user, space, folder_id, attrs) do
       Spaces.tree_changed()
       Notebook.Notifications.remind(page)
+      # The bots that take new pages look at it, unless a bot made it.
+      unless match?(%Scope{agent: "bot:" <> _}, scope), do: Notebook.Bots.page_created(page)
       {:ok, Repo.preload(page, [:author, :space, :folder])}
     end
   end
