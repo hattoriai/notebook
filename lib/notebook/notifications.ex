@@ -371,19 +371,7 @@ defmodule Notebook.Notifications do
       (repeat && Cardbox.Collection.field(collection, repeat.options["done"])) ||
         Enum.find(collection.fields, &(&1.type == "status"))
 
-    case field do
-      %{type: "checkbox", key: key} ->
-        record.data[key] == true
-
-      %{type: "status", key: key} = status ->
-        match?(
-          %{"group" => "done"},
-          Cardbox.Choice.find(Cardbox.Field.choices(status), record.data[key])
-        )
-
-      nil ->
-        false
-    end
+    field != nil and Notebook.Cardbox.Repeat.done?(field, record.data)
   end
 
   defp remind_record(page, collection, record) do

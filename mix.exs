@@ -85,8 +85,8 @@ defmodule Notebook.MixProject do
       # 0.7.0 (labels on places, and what takes Issho's main). Their browser
       # clients are built from their sources (`mix notebook.libraries`).
       {:issho, github: "hattoriai/issho", branch: "main", override: true},
-      # Kotoba's and Cardbox's branches with attach_file, the file and
-      # repeat fields, until they are merged to their main.
+      # Kotoba's and Cardbox's branches with attach_file, the file field,
+      # app field types and after_update, until they are merged to their main.
       {:kotoba,
        github: "hattoriai/kotoba", branch: "claude/notebook-audio-nodes-2t66we", override: true},
       {:hakushi, github: "hattoriai/hakushi", branch: "main", override: true},

@@ -125,6 +125,9 @@ config :swoosh, :api_client, false
 
 config :kotoba, nodes: [Notebook.Kotoba.Nodes.Callout]
 
+# The Notebook's own types of database fields: Repeats.
+config :cardbox, types: [Notebook.Cardbox.Repeat]
+
 # An agent's files (attach_file): as large as a database record's.
 config :kotoba, Kotoba.Issho, attach: [max_bytes: 25_000_000]
 

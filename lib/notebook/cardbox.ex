@@ -24,6 +24,12 @@ defmodule Notebook.Cardbox do
 
   def allow?(_actor, _action, _subject), do: false
 
+  # A bill paid that repeats comes back on its rule's next day, with the
+  # update (Notebook.Cardbox.Repeat).
+  @impl Cardbox
+  def after_update(collection, before, record, changed),
+    do: {:ok, Notebook.Cardbox.Repeat.next(collection, before, record, changed)}
+
   defp editable?(scope, id) do
     case Pages.fetch(to_id(id)) do
       nil -> false
