@@ -84,9 +84,14 @@ defmodule Notebook.MixProject do
       # Hakushi's and Masu's mains too, until releases after 0.8.0, 0.6.0 and
       # 0.7.0 (labels on places, and what takes Issho's main). Their browser
       # clients are built from their sources (`mix notebook.libraries`).
-      {:issho, github: "hattoriai/issho", branch: "main", override: true},
+      # A component's actions, and what an agent may do (list_actions), are
+      # in hattoriai/issho#57: main once it merges.
+      {:issho,
+       github: "hattoriai/issho", branch: "claude/issho-component-actions", override: true},
       {:kotoba, github: "hattoriai/kotoba", branch: "main", override: true},
-      {:hakushi, github: "hattoriai/hakushi", branch: "main", override: true},
+      # A canvas's actions are in hattoriai/hakushi#49: main once it merges.
+      {:hakushi,
+       github: "hattoriai/hakushi", branch: "claude/hakushi-canvas-actions", override: true},
       {:masu, github: "hattoriai/masu", branch: "main", override: true},
       {:sake, "~> 0.4.4"},
       {:koyomi, "~> 0.2.1"},

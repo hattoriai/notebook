@@ -6,8 +6,8 @@ defmodule Notebook.DatabasesTest do
 
   alias Notebook.Accounts.Scope
   alias Notebook.Cardbox, as: Box
-  alias Notebook.Actions.AddRecords
-  alias Notebook.Tools.{CreatePage, ListPages, ReadDatabase, UpdateRecords}
+  alias Notebook.Actions.{AddRecords, CreatePage, UpdateRecords}
+  alias Notebook.Tools.{ListPages, ReadDatabase}
   alias Notebook.{Databases, Pages, Spaces}
 
   setup do
@@ -119,15 +119,19 @@ defmodule Notebook.DatabasesTest do
 
   describe "an agent" do
     test "finds a database, and makes one", %{hanzo: hanzo, page: page} do
-      {:ok, %{"pages" => pages}} = ListPages.call(%{}, ctx(hanzo))
+      {:ok, %{"pages" => pages, "spaces" => spaces}} = ListPages.call(%{}, ctx(hanzo))
 
       assert %{"kind" => "database", "use" => %{"page_id" => id}} =
                Enum.find(pages, &(&1["title"] == "Commissions"))
 
       assert id == page.id
+      %{"id" => private} = Enum.find(spaces, &(&1["name"] == "Private"))
 
       assert {:ok, %{"kind" => "database", "id" => id}} =
-               CreatePage.call(%{title: "Reading list", kind: "database"}, ctx(hanzo))
+               CreatePage.call(
+                 %{title: "Reading list", kind: "database", space_id: private},
+                 ctx(hanzo)
+               )
 
       assert {:ok, %{"records" => []}} = ReadDatabase.call(%{page_id: id}, ctx(hanzo))
     end

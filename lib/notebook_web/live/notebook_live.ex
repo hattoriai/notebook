@@ -3,6 +3,7 @@ defmodule NotebookWeb.NotebookLive do
 
   alias Notebook.{Charts, Databases, Pages}
   alias Notebook.Cardbox, as: Box
+  alias Notebook.Cardbox.People
   alias Phoenix.LiveView.JS
   alias Notebook.Pages.Page
 
@@ -205,41 +206,37 @@ defmodule NotebookWeb.NotebookLive do
     do: act_on_page(socket, Notebook.Actions.SetDueDate, %{due: day}, "Due date set")
 
   defp act_on_page(socket, action, args, message) do
-    case Issho.Live.act(action, Map.put(args, :page_id, socket.assigns.page.id)) do
+    args = Map.put(args, :page_id, socket.assigns.page.id)
+
+    case NotebookWeb.Act.act(socket.assigns.current_scope, action, args) do
       {:ok, %{result: page}} -> updated(socket, page, message)
       {:error, reason} -> {:error, Issho.Action.message(reason), socket}
     end
   end
 
   defp move_page(socket, space_id, folder_id) do
-    case Pages.move(socket.assigns.current_scope, socket.assigns.page, space_id, folder_id) do
-      {:ok, page} ->
-        socket
-        |> assign(page: page)
-        |> page_actions()
-        |> put_flash(:info, "Moved to #{place_name(page)}")
+    args = %{space_id: space_id, folder_id: folder_id}
 
-      {:error, _reason} ->
-        {:error, "You may not move this page there.", socket}
+    case act_on_page(socket, Notebook.Actions.MovePage, args, nil) do
+      {:error, message, socket} -> {:error, message, socket}
+      socket -> put_flash(socket, :info, "Moved to #{place_name(socket.assigns.page)}")
     end
   end
 
-  defp archive_page(socket) do
-    {:ok, page} = Pages.archive(socket.assigns.current_scope, socket.assigns.page)
-
-    socket
-    |> assign(page: page)
-    |> page_actions()
-    |> put_flash(:info, "Archived. It stays in the Archive until you restore it.")
-  end
+  defp archive_page(socket),
+    do:
+      act_on_page(
+        socket,
+        Notebook.Actions.ArchivePage,
+        %{},
+        "Archived. It stays in the Archive until you restore it."
+      )
 
   defp restore_page(socket) do
-    {:ok, page} = Pages.restore(socket.assigns.current_scope, socket.assigns.page)
-
-    socket
-    |> assign(page: page)
-    |> page_actions()
-    |> put_flash(:info, "Restored to #{place_name(page)}")
+    case act_on_page(socket, Notebook.Actions.RestorePage, %{}, nil) do
+      {:error, message, socket} -> put_flash(socket, :error, message)
+      socket -> put_flash(socket, :info, "Restored to #{place_name(socket.assigns.page)}")
+    end
   end
 
   # Where a page is, in words: its space, and its folder.
@@ -282,10 +279,12 @@ defmodule NotebookWeb.NotebookLive do
   end
 
   defp updated(socket, page, message) do
+    page = Notebook.Repo.preload(page, [:author, :space, :folder])
+
     socket
     |> assign(page: page, page_title: page.title, form: to_form(Pages.change(page)))
     |> page_actions()
-    |> put_flash(:info, message)
+    |> then(&if(message, do: put_flash(&1, :info, message), else: &1))
   end
 
   defp load_page(socket, %{"id" => id} = params) do
@@ -464,16 +463,8 @@ defmodule NotebookWeb.NotebookLive do
   # and color in the text, the board, the table and the room's list.
   defp user(%{assigns: assigns}), do: user(assigns)
 
-  defp user(%{current_scope: %{user: account, link_tokens: links}}) do
-    person = %{
-      id: to_string(account.id),
-      name: account.name,
-      color: Notebook.Accounts.User.color(account)
-    }
-
-    # The links they followed go with them, signed, to the page's room.
-    if links == [], do: person, else: Issho.Identity.new(person, claims: %{links: links})
-  end
+  # The links they followed go with them, signed, to the page's room.
+  defp user(%{current_scope: scope}), do: NotebookWeb.Act.person(scope)
 
   defp prompts(scope) do
     [
@@ -918,7 +909,7 @@ defmodule NotebookWeb.NotebookLive do
           <div :if={@view} id="database-frame" class="space-frame database-frame">
             <Cardbox.Masu.table
               :if={@view.type == "table"}
-              cardbox={Box}
+              cardbox={People}
               collection={@collection}
               view={@view}
               actor={@current_scope}
@@ -1858,16 +1849,34 @@ defmodule NotebookWeb.NotebookLive do
      |> keep_place(params)}
   end
 
+  # A new page: the action an agent's create_page runs, in its space's room.
   def handle_event("create", %{"page" => params}, socket) do
-    case Pages.create(socket.assigns.current_scope, place_attrs(params)) do
-      {:ok, %Page{kind: "text"} = page} ->
+    params = place_attrs(params)
+
+    args = %{
+      title: params["title"] || "",
+      kind: params["kind"] || "text",
+      space_id:
+        to_integer(params["space_id"]) ||
+          Notebook.Spaces.private!(socket.assigns.current_scope.user).id,
+      folder_id: to_integer(params["folder_id"]),
+      due_on: blank(params["due_on"]),
+      details: Map.take(params, ~w(covers review_at revisit))
+    }
+
+    case NotebookWeb.Act.act(socket.assigns.current_scope, Notebook.Actions.CreatePage, args) do
+      {:ok, %{result: %Page{kind: "text"} = page}} ->
         {:noreply, push_navigate(socket, to: ~p"/pages/#{page.id}/edit")}
 
-      {:ok, page} ->
+      {:ok, %{result: page}} ->
         {:noreply, push_navigate(socket, to: ~p"/pages/#{page.id}")}
 
-      {:error, changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
+      {:error, reason} ->
+        # The form says what is wrong with each field; the reason, the rest.
+        form = to_form(Pages.change(%Page{}, params), action: :insert)
+
+        {:noreply,
+         socket |> assign(form: form) |> put_flash(:error, Issho.Action.message(reason))}
     end
   end
 
@@ -1982,10 +1991,11 @@ defmodule NotebookWeb.NotebookLive do
     do: {:noreply, socket |> assign(day: nil, day_records: []) |> show_view(id)}
 
   def handle_event("db_add_view", %{"type" => type}, socket) do
-    case Databases.add_view(socket.assigns.current_scope, socket.assigns.collection, type) do
-      {:ok, view} -> {:noreply, show_view(socket, view.id)}
-      {:error, message} when is_binary(message) -> {:noreply, put_flash(socket, :error, message)}
-      {:error, error} -> {:noreply, put_flash(socket, :error, Exception.message(error))}
+    args = %{page_id: socket.assigns.page.id, type: type}
+
+    case NotebookWeb.Act.act(socket.assigns.current_scope, Notebook.Actions.AddView, args) do
+      {:ok, %{result: view}} -> {:noreply, show_view(socket, view.id)}
+      {:error, reason} -> {:noreply, put_flash(socket, :error, Issho.Action.message(reason))}
     end
   end
 
@@ -1993,7 +2003,7 @@ defmodule NotebookWeb.NotebookLive do
   def handle_event("db_add_record", _params, socket) do
     args = %{page_id: socket.assigns.page.id, records: [%{}]}
 
-    case Issho.Live.act(Notebook.Actions.AddRecords, args) do
+    case NotebookWeb.Act.act(socket.assigns.current_scope, Notebook.Actions.AddRecords, args) do
       {:ok, _receipt} -> {:noreply, socket}
       {:error, reason} -> {:noreply, put_flash(socket, :error, Issho.Action.message(reason))}
     end
@@ -2008,9 +2018,11 @@ defmodule NotebookWeb.NotebookLive do
     do: {:noreply, assign(socket, field_form: nil)}
 
   def handle_event("db_add_field", %{"field" => params}, socket) do
-    case Databases.add_field(socket.assigns.current_scope, socket.assigns.collection, params) do
-      {:ok, _collection} -> {:noreply, socket |> assign(field_form: nil) |> reload_database()}
-      {:error, error} -> {:noreply, put_flash(socket, :error, Exception.message(error))}
+    args = %{page_id: socket.assigns.page.id, name: params["name"] || "", type: params["type"]}
+
+    case NotebookWeb.Act.act(socket.assigns.current_scope, Notebook.Actions.AddField, args) do
+      {:ok, _receipt} -> {:noreply, socket |> assign(field_form: nil) |> reload_database()}
+      {:error, reason} -> {:noreply, put_flash(socket, :error, Issho.Action.message(reason))}
     end
   end
 
@@ -2018,7 +2030,7 @@ defmodule NotebookWeb.NotebookLive do
     %{collection: collection, view: view, current_scope: scope} = socket.assigns
 
     {:reply, reply, socket} =
-      Cardbox.Narabe.handle_move(socket, params, Box, collection, view, actor: scope)
+      Cardbox.Narabe.handle_move(socket, params, People, collection, view, actor: scope)
 
     {:reply, reply, show_view(socket, view.id)}
   end
@@ -2134,6 +2146,14 @@ defmodule NotebookWeb.NotebookLive do
   end
 
   defp place_attrs(params), do: params
+
+  defp to_integer(nil), do: nil
+  defp to_integer(""), do: nil
+  defp to_integer(id) when is_integer(id), do: id
+  defp to_integer(id), do: String.to_integer(id)
+
+  defp blank(""), do: nil
+  defp blank(value), do: value
 
   # The title and the dates come from the form; the body is the accepted
   # revision of the collaboration.

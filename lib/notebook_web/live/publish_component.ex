@@ -25,9 +25,11 @@ defmodule NotebookWeb.PublishComponent do
   @impl true
   def handle_event("publish", %{"slug" => slug}, socket) do
     %{scope: scope, resource: resource} = socket.assigns
+    {kind, id} = kind(resource)
 
-    case Publishing.publish(scope, resource, Publishing.slugify(slug)) do
-      {:ok, resource} ->
+    # The action (Notebook.Actions.Publish), a person's only.
+    case NotebookWeb.Act.act(scope, Notebook.Actions.Publish, %{kind: kind, id: id, slug: slug}) do
+      {:ok, %{result: resource}} ->
         send(self(), {:published, resource})
 
         {:noreply,
@@ -47,10 +49,17 @@ defmodule NotebookWeb.PublishComponent do
   end
 
   def handle_event("unpublish", _params, socket) do
-    {:ok, resource} = Publishing.unpublish(socket.assigns.scope, socket.assigns.resource)
+    {kind, id} = kind(socket.assigns.resource)
+
+    {:ok, %{result: resource}} =
+      NotebookWeb.Act.act(socket.assigns.scope, Notebook.Actions.Unpublish, %{kind: kind, id: id})
+
     send(self(), {:published, resource})
     {:noreply, assign(socket, resource: resource, url: nil)}
   end
+
+  defp kind(%Page{id: id}), do: {"page", id}
+  defp kind(%{id: id}), do: {"folder", id}
 
   @impl true
   def render(assigns) do

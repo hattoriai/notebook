@@ -1,8 +1,9 @@
 defmodule Notebook.Tools.Databases do
   @moduledoc """
-  An agent's tools for database pages (Cardbox): it reads a database's
-  fields, views and records, and changes records, as the person it works
-  for; it adds them as a person does (`Notebook.Actions.AddRecords`).
+  An agent's tool to read database pages (Cardbox): a database's fields,
+  views and records, as the person it works for. It changes them as a
+  person does, with the Notebook's actions (`Notebook.Actions`: add,
+  update, delete and move records, add a field or a view).
   Who may read a database and who may change it is who may read and edit
   its page.
   """
@@ -35,25 +36,8 @@ defmodule Notebook.Tools.Databases do
   def error(%Cardbox.Error{message: message}), do: {:error, message}
   def error(other), do: {:error, inspect(other)}
 
-  @doc """
-  Runs a write of the page's database unless the agent is paused or
-  stopped in the page's room (`Issho.Tool.Context.guard/3`): its
-  arguments name a page, not a room, so Issho does not refuse the call
-  itself.
-  """
-  def guard(ctx, page, fun) do
-    case Issho.Tool.Context.guard(ctx, Notebook.Collaboration.room(page), fun) do
-      {:error, {:interrupted, _by} = interrupted} -> Issho.Tool.Context.error(interrupted)
-      result -> result
-    end
-  end
-
   @doc "Whether the scope may change the page's database."
   def editable?(scope, page), do: Databases.editable?(scope, page)
-
-  @doc "The records of a write, after it: by id."
-  def written(collection, records),
-    do: {:ok, %{"records" => Enum.map(records, &record(collection, &1))}}
 end
 
 defmodule Notebook.Tools.ReadDatabase do
@@ -137,60 +121,4 @@ defmodule Notebook.Tools.ReadDatabase do
         {:ok, Map.put(wire, "filter", %{"and" => filters})}
     end
   end
-end
-
-defmodule Notebook.Tools.UpdateRecords do
-  @moduledoc false
-  use Issho.Tool,
-    name: "update_records",
-    description: """
-    Changes records of a database page, as the person you work for (they
-    edit the page): each change names a record's id and the values to
-    give it, by field name or key; null empties a value. Gives the records
-    as they are after it.
-    """,
-    annotations: [idempotent: true]
-
-  arg(:page_id, :integer,
-    required: true,
-    description: "The database page, as list_pages gives it"
-  )
-
-  arg(
-    :changes,
-    {:array,
-     {:object,
-      [
-        {:id, :integer, required: true, description: "The record's id"},
-        {:values, :any, required: true, description: ~s(e.g. {"Status": "Delivered"})}
-      ]}},
-    required: true
-  )
-
-  alias Notebook.Cardbox, as: Box
-  alias Notebook.Tools.Databases, as: T
-
-  @impl true
-  def call(%{page_id: page_id, changes: changes}, ctx) do
-    with {:ok, scope, page, collection} <- T.open(ctx, page_id) do
-      # Each change is guarded: paused halfway, the rest is not made.
-      changes
-      |> Enum.reduce_while({:ok, []}, fn %{id: id, values: values}, {:ok, done} ->
-        case T.guard(ctx, page, fn -> Box.update(collection, id, values, actor: scope) end) do
-          {:ok, record} -> {:cont, {:ok, [record | done]}}
-          {:error, message} when is_binary(message) -> {:halt, halted(message, done)}
-          {:error, error} -> {:halt, T.error(error)}
-        end
-      end)
-      |> case do
-        {:ok, records} -> T.written(collection, Enum.reverse(records))
-        error -> error
-      end
-    end
-  end
-
-  defp halted(message, []), do: {:error, message}
-
-  defp halted(message, done),
-    do: {:error, "#{message} (#{length(done)} of the changes were made before.)"}
 end
