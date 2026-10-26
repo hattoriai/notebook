@@ -98,6 +98,15 @@ defmodule Notebook.Collaboration do
 
   def page_id(_other), do: nil
 
+  @doc """
+  The scope of whoever an identity of the rooms is: a person, with the
+  links they followed, or an agent as its person's agent. For the
+  Notebook's actions (`Notebook.Actions`), run as their `by`.
+  """
+  def scope_of(%Issho.Identity{} = identity) do
+    with {:ok, user} <- account(identity), do: {:ok, scope(user, identity)}
+  end
+
   # The person's scope, with the links they followed (`Notebook.Sharing`),
   # which their identity carries, signed, from the page they joined from.
   # An agent (on behalf of its person) asks as their agent: not on what is

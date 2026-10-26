@@ -193,13 +193,23 @@ defmodule NotebookWeb.NotebookLive do
     |> Koyomi.Live.push_value("notebook-calendar", day)
   end
 
+  # The page's own actions (Notebook.Actions), as this person: the same
+  # an agent runs as a tool, in the page's room.
   defp rename_page(%{title: title}, socket),
-    do: update_page(socket, %{"title" => title}, "Page renamed")
+    do: act_on_page(socket, Notebook.Actions.RenamePage, %{title: title}, "Page renamed")
 
   defp set_due(%{due: "none"}, socket),
-    do: update_page(socket, %{"due_on" => nil}, "Due date removed")
+    do: act_on_page(socket, Notebook.Actions.SetDueDate, %{due: "none"}, "Due date removed")
 
-  defp set_due(%{due: day}, socket), do: update_page(socket, %{"due_on" => day}, "Due date set")
+  defp set_due(%{due: day}, socket),
+    do: act_on_page(socket, Notebook.Actions.SetDueDate, %{due: day}, "Due date set")
+
+  defp act_on_page(socket, action, args, message) do
+    case Issho.Live.act(action, Map.put(args, :page_id, socket.assigns.page.id)) do
+      {:ok, %{result: page}} -> updated(socket, page, message)
+      {:error, reason} -> {:error, Issho.Action.message(reason), socket}
+    end
+  end
 
   defp move_page(socket, space_id, folder_id) do
     case Pages.move(socket.assigns.current_scope, socket.assigns.page, space_id, folder_id) do
@@ -271,23 +281,11 @@ defmodule NotebookWeb.NotebookLive do
     ArgumentError -> {"Private", Notebook.Spaces.private!(scope.user).id, nil}
   end
 
-  defp update_page(socket, attrs, message) do
-    case Pages.update(socket.assigns.current_scope, socket.assigns.page, attrs) do
-      {:ok, page} ->
-        socket
-        |> assign(page: page, page_title: page.title, form: to_form(Pages.change(page)))
-        |> page_actions()
-        |> put_flash(:info, message)
-
-      {:error, changeset} ->
-        {:error, changeset_message(changeset), socket}
-    end
-  end
-
-  defp changeset_message(changeset) do
-    changeset
-    |> Ecto.Changeset.traverse_errors(&translate_error/1)
-    |> Enum.map_join(". ", fn {_field, messages} -> Enum.join(messages, ", ") end)
+  defp updated(socket, page, message) do
+    socket
+    |> assign(page: page, page_title: page.title, form: to_form(Pages.change(page)))
+    |> page_actions()
+    |> put_flash(:info, message)
   end
 
   defp load_page(socket, %{"id" => id} = params) do
@@ -348,12 +346,14 @@ defmodule NotebookWeb.NotebookLive do
     )
   end
 
-  # The LiveView is in the page's room too, for its comments.
+  # The LiveView is in the page's room too, for its comments, and hears
+  # the page's actions done there (an agent renamed it, gave it a due date).
   defp join_room(socket, page) do
-    if connected?(socket),
-      do:
-        {:ok, _} =
-          Issho.Live.join(Notebook.Issho, user(socket), Notebook.Collaboration.room(page))
+    if connected?(socket) do
+      room = Notebook.Collaboration.room(page)
+      {:ok, _} = Issho.Live.join(Notebook.Issho, user(socket), room)
+      Issho.Live.subscribe(room, :self, events: ["action.done"])
+    end
 
     socket
   end
@@ -896,6 +896,9 @@ defmodule NotebookWeb.NotebookLive do
                   </button>
                 </div>
               </details>
+              <button type="button" class="database-add" phx-click="db_add_record">
+                <.icon name="hero-plus" class="size-4" /> Record
+              </button>
               <button type="button" class="database-add" phx-click="db_new_field">
                 <.icon name="hero-plus" class="size-4" /> Field
               </button>
@@ -2095,6 +2098,16 @@ defmodule NotebookWeb.NotebookLive do
     end
   end
 
+  # A new, empty record: the action an agent's add_records runs.
+  def handle_event("db_add_record", _params, socket) do
+    args = %{page_id: socket.assigns.page.id, records: [%{}]}
+
+    case Issho.Live.act(Notebook.Actions.AddRecords, args) do
+      {:ok, _receipt} -> {:noreply, socket}
+      {:error, reason} -> {:noreply, put_flash(socket, :error, Issho.Action.message(reason))}
+    end
+  end
+
   def handle_event("db_new_field", _params, socket),
     do:
       {:noreply,
@@ -2252,6 +2265,25 @@ defmodule NotebookWeb.NotebookLive do
              published_by_id: published.published_by_id
          }
        )}
+
+  # An action done on the page, by anyone (this person's own included):
+  # the page as it is now, when they read it (editing, their form stays
+  # theirs). A database's records come by Cardbox's events.
+  def handle_info(
+        {Issho.Live, "event", _room, %Issho.Event{name: "action.done"}},
+        %{assigns: %{live_action: :show}} = socket
+      ) do
+    case socket.assigns.page && Pages.get(socket.assigns.current_scope, socket.assigns.page.id) do
+      %Page{} = page ->
+        {:noreply,
+         socket
+         |> assign(page: page, page_title: page.title, form: to_form(Pages.change(page)))
+         |> page_actions()}
+
+      _gone ->
+        {:noreply, socket}
+    end
+  end
 
   def handle_info(_message, socket), do: {:noreply, socket}
 

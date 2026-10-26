@@ -1,9 +1,10 @@
 defmodule Notebook.Tools.Databases do
   @moduledoc """
   An agent's tools for database pages (Cardbox): it reads a database's
-  fields, views and records, and adds and changes records, as the person
-  it works for. Who may read a database and who may change it is who may
-  read and edit its page.
+  fields, views and records, and changes records, as the person it works
+  for; it adds them as a person does (`Notebook.Actions.AddRecords`).
+  Who may read a database and who may change it is who may read and edit
+  its page.
   """
   alias Notebook.{Databases, Pages}
 
@@ -33,6 +34,19 @@ defmodule Notebook.Tools.Databases do
 
   def error(%Cardbox.Error{message: message}), do: {:error, message}
   def error(other), do: {:error, inspect(other)}
+
+  @doc """
+  Runs a write of the page's database unless the agent is paused or
+  stopped in the page's room (`Issho.Tool.Context.guard/3`): its
+  arguments name a page, not a room, so Issho does not refuse the call
+  itself.
+  """
+  def guard(ctx, page, fun) do
+    case Issho.Tool.Context.guard(ctx, Notebook.Collaboration.room(page), fun) do
+      {:error, {:interrupted, _by} = interrupted} -> Issho.Tool.Context.error(interrupted)
+      result -> result
+    end
+  end
 
   @doc "Whether the scope may change the page's database."
   def editable?(scope, page), do: Databases.editable?(scope, page)
@@ -64,6 +78,16 @@ defmodule Notebook.Tools.Databases do
   end
 
   def store_files(_collection, values), do: {:ok, values, []}
+
+  @doc "`store_files/2` of each record's values: all stored, or none."
+  def store_all(collection, records) do
+    Enum.reduce_while(records, {:ok, [], []}, fn values, {:ok, done, stored} ->
+      case store_files(collection, values) do
+        {:ok, values, new} -> {:cont, {:ok, done ++ [values], stored ++ new}}
+        {:error, message} -> {:halt, discard(stored, message)}
+      end
+    end)
+  end
 
   defp files(list) do
     Enum.reduce_while(list, {:ok, [], []}, fn file, {:ok, files, stored} ->
@@ -205,69 +229,6 @@ defmodule Notebook.Tools.ReadDatabase do
   end
 end
 
-defmodule Notebook.Tools.AddRecords do
-  @moduledoc false
-  use Issho.Tool,
-    name: "add_records",
-    description: """
-    Adds records to a database page, as the person you work for (they edit
-    the page): each one an object of values by field name or key, as
-    read_database describes them. All of them are added, or none. Gives
-    the records, with their ids. A file field takes files you send:
-    [{"name": "edp-2026-11.pdf", "data": "<its bytes in base64>"}], each
-    stored and checked as an upload is (a web page named .pdf is a
-    download).
-    """,
-    annotations: []
-
-  arg(:page_id, :integer,
-    required: true,
-    description: "The database page, as list_pages gives it"
-  )
-
-  arg(:records, {:array, :any},
-    required: true,
-    description: ~s(The records' values, e.g. [{"Blade": "A short sword", "Status": "Asked"}])
-  )
-
-  alias Notebook.Cardbox, as: Box
-  alias Notebook.Tools.Databases, as: T
-
-  @impl true
-  def call(%{page_id: page_id, records: records}, ctx) do
-    with {:ok, scope, page, collection} <- T.open(ctx, page_id),
-         :ok <- editable(scope, page),
-         {:ok, records, stored} <- store_all(collection, records) do
-      case Box.insert_all(collection, records, actor: scope) do
-        {:ok, records} ->
-          T.written(collection, records)
-
-        {:error, error} ->
-          Notebook.Databases.discard_files(stored)
-          T.error(error)
-      end
-    end
-  end
-
-  # No file is stored for a person who may not write the database.
-  defp editable(scope, page) do
-    if T.editable?(scope, page), do: :ok, else: T.error(%Cardbox.Error{reason: :unauthorized})
-  end
-
-  defp store_all(collection, records) do
-    Enum.reduce_while(records, {:ok, [], []}, fn values, {:ok, done, stored} ->
-      case T.store_files(collection, values) do
-        {:ok, values, new} ->
-          {:cont, {:ok, done ++ [values], stored ++ new}}
-
-        {:error, message} ->
-          Notebook.Databases.discard_files(stored)
-          {:halt, {:error, message}}
-      end
-    end)
-  end
-end
-
 defmodule Notebook.Tools.UpdateRecords do
   @moduledoc false
   use Issho.Tool,
@@ -305,19 +266,14 @@ defmodule Notebook.Tools.UpdateRecords do
   @impl true
   def call(%{page_id: page_id, changes: changes}, ctx) do
     with {:ok, scope, page, collection} <- T.open(ctx, page_id),
-         :ok <-
-           if(T.editable?(scope, page),
-             do: :ok,
-             else: T.error(%Cardbox.Error{reason: :unauthorized})
-           ) do
+         :ok <- editable(scope, page) do
+      # Each change is guarded: paused halfway, the rest is not made.
       changes
       |> Enum.reduce_while({:ok, []}, fn %{id: id, values: values}, {:ok, done} ->
-        with {:ok, values, stored} <- T.store_files(collection, values),
-             {:ok, record} <- update(collection, id, values, scope, stored) do
-          {:cont, {:ok, [record | done]}}
-        else
-          {:error, %Cardbox.Error{} = error} -> {:halt, T.error(error)}
-          {:error, message} -> {:halt, {:error, message}}
+        case T.guard(ctx, page, fn -> update(collection, id, values, scope) end) do
+          {:ok, record} -> {:cont, {:ok, [record | done]}}
+          {:error, message} when is_binary(message) -> {:halt, halted(message, done)}
+          {:error, error} -> {:halt, T.error(error)}
         end
       end)
       |> case do
@@ -327,14 +283,27 @@ defmodule Notebook.Tools.UpdateRecords do
     end
   end
 
-  defp update(collection, id, values, scope, stored) do
-    case Box.update(collection, id, values, actor: scope) do
-      {:ok, record} ->
-        {:ok, record}
+  # No file is stored for a person who may not write the database.
+  defp editable(scope, page) do
+    if T.editable?(scope, page), do: :ok, else: T.error(%Cardbox.Error{reason: :unauthorized})
+  end
 
-      {:error, error} ->
-        Notebook.Databases.discard_files(stored)
-        {:error, error}
+  # The change's files stored, then the change; the files go if it fails.
+  defp update(collection, id, values, scope) do
+    with {:ok, values, stored} <- T.store_files(collection, values) do
+      case Box.update(collection, id, values, actor: scope) do
+        {:ok, record} ->
+          {:ok, record}
+
+        {:error, error} ->
+          Notebook.Databases.discard_files(stored)
+          {:error, error}
+      end
     end
   end
+
+  defp halted(message, []), do: {:error, message}
+
+  defp halted(message, done),
+    do: {:error, "#{message} (#{length(done)} of the changes were made before.)"}
 end
