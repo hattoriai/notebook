@@ -169,6 +169,43 @@ defmodule Notebook.DatabasesTest do
       assert by == "user:#{hanzo.id}"
     end
 
+    test "paused by its person in the page's room, it adds and changes no record", %{
+      hanzo: hanzo,
+      page: page,
+      collection: collection
+    } do
+      ctx = ctx(hanzo)
+      room = Notebook.Collaboration.room(page)
+      key = Issho.Tool.Context.key(ctx)
+      {:ok, agent} = Issho.Tool.Context.join(ctx, room)
+
+      try do
+        by = %{id: to_string(hanzo.id), name: hanzo.name}
+        :ok = Issho.Work.interrupt(Notebook.Issho, room, key, :pause, by: by)
+        assert eventually(fn -> Issho.Participant.interrupted(agent) end)
+
+        {:ok, [record | _]} = Box.list(collection, %{}, limit: 10)
+
+        assert {:error, "Hattori Hanzo paused you." <> _} =
+                 AddRecords.call(%{page_id: page.id, records: [%{"Name" => "Not now"}]}, ctx)
+
+        assert {:error, "Hattori Hanzo paused you." <> _} =
+                 UpdateRecords.call(
+                   %{
+                     page_id: page.id,
+                     changes: [%{id: record.id, values: %{"Status" => "Asked"}}]
+                   },
+                   ctx
+                 )
+
+        {:ok, records} = Box.list(collection, %{}, limit: 10)
+        assert length(records) == 2
+        refute Enum.any?(records, &(&1.data["status"] == "asked"))
+      after
+        Issho.Agents.leave(Notebook.Issho, key, room)
+      end
+    end
+
     test "reads what its person reads, and changes what they edit", %{
       yuki: yuki,
       stranger: stranger,
@@ -181,6 +218,13 @@ defmodule Notebook.DatabasesTest do
 
       assert {:error, "No database page of that id" <> _} =
                ReadDatabase.call(%{page_id: page.id}, ctx(stranger))
+    end
+  end
+
+  defp eventually(fun, tries \\ 50) do
+    case fun.() do
+      nil when tries > 0 -> Process.sleep(10) && eventually(fun, tries - 1)
+      result -> result
     end
   end
 end
