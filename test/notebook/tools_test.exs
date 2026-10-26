@@ -5,7 +5,8 @@ defmodule Notebook.ToolsTest do
   import Notebook.AccountsFixtures
 
   alias Notebook.Accounts.Scope
-  alias Notebook.Tools.{CreatePage, ListPages}
+  alias Notebook.Actions.CreatePage
+  alias Notebook.Tools.ListPages
   alias Notebook.{Pages, Spaces}
 
   setup do
@@ -47,20 +48,24 @@ defmodule Notebook.ToolsTest do
     assert ["A letter"] == Enum.map(pages, & &1["title"])
   end
 
-  test "an agent makes pages in its person's Private space, or a space they edit", %{
+  test "an agent makes pages in a space its person edits, which list_pages gives", %{
     hanzo: hanzo,
     yuki: yuki
   } do
+    {:ok, %{"spaces" => spaces}} = ListPages.call(%{}, ctx(yuki))
+    assert %{"id" => private} = Enum.find(spaces, &(&1["name"] == "Private"))
+    refute Enum.any?(spaces, &(&1["name"] == "The forge"))
+
     assert {:ok, %{"space" => "Private"}} =
-             CreatePage.call(%{title: "Draft", kind: "text"}, ctx(yuki))
+             CreatePage.call(%{title: "Draft", kind: "text", space_id: private}, ctx(yuki))
 
-    assert {:ok, %{"space" => "The forge"}} =
-             CreatePage.call(%{title: "Plan", kind: "board", space: "The forge"}, ctx(hanzo))
+    {:ok, %{"spaces" => spaces}} = ListPages.call(%{}, ctx(hanzo))
+    assert %{"id" => forge} = Enum.find(spaces, &(&1["name"] == "The forge"))
 
-    assert {:error, "The person you work for may not make pages in that space."} =
-             CreatePage.call(%{title: "Mine", kind: "text", space: "The forge"}, ctx(yuki))
+    assert {:ok, %{"space" => "The forge", "space_id" => ^forge}} =
+             CreatePage.call(%{title: "Plan", kind: "board", space_id: forge}, ctx(hanzo))
 
-    assert {:error, "No space of that name" <> _} =
-             CreatePage.call(%{title: "Lost", kind: "text", space: "Nowhere"}, ctx(yuki))
+    assert {:error, "The room's policy does not allow this."} =
+             CreatePage.call(%{title: "Mine", kind: "text", space_id: forge}, ctx(yuki))
   end
 end

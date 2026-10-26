@@ -11,6 +11,9 @@ defmodule Notebook.Collaboration do
   (`Issho.Requests`): an agent of theirs, not revoked, that may read the
   page.
 
+  A space is the room `"space:<id>"`, for what is done in it but on no
+  one page (a new page): what a person's role in it lets them.
+
   A page is the room `"page:<id>"`: its text is the document
   `"page:<id>/body"` (Kotoba), its board the room's own document (a
   Hakushi canvas), its table the place `"page:<id>/rows"` (a Masu grid,
@@ -20,6 +23,7 @@ defmodule Notebook.Collaboration do
 
   alias Notebook.Accounts.{Scope, User}
   alias Notebook.{Pages, Permissions, Repo}
+  alias Notebook.Spaces.Space
 
   @impl true
   def authorize(%Issho.Identity{} = identity, "page:" <> id, action) do
@@ -27,6 +31,20 @@ defmodule Notebook.Collaboration do
          {page_id, ""} <- Integer.parse(id),
          %Pages.Page{} = page <- Pages.fetch(page_id),
          true <- Permissions.allowed?(scope(user, identity), permission(action), page) do
+      :ok
+    else
+      _ -> {:error, :forbidden}
+    end
+  end
+
+  # A space's room, for what is done in it, not on one page of it: a new
+  # page (`Notebook.Actions.CreatePage`), a folder's share. What the
+  # person's role in the space lets them, and their agent's, as a page's.
+  def authorize(%Issho.Identity{} = identity, "space:" <> id, action) do
+    with {:ok, user} <- account(identity),
+         {space_id, ""} <- Integer.parse(id),
+         %Space{} = space <- Repo.get(Space, space_id),
+         true <- Permissions.allowed?(scope(user, identity), permission(action), space) do
       :ok
     else
       _ -> {:error, :forbidden}

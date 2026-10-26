@@ -9,13 +9,17 @@ defmodule NotebookWeb.ShareComponent do
   """
   use NotebookWeb, :live_component
 
-  alias Notebook.Accounts.User
   alias Notebook.Pages.Page
   alias Notebook.Sharing
 
   @impl true
   def update(assigns, socket) do
-    {:ok, socket |> assign(assigns) |> assign_new(:link_url, fn -> nil end) |> load()}
+    {:ok,
+     socket
+     |> assign(assigns)
+     |> assign_new(:link_url, fn -> nil end)
+     |> assign_new(:error, fn -> nil end)
+     |> load()}
   end
 
   defp load(socket) do
@@ -25,17 +29,10 @@ defmodule NotebookWeb.ShareComponent do
   end
 
   @impl true
+  # Each change of who has it is an action (Notebook.Actions), a person's
+  # only, run in the page's room or the folder's space's.
   def handle_event("share", %{"user_id" => id, "role" => role}, socket) when id != "" do
-    %{scope: scope, resource: resource} = socket.assigns
-
-    case Notebook.Repo.get(User, id) do
-      %User{} = user ->
-        {:ok, _} = Sharing.share(scope, resource, user, role)
-        {:noreply, load(socket)}
-
-      nil ->
-        {:noreply, socket}
-    end
+    act(socket, Notebook.Actions.Share, %{user_id: String.to_integer(id), role: role})
   end
 
   def handle_event("share", _params, socket), do: {:noreply, socket}
@@ -44,29 +41,46 @@ defmodule NotebookWeb.ShareComponent do
     handle_event("share", %{"user_id" => id, "role" => role}, socket)
   end
 
-  def handle_event("unshare", %{"user_id" => id}, socket) do
-    %{scope: scope, resource: resource} = socket.assigns
-    :ok = Sharing.unshare(scope, resource, Notebook.Repo.get!(User, id))
-    {:noreply, load(socket)}
-  end
+  def handle_event("unshare", %{"user_id" => id}, socket),
+    do: act(socket, Notebook.Actions.Share, %{user_id: String.to_integer(id), role: "none"})
 
   def handle_event("agents", %{"agents" => agents}, socket) do
     %{scope: scope, resource: %Page{} = page} = socket.assigns
-    {:ok, page} = Notebook.Pages.set_closed_to_agents(scope, page, agents == "closed")
-    send(self(), {:agents_changed, page})
-    {:noreply, assign(socket, resource: page)}
-  end
+    args = %{page_id: page.id, closed: agents == "closed"}
 
-  def handle_event("link", %{"role" => "off"}, socket) do
-    :ok = Sharing.unlink(socket.assigns.scope, socket.assigns.resource)
-    {:noreply, socket |> assign(link_url: nil) |> load()}
+    case NotebookWeb.Act.act(scope, Notebook.Actions.SetAgents, args) do
+      {:ok, %{result: page}} ->
+        send(self(), {:agents_changed, page})
+        {:noreply, assign(socket, resource: page)}
+
+      {:error, reason} ->
+        {:noreply, assign(socket, error: Issho.Action.message(reason))}
+    end
   end
 
   def handle_event("link", %{"role" => role}, socket) do
-    %{scope: scope, resource: resource} = socket.assigns
-    {:ok, token} = Sharing.link(scope, resource, role)
-    {:noreply, socket |> assign(link_url: Sharing.url(resource, token)) |> load()}
+    case act_on(socket, Notebook.Actions.ShareLink, %{role: role}) do
+      {:ok, %{result: url}} -> {:noreply, socket |> assign(link_url: url, error: nil) |> load()}
+      {:error, reason} -> {:noreply, assign(socket, error: Issho.Action.message(reason))}
+    end
   end
+
+  defp act(socket, action, args) do
+    case act_on(socket, action, args) do
+      {:ok, _receipt} -> {:noreply, socket |> assign(error: nil) |> load()}
+      {:error, reason} -> {:noreply, assign(socket, error: Issho.Action.message(reason))}
+    end
+  end
+
+  # The action on this dialog's page or folder.
+  defp act_on(socket, action, args) do
+    %{scope: scope, resource: resource} = socket.assigns
+    {kind, id} = kind(resource)
+    NotebookWeb.Act.act(scope, action, Map.merge(args, %{kind: kind, id: id}))
+  end
+
+  defp kind(%Page{id: id}), do: {"page", id}
+  defp kind(%{id: id}), do: {"folder", id}
 
   @impl true
   def render(assigns) do
@@ -89,6 +103,7 @@ defmodule NotebookWeb.ShareComponent do
             <.icon name="hero-x-mark" class="size-5" />
           </button>
         </header>
+        <p :if={@error} class="publish-error" role="alert">{@error}</p>
 
         <form id={@id <> "-invite"} class="share-invite" phx-submit="share" phx-target={@myself}>
           <select name="user_id" aria-label="A person" required>
