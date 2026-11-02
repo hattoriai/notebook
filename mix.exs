@@ -91,7 +91,7 @@ defmodule Notebook.MixProject do
       {:chime, "~> 0.1.0-dev"},
       {:oban, "~> 2.20"},
       {:cardbox, "~> 0.2"},
-      {:sekisho, "~> 0.1.1"},
+      {:sekisho, "~> 0.2.0"},
       {:narabe, "~> 0.2"},
       {:tz, "~> 0.28"},
       # 0.43 frees a statement without waiting for its connection's lock,
