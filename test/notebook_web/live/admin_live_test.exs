@@ -31,7 +31,8 @@ defmodule NotebookWeb.AdminLiveTest do
   end
 
   test "only an admin sees the notebook's settings", %{conn: conn, yuki: yuki} do
-    assert {:error, {:live_redirect, %{to: "/"}}} = live(log_in_user(conn, yuki), ~p"/admin")
+    assert {:error, {:live_redirect, %{to: "/"}}} =
+             live(log_in_user(conn, yuki), ~p"/notebook/settings/files")
   end
 
   test "an admin moves the files to a bucket, and copies those of before", %{
@@ -40,7 +41,7 @@ defmodule NotebookWeb.AdminLiveTest do
     bucket: bucket
   } do
     key = local_file("Fold the steel twelve times.")
-    {:ok, view, html} = live(log_in_user(conn, admin), ~p"/admin")
+    {:ok, view, html} = live(log_in_user(conn, admin), ~p"/notebook/settings/files")
     assert html =~ "Where files are kept"
     assert html =~ "New files are kept on this server"
     assert has_element?(view, ".storage-disk .storage-bar")

@@ -122,9 +122,15 @@ defmodule NotebookWeb.Router do
         Chime.Live,
         {Jumon.Live, NotebookWeb.Commands}
       ] do
-      live "/users/settings", UserLive.Settings, :edit
-      live "/admin", AdminLive, :index
-      live "/bots", BotsLive, :index
+      live "/account/settings", UserLive.Settings, :profile
+      live "/account/settings/profile", UserLive.Settings, :profile
+      live "/account/settings/password", UserLive.Settings, :password
+      live "/account/settings/notifications", UserLive.Settings, :notifications
+      live "/notebook/settings", AdminLive, :people
+      live "/notebook/settings/people", AdminLive, :people
+      live "/notebook/settings/agents", AdminLive, :agents
+      live "/notebook/settings/bots", BotsLive, :index
+      live "/notebook/settings/files", AdminLive, :files
     end
 
     post "/users/update-password", UserSessionController, :update_password

@@ -118,11 +118,15 @@ defmodule NotebookWeb.AgentsLive do
             </div>
             <div class="agent-step">
               <h2>Claude Code</h2>
-              <pre id="claude-command"><code>claude mcp add --transport http notebook "{@connected.url}"</code></pre>
+              <.command
+                id="claude-command"
+                what="Claude Code command"
+                text={claude_command(@connected.url)}
+              />
             </div>
             <div class="agent-step">
               <h2>Codex</h2>
-              <pre id="codex-command"><code>codex mcp add notebook --url "{@connected.url}"</code></pre>
+              <.command id="codex-command" what="Codex command" text={codex_command(@connected.url)} />
             </div>
             <button type="button" class="agent-done" phx-click="done">Done, I copied it</button>
           </section>
@@ -167,8 +171,12 @@ defmodule NotebookWeb.AgentsLive do
               Notebook to sign in, then acts as any of your agents below. Ask it to "act as" one by
               name to switch.
             </p>
-            <pre id="oauth-claude-command"><code>claude mcp add --transport http notebook "{@mcp_url}"</code></pre>
-            <pre id="oauth-codex-command"><code>codex mcp add notebook --url "{@mcp_url}"</code></pre>
+            <.command
+              id="oauth-claude-command"
+              what="Claude Code command"
+              text={claude_command(@mcp_url)}
+            />
+            <.command id="oauth-codex-command" what="Codex command" text={codex_command(@mcp_url)} />
           </section>
 
           <section class="agent-new" id="agent-new">
@@ -224,6 +232,10 @@ defmodule NotebookWeb.AgentsLive do
     </div>
     """
   end
+
+  defp claude_command(url), do: ~s(claude mcp add --transport http notebook "#{url}")
+
+  defp codex_command(url), do: ~s(codex mcp add notebook --url "#{url}")
 
   defp ended?(agent),
     do: agent.expires_at && DateTime.before?(agent.expires_at, DateTime.utc_now())

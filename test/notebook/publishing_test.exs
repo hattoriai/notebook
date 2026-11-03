@@ -33,6 +33,14 @@ defmodule Notebook.PublishingTest do
     assert Publishing.free_handle("Ana Inbox") == "person"
   end
 
+  test "no handle takes the settings' addresses", %{hanzo: hanzo} do
+    for word <- ~w(account notebook) do
+      assert word in Publishing.reserved()
+      changeset = Notebook.Accounts.User.handle_changeset(hanzo, %{handle: word})
+      assert "is a path of the notebook" in errors_on(changeset).handle
+    end
+  end
+
   test "its editors publish a page under a slug, at its publisher's path", %{
     scope: scope,
     yuki: yuki,

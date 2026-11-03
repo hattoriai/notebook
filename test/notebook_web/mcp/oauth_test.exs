@@ -89,7 +89,7 @@ defmodule NotebookWeb.MCP.OAuthTest do
 
   describe "Notebook settings" do
     test "an admin turns OAuth on and off", %{conn: conn, admin: admin} do
-      {:ok, view, _html} = live(log_in_user(conn, admin), ~p"/admin")
+      {:ok, view, _html} = live(log_in_user(conn, admin), ~p"/notebook/settings/agents")
 
       view |> element("#connecting-form") |> render_change(%{"connecting" => "oauth"})
       assert Agents.oauth?()
@@ -114,6 +114,8 @@ defmodule NotebookWeb.MCP.OAuthTest do
       oauth!(admin)
       {:ok, view, _html} = live(log_in_user(conn, yuki), ~p"/agents")
       assert has_element?(view, "#oauth-claude-command", "/mcp")
+      assert has_element?(view, "#oauth-claude-command-copy[data-copy*=\"/mcp\"]")
+      assert has_element?(view, "#oauth-codex-command-copy[data-copy*=\"/mcp\"]")
     end
   end
 end

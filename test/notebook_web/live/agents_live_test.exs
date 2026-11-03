@@ -32,6 +32,18 @@ defmodule NotebookWeb.AgentsLiveTest do
 
     assert has_element?(view, "#claude-command", token)
 
+    # Each command has a copy button that copies the command itself, and a toast.
+    assert view
+           |> element("#claude-command-copy")
+           |> render()
+           |> LazyHTML.from_fragment()
+           |> LazyHTML.attribute("data-copy") ==
+             [~s(claude mcp add --transport http notebook "#{url}")]
+
+    assert has_element?(view, "#codex-command-copy[phx-hook]")
+    render_hook(view, "clipboard:copied", %{"what" => "Claude Code command"})
+    assert has_element?(view, "#flash-info", "Claude Code command copied to your clipboard")
+
     [agent] = Notebook.Agents.active()
     assert has_element?(view, "#agent-#{agent.id}", "Claude, for Hanzo")
 

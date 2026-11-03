@@ -97,10 +97,10 @@ defmodule NotebookWeb.NotebookLiveTest do
     assert copy.("#copy-text") == "Notes\nA useful sentence."
     assert has_element?(view, "#copy-markdown[phx-hook]")
 
-    render_hook(view, "copied", %{"format" => "markdown"})
+    render_hook(view, "clipboard:copied", %{"what" => "Markdown"})
     assert render(view) =~ "Markdown copied to your clipboard"
 
-    render_hook(view, "copy_failed", %{"format" => "text"})
+    render_hook(view, "clipboard:copy_failed", %{"what" => "Plain text"})
     assert render(view) =~ "Could not copy the plain text"
   end
 end
