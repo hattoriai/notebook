@@ -17,6 +17,7 @@ defmodule NotebookWeb.PublishComponent do
     {:ok,
      assign(socket,
        slug: Publishing.suggest_slug(resource),
+       options: if(page?(resource), do: Publishing.page_options(resource)),
        error: nil,
        url: Publishing.published?(resource) && Publishing.url(resource)
      )}
@@ -45,6 +46,18 @@ defmodule NotebookWeb.PublishComponent do
 
       {:error, _other} ->
         {:noreply, assign(socket, error: "It can't be published as “#{slug}”.", slug: slug)}
+    end
+  end
+
+  def handle_event("options", params, socket) do
+    %{scope: scope, resource: resource} = socket.assigns
+
+    case Publishing.set_page_options(scope, resource, params) do
+      {:ok, page} ->
+        {:noreply, assign(socket, resource: page, options: Publishing.page_options(page))}
+
+      {:error, _reason} ->
+        {:noreply, assign(socket, error: "You may not change how this page reads.")}
     end
   end
 
@@ -144,6 +157,42 @@ defmodule NotebookWeb.PublishComponent do
               <.icon name="hero-eye-slash" class="size-4" /> Unpublish
             </button>
           </div>
+        </form>
+
+        <form
+          :if={page?(@resource)}
+          id={@id <> "-options"}
+          class="publish-options"
+          phx-change="options"
+          phx-target={@myself}
+        >
+          <p class="publish-options-title">How it reads</p>
+          <input type="hidden" name="show_author" value="false" />
+          <label class="publish-option">
+            <input
+              type="checkbox"
+              name="show_author"
+              value="true"
+              checked={@options.show_author}
+            /> Its author
+          </label>
+          <input type="hidden" name="show_date" value="false" />
+          <label class="publish-option">
+            <input type="checkbox" name="show_date" value="true" checked={@options.show_date} />
+            Its date
+          </label>
+          <label for={@id <> "-description"} class="publish-options-label">
+            For search engines and shared links
+          </label>
+          <textarea
+            data-1p-ignore
+            id={@id <> "-description"}
+            name="description"
+            rows="2"
+            maxlength="300"
+            phx-debounce="600"
+            placeholder={Publishing.summary(@resource) |> String.slice(0, 140)}
+          >{@options.description}</textarea>
         </form>
       </section>
     </div>

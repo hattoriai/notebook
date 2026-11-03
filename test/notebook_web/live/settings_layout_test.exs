@@ -100,4 +100,26 @@ defmodule NotebookWeb.SettingsLayoutTest do
     {:ok, view, _html} = live(build_conn(), ~p"/users/log-in")
     refute has_element?(view, "input[type=email][data-1p-ignore]")
   end
+
+  test "an admin gives the site its icon, and takes it away", %{conn: conn, admin: admin} do
+    png =
+      Base.decode64!(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+      )
+
+    {:ok, view, _html} = live(log_in_user(conn, admin), ~p"/notebook/settings/publishing")
+    refute has_element?(view, "#site-icon img")
+
+    view
+    |> file_input("#site-icon-form", :site_icon, [
+      %{name: "icon.png", content: png, type: "image/png"}
+    ])
+    |> render_upload("icon.png")
+
+    assert has_element?(view, "#site-icon img[src^='/uploads/kotoba/']")
+    assert Notebook.Publishing.config().icon =~ "/uploads/kotoba/"
+
+    view |> element("#site-icon button", "Remove") |> render_click()
+    refute has_element?(view, "#site-icon img")
+  end
 end

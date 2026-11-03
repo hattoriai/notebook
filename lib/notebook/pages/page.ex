@@ -32,6 +32,9 @@ defmodule Notebook.Pages.Page do
     # Published (Notebook.Publishing): its public path's last word, since
     # when, and by whom.
     field :slug, :string
+    # How it reads, published: "show_author" and "show_date" (true unless
+    # false), "description" for search engines and link previews.
+    field :publish_options, :map, default: %{}
     field :published_at, :utc_datetime
     belongs_to :published_by, Notebook.Accounts.User
     timestamps(type: :utc_datetime)

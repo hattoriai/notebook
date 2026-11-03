@@ -1366,3 +1366,22 @@ input[type="checkbox"]:disabled { cursor: default; opacity: .55; }
 .space-slug input { width: 11rem; border: 0; background: transparent; padding: 7px 6px 7px 0; font: inherit; color: var(--ink); outline: none; }
 .space-slug .copy-action { padding: 0 12px; font: 600 12px ui-sans-serif, system-ui, sans-serif; border-left: 1px solid var(--rule); align-self: stretch; }
 .space-publishing .field-error { flex-basis: 100%; margin: 0; }
+/* How a published page reads (its Publish dialog): its byline, and its line for search engines and shared links. */
+.publish-options { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--rule); }
+.publish-options-title { margin: 0; color: var(--accent); font: 600 11px ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+.publish-option { display: flex; align-items: center; gap: 10px; font: 14px ui-sans-serif, system-ui, sans-serif; cursor: pointer; }
+.publish-options-label { margin-top: 6px; color: var(--muted); font: 600 11px ui-sans-serif, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.publish-options textarea { width: 100%; resize: vertical; padding: 10px 12px; border: 1px solid var(--rule); background: #fcfbf7; font: 14px/1.45 ui-sans-serif, system-ui, sans-serif; }
+.publish-options textarea:focus { outline: none; border-color: var(--accent); }
+/* The site's icon and picture of a shared link (Notebook settings → Publishing). */
+.site-images { display: grid; gap: 16px; margin-top: 34px; padding-top: 26px; border-top: 1px solid var(--rule); max-width: 560px; }
+.site-image { display: flex; gap: 16px; align-items: flex-start; }
+.site-image-preview { flex: none; display: grid; place-items: center; width: 64px; height: 64px; border: 1px solid var(--rule); background: #fcfbf7; color: var(--muted); overflow: hidden; }
+.site-image-image .site-image-preview { width: 122px; height: 64px; }
+.site-image-preview img { width: 100%; height: 100%; object-fit: cover; }
+.site-image-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.site-image-text strong { font: 600 14px ui-sans-serif, system-ui, sans-serif; }
+.site-image-text small { color: var(--muted); font: 13px/1.45 ui-sans-serif, system-ui, sans-serif; }
+.site-image-actions { display: flex; gap: 16px; margin-top: 4px; }
+.site-image-actions label { cursor: pointer; }
+.site-image-actions .copy-action { font: 600 13px ui-sans-serif, system-ui, sans-serif; color: var(--muted); padding: 2px 0; } .site-image-actions .copy-action:hover { color: var(--accent); }

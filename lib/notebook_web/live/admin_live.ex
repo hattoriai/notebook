@@ -23,6 +23,22 @@ defmodule NotebookWeb.AdminLive do
        |> assign_form(Storage.change(config))
        |> assign_joining()
        |> assign(publishing_form: to_form(Publishing.change_settings(), as: :publishing))
+       |> assign(site: Publishing.config())
+       # The site's icon and picture: stored as soon as they are chosen.
+       |> allow_upload(:site_icon,
+         accept: ~w(.png .jpg .jpeg .webp .gif),
+         max_entries: 1,
+         max_file_size: 5_000_000,
+         auto_upload: true,
+         progress: &site_image_progress/3
+       )
+       |> allow_upload(:site_image,
+         accept: ~w(.png .jpg .jpeg .webp .gif),
+         max_entries: 1,
+         max_file_size: 5_000_000,
+         auto_upload: true,
+         progress: &site_image_progress/3
+       )
        |> assign_other()
        |> assign_usage()}
     else
@@ -79,12 +95,25 @@ defmodule NotebookWeb.AdminLive do
     {:noreply, assign(socket, publishing_form: to_form(changeset, as: :publishing))}
   end
 
+  def handle_event("site_image_upload", _params, socket), do: {:noreply, socket}
+
+  def handle_event("site_image_remove", %{"kind" => kind}, socket) when kind in ~w(icon image) do
+    case Publishing.remove_site_image(socket.assigns.current_scope, String.to_existing_atom(kind)) do
+      {:ok, config} ->
+        {:noreply, assign(socket, site: config)}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Only the notebook's admins change this.")}
+    end
+  end
+
   def handle_event("publishing_save", %{"publishing" => params}, socket) do
     case Publishing.save_settings(socket.assigns.current_scope, params) do
       {:ok, config} ->
         {:noreply,
          socket
          |> assign(publishing_form: to_form(Publishing.change_settings(), as: :publishing))
+         |> assign(site: config)
          |> put_flash(:info, "Published pages are read at #{config.url}#{config.prefix} now.")}
 
       {:error, %Ecto.Changeset{} = changeset} ->
@@ -394,12 +423,35 @@ defmodule NotebookWeb.AdminLive do
               autocomplete="off"
             />
             <.input field={@publishing_form[:name]} type="text" label="The site's name" />
+            <.input
+              field={@publishing_form[:description]}
+              type="textarea"
+              label="What the site is, in a line"
+              placeholder="For search engines, and the pages that list others"
+            />
             <p class="publishing-example" id="publishing-example">
               A page of your Private space is read at <strong>{example(@publishing_form, @current_scope.user.handle)}</strong>; one of a
               team space, under the space's name, such as <strong>{example(@publishing_form, "open-source")}</strong>, or at the top, <strong>{example(@publishing_form, nil)}</strong>, as its admins choose on its page.
             </p>
             <button class="button button-primary" type="submit">Save</button>
           </.form>
+
+          <div class="site-images">
+            <.site_image
+              kind={:icon}
+              title="Its icon"
+              hint="The browser tab's, and a phone's home screen. Square: a PNG of 512 × 512 is best."
+              url={@site.icon}
+              upload={@uploads.site_icon}
+            />
+            <.site_image
+              kind={:image}
+              title="The picture of a shared link"
+              hint="What Slack, X or Messages show for a page with no image of its own. 1200 × 630."
+              url={@site.image}
+              upload={@uploads.site_image}
+            />
+          </div>
         </section>
 
         <section :if={@live_action == :files} class="settings-wide" id="storage">
@@ -865,4 +917,79 @@ defmodule NotebookWeb.AdminLive do
     do: if(String.trim(value) == "", do: nil, else: String.trim(value))
 
   defp present(_value), do: nil
+
+  # The site's icon or picture, kept as soon as it is uploaded.
+  defp site_image_progress(name, entry, socket) when name in [:site_icon, :site_image] do
+    if entry.done? do
+      kind = if name == :site_icon, do: :icon, else: :image
+
+      result =
+        consume_uploaded_entry(socket, entry, fn %{path: path} ->
+          {:ok,
+           Publishing.save_site_image(socket.assigns.current_scope, kind, path, entry.client_name)}
+        end)
+
+      case result do
+        {:ok, config} ->
+          {:noreply, assign(socket, site: config)}
+
+        {:error, _reason} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             "That could not be the site's: use a PNG, JPEG, WebP or GIF."
+           )}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  attr :kind, :atom, required: true
+  attr :title, :string, required: true
+  attr :hint, :string, required: true
+  attr :url, :string, default: nil
+  attr :upload, :any, required: true
+
+  # One of the site's images: its preview, and the way to change or remove it.
+  defp site_image(assigns) do
+    ~H"""
+    <div class={["site-image", "site-image-#{@kind}"]} id={"site-#{@kind}"}>
+      <div class="site-image-preview">
+        <img :if={@url} src={@url} alt="" />
+        <.icon :if={is_nil(@url)} name="hero-photo" class="size-6" />
+      </div>
+      <div class="site-image-text">
+        <strong>{@title}</strong>
+        <small>{@hint}</small>
+        <form id={"site-#{@kind}-form"} phx-change="site_image_upload" class="site-image-actions">
+          <label class="copy-action">
+            <.live_file_input upload={@upload} class="sr-only" />
+            <.icon name="hero-arrow-up-tray" class="size-4" />
+            {if @url, do: "Change it", else: "Upload one"}
+          </label>
+          <button
+            :if={@url}
+            type="button"
+            class="copy-action"
+            phx-click="site_image_remove"
+            phx-value-kind={@kind}
+          >
+            Remove
+          </button>
+        </form>
+        <p
+          :for={
+            error <-
+              upload_errors(@upload) ++ Enum.flat_map(@upload.entries, &upload_errors(@upload, &1))
+          }
+          class="field-error"
+        >
+          {if error == :too_large, do: "Larger than 5 MB.", else: "Use a PNG, JPEG, WebP or GIF."}
+        </p>
+      </div>
+    </div>
+    """
+  end
 end

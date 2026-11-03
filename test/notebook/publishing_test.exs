@@ -261,4 +261,75 @@ defmodule Notebook.PublishingTest do
       assert Publishing.free_handle("Ana Kotoba") == "kotoba-2"
     end
   end
+
+  describe "how a published page reads, and what a shared link shows" do
+    @png Base.decode64!(
+           "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+         )
+
+    test "its author and its date, unless turned off; its own description", %{
+      scope: scope,
+      yuki: yuki,
+      kotoba: kotoba
+    } do
+      assert %{show_author: true, show_date: true, description: nil} =
+               Publishing.page_options(kotoba)
+
+      {:ok, page} =
+        Publishing.set_page_options(scope, kotoba, %{
+          "show_author" => "false",
+          "show_date" => "true",
+          "description" => "  Rich text for Phoenix.  "
+        })
+
+      assert %{show_author: false, show_date: true, description: "Rich text for Phoenix."} =
+               Publishing.page_options(page)
+
+      assert Publishing.description(page) == "Rich text for Phoenix."
+      assert {:error, _} = Publishing.set_page_options(Scope.for_user(yuki), page, %{})
+    end
+
+    test "a shared link's picture: the page's first image, else the site's", %{
+      scope: scope,
+      kotoba: kotoba
+    } do
+      admin = Scope.for_user(user_fixture(%{name: "Okazaki Masamune", admin: true}))
+      assert Publishing.social_image(kotoba) == nil
+
+      path = Path.join(System.tmp_dir!(), "site-#{System.unique_integer([:positive])}.png")
+      File.write!(path, @png)
+      assert {:error, :forbidden} = Publishing.save_site_image(scope, :image, path, "site.png")
+
+      assert {:ok, %{image: "/uploads/kotoba/" <> key}} =
+               Publishing.save_site_image(admin, :image, path, "site.png")
+
+      assert Publishing.social_image(kotoba) ==
+               NotebookWeb.Endpoint.url() <> "/uploads/kotoba/" <> key
+
+      # Anyone may read it, as a published page's file.
+      assert Publishing.public_upload?(key)
+
+      text = %{
+        "root" => %{
+          "type" => "root",
+          "children" => [
+            %{"type" => "paragraph", "children" => []},
+            %{
+              "type" => "attachment",
+              "contentType" => "image/png",
+              "url" => "/uploads/kotoba/a.png"
+            }
+          ]
+        }
+      }
+
+      page = %{kotoba | kind: "text", body: %Kotoba.Content{doc: text, html: "", text: ""}}
+
+      assert Publishing.social_image(page) ==
+               NotebookWeb.Endpoint.url() <> "/uploads/kotoba/a.png"
+
+      {:ok, %{image: nil}} = Publishing.remove_site_image(admin, :image)
+      refute Publishing.public_upload?(key)
+    end
+  end
 end

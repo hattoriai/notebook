@@ -93,5 +93,32 @@ defmodule NotebookWeb.PublicLiveTest do
     assert has_element?(view, ".publish-live", "Published")
     assert has_element?(view, "#publish-open", "Published")
     assert Publishing.resolve(["hanzo", "kotoba"]) |> elem(0) == :page
+
+    # How it reads: no author, a line of its own for search engines and links.
+    view
+    |> form(".publish-options", %{
+      show_author: "false",
+      show_date: "true",
+      description: "Rich text for Phoenix."
+    })
+    |> render_change()
+
+    {:ok, _public, html} = live(build_conn(), "/hanzo/kotoba")
+    refute html =~ "Hattori Hanzo</span>"
+    assert html =~ ~s(id="public-byline")
+    assert html =~ ~s(name="description" content="Rich text for Phoenix.")
+    assert html =~ ~s(name="twitter:card" content="summary")
+  end
+
+  test "a page with neither its author nor its date has no byline", %{
+    conn: conn,
+    scope: scope,
+    day: day
+  } do
+    {:ok, _} =
+      Publishing.set_page_options(scope, day, %{"show_author" => "false", "show_date" => "false"})
+
+    {:ok, _view, html} = live(conn, "/hanzo/journal/day-one-without-steel")
+    refute html =~ ~s(id="public-byline")
   end
 end
