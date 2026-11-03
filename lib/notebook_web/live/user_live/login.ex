@@ -4,7 +4,12 @@ defmodule NotebookWeb.UserLive.Login do
   @impl true
   def mount(_params, _session, socket) do
     email = Phoenix.Flash.get(socket.assigns.flash, :email)
-    {:ok, assign(socket, form: to_form(%{"email" => email}, as: "user"))}
+
+    {:ok,
+     assign(socket,
+       form: to_form(%{"email" => email}, as: "user"),
+       invite_only: Notebook.Invitations.invite_only?()
+     )}
   end
 
   @impl true
@@ -15,11 +20,14 @@ defmodule NotebookWeb.UserLive.Login do
         <p class="eyebrow">Welcome back</p><h1>Pick up where<br />you left off.</h1><p>
           Your pages are waiting.
         </p>
-        <a class="hattori-mark" href="https://hattori.ai/">A demo by Hattori AI</a>
+        <a class="hattori-mark" href="https://hattori.ai/">Hattori AI</a>
       </div>
       <section class="auth-panel" aria-labelledby="login-title">
         <p class="eyebrow">Notebook</p><h2 id="login-title">Log in</h2>
-        <p>New here? <.link navigate={~p"/users/register"}>Create an account</.link></p>
+        <p :if={not @invite_only}>
+          New here? <.link navigate={~p"/users/register"}>Create an account</.link>
+        </p>
+        <p :if={@invite_only}>New here? Ask an admin of this notebook for an invitation.</p>
         <.form for={@form} id="login_form_password" action={~p"/users/log-in"}>
           <.input field={@form[:email]} type="email" label="Email" autocomplete="email" required />
           <.input

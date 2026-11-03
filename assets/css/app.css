@@ -884,6 +884,12 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 .share-url input { min-width: 0; padding: 7px 10px; border: 1px solid var(--rule); border-radius: 8px; background: #fff; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); }
 .share-url p, .share-note { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 12px; }
 .share-note { margin-top: 10px; }
+
+/* Notebook settings: the invitation links, when the notebook is invite only. */
+.invitations { display: grid; gap: 12px; margin-top: 16px; justify-items: start; }
+.invitations .share-url { width: 100%; margin-top: 0; }
+.invitation-list { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; gap: 1px; border-top: 1px solid var(--rule); }
+.invitation-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--rule); color: var(--muted); font-size: 13px; }
 .sidebar-shared-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
 .sidebar-shared-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
