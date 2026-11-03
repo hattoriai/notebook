@@ -15,7 +15,7 @@ defmodule NotebookWeb.Icons do
       "aria-hidden": "true",
       fill: "none",
       stroke: "currentColor",
-      "stroke-width": "1.6",
+      "stroke-width": "1.5",
       "stroke-linecap": "round",
       "stroke-linejoin": "round",
       viewBox: "0 0 24 24"
@@ -42,14 +42,13 @@ defmodule NotebookWeb.Icons do
   def robot(assigns) do
     ~H"""
     <.svg_outline class={@class} {@rest}>
-      <path d="M12 6V4.4" />
-      <circle class="notebook-robot-bulb" cx="12" cy="2.9" r="1.9" stroke="none" />
-      <rect x="4.5" y="6" width="15" height="12" rx="4" />
-      <path d="M2.5 10.5v3M21.5 10.5v3" />
-      <circle cx="9.2" cy="11.3" r="1.4" fill="currentColor" stroke="none" />
-      <circle cx="14.8" cy="11.3" r="1.4" fill="currentColor" stroke="none" />
-      <path d="M9.6 14.6q2.4 1.5 4.8 0" />
-      <path d="M9 18v2.2M15 18v2.2" />
+      <path d="M12 7.25V5.4" />
+      <circle class="notebook-robot-bulb" cx="12" cy="3.4" r="2.1" stroke="none" />
+      <rect x="3.75" y="7.25" width="16.5" height="13.25" rx="4.25" />
+      <path d="M1.75 12.25v3.25M22.25 12.25v3.25" />
+      <circle cx="8.9" cy="12.9" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="15.1" cy="12.9" r="1.6" fill="currentColor" stroke="none" />
+      <path d="M9.25 16.4q2.75 1.7 5.5 0" />
     </.svg_outline>
     """
   end
