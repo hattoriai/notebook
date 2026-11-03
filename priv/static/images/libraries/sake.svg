@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 112 112" role="img" aria-labelledby="title description">
+<title id="title">Sake</title>
+<desc id="description">A sake flask in Sumi ink, cut at its neck and its waist, with a blade orange cup.</desc>
+<defs>
+  <mask id="sake-flask" maskUnits="userSpaceOnUse" x="0" y="0" width="112" height="112">
+    <rect width="112" height="112" fill="white"/>
+    <path d="M4 34H68M4 62H68" stroke="black" stroke-width="3.5"/>
+  </mask>
+</defs>
+<g mask="url(#sake-flask)">
+  <path fill="#0a0a0b" d="M33 16H51V21Q48 23 48 27V34Q68 44 68 68Q68 88 56 96H28Q16 88 16 68Q16 44 36 34V27Q36 23 33 21Z"/>
+  <path fill="#e84a1c" d="M74 74H96Q96 89 88 93V96H82V93Q74 89 74 74Z"/>
+</g>
+</svg>

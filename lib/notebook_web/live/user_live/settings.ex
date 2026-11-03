@@ -103,6 +103,7 @@ defmodule NotebookWeb.UserLive.Settings do
           <Chime.Components.preferences id="notifications" chime={@chime} />
         </section>
       </div>
+      <Layouts.palette jumon={@jumon} />
     </main>
     """
   end

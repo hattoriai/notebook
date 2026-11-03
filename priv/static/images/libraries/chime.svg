@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 112 112" role="img" aria-labelledby="title description">
+<title id="title">Chime</title>
+<desc id="description">A bell in Sumi ink, cut at its rim, with a blade orange clapper.</desc>
+<defs>
+  <mask id="chime-bell" maskUnits="userSpaceOnUse" x="0" y="0" width="112" height="112">
+    <rect width="112" height="112" fill="white"/>
+    <path d="M4 70H108" stroke="black" stroke-width="3.5"/>
+  </mask>
+</defs>
+<g mask="url(#chime-bell)">
+  <path fill="#0a0a0b" d="M56 16Q60 16 60 20V22Q78 26 80 50V68L88 78V84H24V78L32 68V50Q34 26 52 22V20Q52 16 56 16Z"/>
+</g>
+<path fill="#e84a1c" d="M47 88H65Q65 97 56 97Q47 97 47 88Z"/>
+</svg>

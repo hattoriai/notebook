@@ -100,7 +100,11 @@ defmodule NotebookWeb.Router do
     pipe_through [:browser, :require_authenticated_user]
 
     live_session :require_authenticated_user,
-      on_mount: [{NotebookWeb.UserAuth, :require_authenticated}, Chime.Live] do
+      on_mount: [
+        {NotebookWeb.UserAuth, :require_authenticated},
+        Chime.Live,
+        {Jumon.Live, NotebookWeb.Commands}
+      ] do
       live "/users/settings", UserLive.Settings, :edit
       live "/admin", AdminLive, :index
       live "/bots", BotsLive, :index
@@ -129,6 +133,12 @@ defmodule NotebookWeb.Router do
       pipe_through :browser
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
+  end
+
+  # The open-source libraries the notebook is made with, for anyone.
+  scope "/", NotebookWeb do
+    pipe_through :browser
+    get "/made-with", PageController, :made_with
   end
 
   # Last: every path the notebook has no route for is a published page's,

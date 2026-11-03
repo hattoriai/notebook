@@ -218,6 +218,7 @@ defmodule NotebookWeb.InboxLive do
           <button :if={@more} type="button" class="inbox-more" phx-click="more">Show more</button>
         </div>
       </main>
+      <Layouts.palette jumon={@jumon} />
     </div>
     """
   end

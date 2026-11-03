@@ -28,7 +28,7 @@ defmodule NotebookWeb.NotebookTest do
   end
 
   test "pages require login and a member can create and find rich content", %{conn: conn} do
-    assert redirected_to(get(conn, ~p"/")) == ~p"/users/log-in"
+    assert redirected_to(get(conn, ~p"/pages/new")) == ~p"/users/log-in"
 
     {:ok, user} =
       Accounts.register_user(%{

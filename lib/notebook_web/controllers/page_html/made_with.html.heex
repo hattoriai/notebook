@@ -1,0 +1,23 @@
+<main id="made-with" class="made-with">
+  <div class="made-with-head">
+    <p class="eyebrow">Made with</p>
+    <h1>The parts of this notebook</h1>
+    <p>
+      Notebook is a Phoenix app built on {length(@libraries)} open-source libraries by <a href="https://hattori.ai/#libraries">Hattori AI</a>. Each one is MIT licensed, and
+      works in your app too.
+    </p>
+  </div>
+  <ul class="made-with-list">
+    <li :for={library <- @libraries} id={"library-#{library.id}"}>
+      <a href={library.url}>
+        <img src={"/images/libraries/#{library.id}.svg"} alt="" width="56" height="56" />
+        <span class="made-with-name">{library.name}</span>
+        <span class="made-with-kind">{library.kind}</span>
+        <span class="made-with-use">{library.use}</span>
+      </a>
+    </li>
+  </ul>
+  <p class="made-with-more">
+    <a href="https://hattori.ai/#libraries">All of Hattori AI's libraries →</a>
+  </p>
+</main>

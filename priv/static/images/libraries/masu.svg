@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 112 112" role="img" aria-labelledby="title description">
+<title id="title">Masu</title>
+<desc id="description">A table in Sumi ink, cut into a header row, three columns and two rows, with one blade orange cell.</desc>
+<defs>
+  <mask id="masu-grid" maskUnits="userSpaceOnUse" x="0" y="0" width="112" height="112">
+    <rect width="112" height="112" fill="white"/>
+    <path d="M42.67 4V108M69.33 4V108M4 38H108M4 67H108" stroke="black" stroke-width="3.5"/>
+  </mask>
+</defs>
+<g mask="url(#masu-grid)">
+  <path fill="#0a0a0b" d="M26 16H86Q96 16 96 26V86Q96 96 86 96H26Q16 96 16 86V26Q16 16 26 16Z"/>
+  <path fill="#e84a1c" d="M42.67 38H69.33V67H42.67Z"/>
+</g>
+</svg>

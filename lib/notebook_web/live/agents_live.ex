@@ -202,6 +202,7 @@ defmodule NotebookWeb.AgentsLive do
           </section>
         </div>
       </main>
+      <Layouts.palette jumon={@jumon} />
     </div>
     """
   end
