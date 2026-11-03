@@ -43,6 +43,16 @@ defmodule NotebookWeb.SpaceArchiveLiveTest do
     assert has_element?(view, ".sidebar-space img[src='/uploads/kotoba/forge.png']")
   end
 
+  test "its Archive button asks with the notebook's own dialog, not the browser's", %{
+    conn: conn,
+    forge: forge
+  } do
+    html = conn |> get(~p"/spaces/#{forge.id}") |> html_response(200)
+    assert html =~ ~s(id="confirm-dialog")
+    assert html =~ ~s(id="space-archive")
+    assert html =~ "data-confirm="
+  end
+
   test "an editor neither chooses its icon nor archives it", %{
     conn: conn,
     yuki: yuki,

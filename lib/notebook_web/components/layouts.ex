@@ -101,6 +101,30 @@ defmodule NotebookWeb.Layouts do
   end
 
   @doc """
+  The notebook's own "Are you sure?", in place of the browser's: a button
+  with `data-confirm` asks it first (`assets/js/confirm.js`), and its own
+  words are the answer that goes ahead ("Archive space", "Revoke").
+  Escape, Cancel or a click outside it stops.
+  """
+  def confirm_dialog(assigns) do
+    ~H"""
+    <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-dialog-message">
+      <form method="dialog" class="confirm-dialog-box">
+        <p id="confirm-dialog-message" class="confirm-dialog-message"></p>
+        <div class="confirm-dialog-actions">
+          <button type="submit" value="cancel" class="button" id="confirm-dialog-cancel">
+            Cancel
+          </button>
+          <button type="submit" value="ok" class="button button-primary" id="confirm-dialog-ok">
+            Continue
+          </button>
+        </div>
+      </form>
+    </dialog>
+    """
+  end
+
+  @doc """
   The frame of a settings page: the notebook's (`:notebook`, for its
   admins) or the person's own (`:account`). Its groups are on the left,
   each at its own address; the current group's sections are on the right.

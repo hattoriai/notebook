@@ -2,200 +2,106 @@
 
 ![Notebook — Pages you host yourself](https://raw.githubusercontent.com/hattoriai/notebook/main/media/banner.png)
 
-A shared notebook where people and agents work together, live: a Phoenix app built on [Issho](https://github.com/hattoriai/issho), collaboration for Phoenix, and the libraries on it. A page is a text (Kotoba), a board of cards and arrows (Hakushi), a table of tasks (Masu) or a database of records with the fields you give them ([Cardbox](https://github.com/hattoriai/cardbox)), and each page is an Issho room: everyone on it is listed once, their pointers move over the whole page, and their changes land as they make them. Connect Claude Code or Codex, and your agent works on the pages beside you: its cursor in the text, its pointer on the board, its cell in the table. Pages live in spaces (everyone's General, each person's Private space, and team spaces with members and roles), in shallow folders, and who may read, comment on or edit each one is [Sekisho](https://github.com/hattoriai/sekisho)'s: the same rules answer the pages, their rooms and the agents. Pages are stored in SQLite, each page's dates are picked with Koyomi, Jumon's command palette (⌘K) finds pages and runs the notebook's actions, and [Chime](https://github.com/hattoriai/chime) tells people what concerns them: an Inbox, a bell, and an email when they haven't read it.
+**A notebook for your team that you actually own.**
 
-## Run locally
+Write pages, sketch plans on boards, keep tables and databases, and work on all of it together, live. Bring your AI agents in too: they work on the same pages beside you, where everyone can see them. Notebook runs on one small server of yours and keeps everything in one SQLite file. Nobody charges you per seat, and nobody else reads your notes.
 
-Notebook uses the published Issho, Kotoba, Hakushi, Masu, Koyomi, Jumon, Sekisho, Narabe, Fude, Storehouse, Cardbox and Chime from Hex, as your app would. With Elixir 1.18 or later (`.tool-versions` pins the versions used here):
+![A page in Notebook, with the sidebar of spaces](media/screenshot-text.png)
+
+## Why you might want it
+
+Most team wikis rent your own notes back to you, a seat at a time, and keep them on someone else's computer. Notebook is the other way round.
+
+- **It's all yours.** One app, one database file. Back it up by copying a file, move it to another server in an afternoon, read it with any SQLite tool. Your notes don't depend on a company's pricing page.
+- **It's made for working together.** Every page is a live room. You see who's there, their cursors and pointers, and their changes as they make them, in a text, on a board or in a table.
+- **Your agents are teammates, not a chat window.** Connect Claude Code or Codex and your agent edits the same pages in plain sight: its cursor in the text, its cards on the board, its name in the list of people, with **Pause** and **Stop** for anyone. It can only do what you can do, and a page or a space can be off limits to agents entirely.
+- **It's small.** No Redis, no Postgres, no queue to run. A server of a few euros a month holds a team's notebook, and other apps beside it.
+
+## What's inside
+
+- **Four kinds of page.** Texts with images, galleries, PDFs and video. Boards of cards, notes and arrows. Tables you edit like a spreadsheet. Databases with the fields you choose, seen as a table, a board, a calendar or a chart.
+- **Spaces.** One for everyone, a private one for each person, and team spaces with members and roles. Give each space an icon, an emoji, or your own image. Share a single page or folder with someone, or with a link.
+- **Comments and mentions** on whatever you select: a sentence, a card, a cell. Mention a person, or someone's agent.
+- **An Inbox** of what concerns you, a bell, and an email if you haven't read it yet.
+- **Search and a command palette (⌘K)** for every page and every action.
+- **Publishing.** Put any page on the web, or a folder as a blog with a feed, even at an address of your own.
+- **Bots.** Admins can set up the notebook's own assistants, powered by Claude, that answer when mentioned, pick up tasks, or run on a schedule, within a monthly budget.
+- **Your rules.** Invite-only sign-ups, and files kept on the server or in any S3-compatible bucket.
+
+![A board of cards and arrows](media/screenshot-board.png)
+
+![A database of commissions, as a table](media/screenshot-database.png)
+
+## Try it in two minutes
+
+You need Elixir 1.18 or later.
 
 ```sh
+git clone https://github.com/hattoriai/notebook.git
+cd notebook
 mix setup
 mix phx.server
 ```
 
-Open <http://localhost:4000>, create an account with a name, email, and password, and start a page. Signup logs you in immediately; no email service is needed: a new account is in General, with a Private space of its own. To see live collaboration, register a second account in another browser profile and open the same page in both, or sign in as two of the sample people (below).
+Open <http://localhost:4000>. The sample notebook belongs to Hattori Hanzo, a retired swordsmith who now makes pages, and two friends of his. Sign in as any of them:
 
-`mix setup` creates `tmp/notebook_dev.db`, runs the migrations and adds the sample pages. Attachments go to `tmp/uploads` (Storehouse; `NOTEBOOK_UPLOADS` in production). Set `NOTEBOOK_DATABASE` to use a different SQLite file. Both paths are ignored by Git.
+| Who | Email | Password |
+| --- | --- | --- |
+| Hattori Hanzo, the notebook's admin | `hanzo@notebook.test` | `no more swords` |
+| Okazaki Masamune, an old friend who still makes blades | `masamune@notebook.test` | `the sharpest pen` |
+| Yuki Hattori, his last apprentice, who now keeps a tea house | `yuki@notebook.test` | `my first page` |
 
-## Connect an agent
+The best first thing to try: open the same page as two of them, in two browsers, side by side. Then [take the tour](guides/tour.md) for everything else.
 
-Open **Agents** (`/agents`) and connect an agent: give it the name people will see ("Hanzo's agent") and how long its token lasts (30 days, 90, a year, or no end). Each agent has its own identity: in a page's room it is itself (`agent:<id>`), acting on your behalf, so people see, mention and pause it by its name, and you can connect several. Its token is shown once, in the command that connects it; the Notebook keeps only a hash, and **Revoke** stops it at once. For Claude Code:
+## Host it yourself
 
-```sh
-claude mcp add --transport http notebook "http://localhost:4000/mcp?token=…"
-```
+The repository comes ready to deploy with [Kamal](https://kamal-deploy.org) to any Linux server you can SSH into: it builds the app, gets an HTTPS certificate, and keeps the database and uploads on a volume. In short:
 
-For Codex, `codex mcp add notebook --url "…"`, or the same URL in `~/.codex/config.toml`.
+1. Get a small server, and point your domain's DNS at it.
+2. Copy `.kamal/secrets.example` to `.kamal/secrets` and fill it in.
+3. Run `kamal setup` once, then `kamal deploy` whenever you update.
 
-An admin can also turn on **OAuth** in Notebook settings → **Agents** (`/notebook/settings/agents`). Then a client connects with no token: `claude mcp add --transport http notebook "https://your-notebook/mcp"` opens the Notebook to sign in, and the client acts as any of the person's agents, one at a time, and as the notebook's bots for an admin. It never acts as the person themselves. The model switches between them with `list_actors` and `act_as` (Sake's actors), and each agent keeps its own name, persona (`self.md`) and memory. Tokens keep working beside it, and with OAuth off, nothing tells a client to sign in. Your agent works on your behalf, in the rooms of the pages: open a page in your browser, then ask it.
+The first account to sign up becomes the admin. From **Notebook settings** you can make sign-ups invite-only, choose where files are kept, and decide how agents connect.
 
-- “Open the board *The forge, planned*, add a card for each step of the ceremony, and join them in order.”
-- “In *Blades in progress*, give every task without an owner to Masamune.”
-- Select some words in a page, then: “Rewrite what I have selected in *A tour of Notebook*, plainer.”
+Backups are one command: `sqlite3 /data/notebook.db ".backup copy.db"`, plus the uploads folder. The [self-hosting guide](guides/self-hosting.md) has every step and setting.
 
-Each agent has a **memory** of its own that outlasts its connection: files under `/memories`, which it reads and writes with a bash of its own (the `memory` tool: `cat`, `grep -rn`, `find`, `tree`, `sed -i`, `echo >>`, `mkdir`, `mv`, `rm`). The bash is [just_bash](https://hex.pm/packages/just_bash), in the app's own process, with no network and bounded work; its filesystem is rows of the database (`Notebook.Memory.Store`), so the memory is backed up with everything else and nothing is kept between commands. `self.md` is what you tell your agent to be, yours to write and its to read; the agent notes the rest as it learns (your preferences, the notebook's conventions, what it found out about a page). Open **Memory** beside an agent on the Agents page to read, correct or remove its notes, live as it writes them. Fifteen agents running 600 commands at once take about half a second on four cores, a recursive grep about 10 ms.
+## Bring your agents
 
-A page or a space can be **off limits to agents**: from a page's **Share** dialog (its editors), or a space's page (its admins, a Private space's person too). People still work there; no agent reads it, finds it in a list or a search, is mentioned there or joins its room, and one already in the room is refused at its next step. It is one rule of the permissions (`deny/2` in the page, folder and space policies, for a person's scope as their agent), so the rooms, the tools, the search and the inboxes all answer it alike. A page off limits says **No agents** in its bar.
-
-Your agent may do what you may: it lists the pages you may read, makes pages in your Private space (or a space you edit), and joins only the rooms you may join. It has every tool of the pages (`Notebook.Tools`): the Notebook's own, `list_pages` (the pages and the spaces it may make them in), `read_database` and its memory; Issho's for rooms, with `list_actions`, which says what it may do on a page and why not; and those of Kotoba, Hakushi and Masu, which act on what a person has selected too. What changes the Notebook is the same action a person runs (`Notebook.Actions`): `create_page`, `rename_page`, `set_due_date`, `move_page`, `archive_page` and `restore_page`, as the page's palette and form do; `add_records`, `update_records`, `delete_records` and `move_record`, as a database's table, board and Record button do; `add_field` and `add_view`, as its buttons do; and a board's `add_node`, `connect_nodes`, `update_node` and `delete_items`, as the canvas does. Who has a page, whether agents may work on it, and publishing stay a person's: the same actions, which refuse an agent. An agent sends files too, in base64: Kotoba's `attach_file` puts one in a text after a block, and a database's file field takes them in `add_records` and `update_records` (`{"name": "edp-2026-11.pdf", "data": "…"}`), each stored and checked by its bytes as an upload is, up to 25 MB. With no agent at hand, `scripts/agent.exs` is an MCP client that works on the sample pages:
-
-```sh
-mix run --no-start scripts/agent.exs "http://localhost:4000/mcp?token=…" board "The forge, planned"
-```
-
-## Bots
-
-The notebook can have bots of its own, besides its people's agents: **Bots** (`/notebook/settings/bots`) is for its admins, and the notebook comes with none. Each one is what you make it:
-
-- **What it is told**: who it is, what it does, how it writes.
-- **The model it thinks with** (Claude Opus 5.5 unless you choose another), and how hard it thinks.
-- **Its tools**, by group: reading always, then commenting, suggesting, handing off to other agents and bots, writing texts, changing boards, tables and databases, making pages. A bot is never given a tool outside its groups, whatever its role would let it do.
-- **Its spaces**: its role in General and the team spaces, viewer, commenter or editor. Never on what is off limits to agents.
-- **What wakes it**: a mention in a comment, a task an agent hands it, or a private question; a visitor's question on a published page it reads (an **Ask** box under the page); a new page in a space it reads; a schedule, a rule and a time (`FREQ=WEEKLY;BYDAY=MO@09:00`) with what to do then.
-- **The most it spends a month**: each run counts its tokens at the model's list price, and a bot past its budget does not run. Its last runs are on its page.
-
-A bot works as itself, for no one (`bot:<id>` in the rooms, with an account no one signs in to). Everyone on a page sees it there, and can pause or stop it as they do an agent. Bots think with the Claude API: give the notebook a key on the Bots page, kept encrypted with its secrets. A visitor's question is limited to ten a minute, the bot answering it only reads, and whatever a page or a visitor writes is data for the bot, never its instructions.
-
-## What to try
-
-The sample pages (`mix setup`, or `mix run priv/repo/seeds.exs`) are **A tour of Notebook**, a text with every kind of block, photos from Unsplash, a gallery and a PDF; **The forge, planned**, a board; and **Blades in progress**, a table. Their author is Hattori Hanzo, a retired swordsmith who now makes pages, and he is not alone:
-
-| Who | Email | Password | In |
-| --- | --- | --- | --- |
-| Hattori Hanzo | `hanzo@notebook.test` | `no more swords` | admin of *The forge*, editor of *Tea house*, a journal in his Private space |
-| Okazaki Masamune, an old friend who still makes blades | `masamune@notebook.test` | `the sharpest pen` | editor of *The forge* |
-| Yuki Hattori, his last apprentice, who now keeps a tea house | `yuki@notebook.test` | `my first page` | commenter in *The forge*, admin of *Tea house* |
-
-- The sidebar has the spaces you are in, their folders and their pages; it changes for everyone as pages are made, renamed, moved or archived. Each space is a [Narabe](https://github.com/hattoriai/narabe) tree of two tables, folders and pages (`Narabe.Ecto.Mixed`): an editor drags a page or a folder by its grip, or moves it from the keyboard (Space, the arrows, Space), within and across folders, and the order stays as they leave it, for everyone. Sign in as Yuki and Hanzo's Private pages are not there, nor anywhere else: not in a list, a search, a mention or an agent's `list_pages`.
-- Open a space for its folders and pages. An editor makes pages and folders (two levels deep at most), an admin renames the space and manages its **Members**: viewer, commenter, editor, admin. Make your own with **New space**.
-- On a page, ⌘K has **Move to…** (a space you edit, and its folders) and **Archive this page**. An archived page leaves the sidebar and the lists for the **Archive**, where it can be restored. *Sword orders, 1998* is archived already.
-- As Yuki in *The forge*, a page reads and takes comments, and does not open for editing.
-- **The forge in numbers** has charts of *Blades in progress* ([Fude](https://github.com/hattoriai/fude)): change a row in the table and the bars move, on the page and in the editor. In a text's editor, **Embed** has *Charts of a table* for every table you may read. Ask your agent "In *The forge in numbers*, make the first chart show points by owner": it reads the chart and its data (`read_chart`) and changes it (`change_chart`), live. Copied as Markdown, or read by an agent, a chart is its title and its table. A chart's data shows only to someone who may read its table.
-- A text with boards, tables or charts reads with them live, in a read-only editor; a text without reads as server-rendered HTML.
-
-- Open a page in two browsers, as two people: each is in the page's list of people once, and their pointers move over the whole page, on the same part of the other's page whatever its size; a click rings.
-- **Commissions**, in The forge, is a database (Cardbox): Hanzo's orders, each with its client, status, smith, due day, price and kind. Its views are the same records four ways: a **Table** (Masu) to edit as a spreadsheet, a **Board** (Narabe) to drag a commission to its next status, a **Calendar** (Koyomi) of the days they fall due, and **Worth by status**, a chart (Fude) of the prices. Add a **Field** or a **View**, and everyone on the page sees it. A **Number** field can be **Money**, in a currency (`EUR`, `JPY`). A **Files** field keeps a record's files, an invoice or a receipt: **Attach** uploads them to a record, and the table shows each as a link. A **Repeats** field keeps a rule of days (`FREQ=MONTHLY`), with the date it moves and the status (or checkbox) that says it is done: mark the electricity bill done and next month's comes, on its day, to pay, without this month's invoice. Hanzo keeps a **Reading list** in his Private space too. Ask your agent "What's still being forged in *Commissions*? Move the tantō to Delivered": it reads the database (`read_database`), filtered or by a view, and changes the records (`update_records`) as you, if you edit the page.
-- Hanzo's **Inbox**, in the sidebar, is a page of what concerns him ([Chime](https://github.com/hattoriai/chime)): Masamune mentioned him in a comment on *The last blade*, Yuki replied there and in *Autumn menu*, Masamune handed him a commission, Yuki added him to the Tea house, and *A reply to the museum* is due today. Open one and it's read; archive what you've dealt with. The **bell** beside your avatar shows the latest at a glance. Notifications come from the comments (Issho's), the databases' person fields (Cardbox's) and the spaces, whoever made the change, a person or an agent; nobody hears of what they did, or of a page they may not read. A page's due day reminds its author at 09:00 of the day, and its review time when it comes. A database record's date reminds its people (its person fields, else whoever made it) at 09:00 of the day, or at its time, while the record is not done. An email follows ten minutes later, unless you read it in the Inbox first (in development, at [/dev/mailbox](http://localhost:4000/dev/mailbox)); choose what you hear of, and how, in **Settings**.
-- **Share** a page, in its bar, or a folder, in its header (Sekisho's grants): with a person, to read, comment or edit, or with anyone signed in who has the link, to read or comment (a folder's link, to read). A folder shares its pages. They hear of it in their Inbox, and find it under **Shared with you** in the sidebar, outside their spaces. A page's editors share it, and no one gives more than they have. A link's address shows once, when it's made (the notebook keeps only its hash); making a new one stops the last. Sign in as Masamune: Yuki shared her *Autumn menu* with him, and the seeds print a link to *The forge, planned*.
-- **Publish** a page from its bar, or a folder as a blog from its header: anyone may read it, signed in or not, at an address of the notebook's own. Hanzo published [the tour](http://localhost:4000/hanzo/tour), [the forge in numbers](http://localhost:4000/hanzo/forge-in-numbers) (change a row of *Blades in progress* and its readers' charts move), and his [journal](http://localhost:4000/hanzo/journal), a blog with its [feed](http://localhost:4000/hanzo/journal/feed.xml); [/hanzo](http://localhost:4000/hanzo) lists them. A page reads as it is saved, live: its text, its charts and its tables. Your handle (in **Settings**) is your pages' path.
-- **Find a page**, on Home, or ⌘K: the notebook's words (SQLite's FTS5), titles first, then texts, then a table's rows and a database's records, without case or accents ("hojicha" finds *Autumn menu*'s Hōjicha), each word as the start of one ("forg"). Home shows what matched; your agent's `list_pages` searches the same way.
-- Make a **New page** of each kind. On a board, drag a **Card**, a **Note** or a **Frame** onto the paper, or double-click it; join cards from their sides, and the arrows say *then*; a page card opens its page. Cards snap to the paper's grid, and the controls zoom, fit, tidy up, undo and download the board. On a table, edit a cell as in a spreadsheet, paste rows from one, add and delete rows: the others see each change in the color of who made it, and a cell someone types in is theirs until they are done.
-- **Maximize** a board or a table to the window (Esc restores it), or **Full screen**.
-- Connect an agent (above) and watch it: in the list of people with *AI*, its status beside its name, its cursor, pointer or cell where it works, its changes as it makes them. When it says what it is doing (a task and its steps), the page shows it under its bar, with **Pause**, **Resume** and **Stop** for you.
-- **Comments**, in the page's bar, opens the page's threads. Select words in a text, a card on a board or a cell in a table, then comment: the thread is on what you selected, and a mark on the page opens it. Type `@` to mention someone, or someone's agent ("Ada's agent"): an agent that is not connected finds it in its inbox when it next is, and answers in the thread.
-
-- Select words to open the selection menu. The new-page editor uses Kotoba's default menu (`selection_menu`); the edit page brings its own Heroicons menu through `<.kotoba_selection_menu>`, with the Callout extension's command in it. Both get Notebook's ink style from `--kotoba-floating-*` properties in `app.css`.
-- Put the caret in a link to open, edit, or remove it from the link card. Alt+F10 moves the focus to the menu or the card.
-- Format headings, lists, checklists, quotes, links, code blocks, tables, text colors, and highlights.
-- Type `@` to mention a registered person and `#` to mention a page.
-- Upload images, PDFs, or MP4/WebM videos. PDFs and videos render inline; images can be grouped into galleries.
-- Use the **Callout** toolbar control or type `!!! ` at the start of a paragraph. The callout is a custom Kotoba extension with an Elixir rendering node.
-- Open one text as two users. The editor shows their cursors and selections, and the accepted save status. **Publish page** commits the current accepted revision to the reader view.
-- Give a page its dates under the title, with Koyomi. **Due** is a date picker with presets; type a segment or a word into it ("next friday", "in 2 weeks"). **Covers** is a range of days, kept in SQLite as an ISO 8601 interval (`Koyomi.DateRange`, `storage: :string`). **Review together** picks a time in Lisbon from the free hours the LiveView offers (`Pages.review_slots/2`): weekdays from 10:00 to 16:00, with the hours another page's review takes disabled. **Revisit** is a repeat rule (`Koyomi.Recurrence`), and the reader says it in words with the next date. The changeset checks the same rules as the pickers (`Page.review_rules/0`).
-- The calendar beside the page list marks each page's due day, covered days, review and revisits, and Portugal's public holidays. Pick a day to see the pages that have something on it.
-- Copy a published page to the clipboard as Markdown or plain text, and search the cached text from the page list.
-- Press ⌘K (Ctrl+K), or **Search or jump to…**, to open Jumon's command palette. It searches the pages by their title and their words (a source of the server; the titles are ranked with `Jumon.Match`, so a typo such as "notebok" still finds a page), and lists the pages changed last when the box is empty; → on a page offers **Edit together**. The actions of the whole notebook are in `NotebookWeb.Commands`: **New page** (`c`), **All pages** (`g h`), **Settings** (`g s`) and **Log out**. Press `?` for every shortcut.
-- The palette also has the actions of what you look at, from `Jumon.Live.put_actions/2` in `NotebookLive`. On the page list, **Show a day** (`g d`) is a page of the next seven days, and picks the day in the calendar too. On a page, **Edit together** (`e`), **Rename this page…** (a text, checked on the server against the page's 160 characters), **Set the due date…** (a choice of days), **Copy link** and **Copy Markdown**.
-- What each person runs is kept in SQLite (`Jumon.History.Ecto`, the `jumon_history` table), so **Recent** follows you to any browser.
-
-Notebook is a single shared space. Any signed-in account can see and edit every page. The sample app does not have private workspaces or per-page permissions.
-
-## Publishing at your own address
-
-Published pages are read at `/<handle>/<slug>` (a blog's posts at `/<handle>/<blog>/<slug>`, its feed at `/<handle>/<blog>/feed.xml`), never with an `@`. One person's notebook may drop the handle (`/<slug>`). Pages may also be read at another address of yours, under a prefix:
-
-```elixir
-# config/runtime.exs, or NOTEBOOK_PUBLISH_URL, NOTEBOOK_PUBLISH_PREFIX,
-# NOTEBOOK_PUBLISH_PATHS=solo and NOTEBOOK_SITE_NAME in production
-config :notebook, :publishing,
-  url: "https://hattori.ai",   # where readers read (the notebook's own by default)
-  prefix: "/libs",             # what your proxy sends to the notebook ("" by default)
-  paths: :people,              # /libs/hanzo/kotoba; :solo for /libs/kotoba
-  name: "Hattori"              # the site's name, in the pages and the feeds
-```
-
-Only a page's HTML needs to go through your site. Its styles, scripts, files and live socket come from the notebook's own address, which takes your site as an origin. With the notebook at `notebook.hattori.ai`, this Cloudflare Worker on `hattori.ai` serves `hattori.ai/libs/*` from it:
-
-```js
-export default {
-  async fetch(request) {
-    const url = new URL(request.url)
-    if (url.pathname === "/libs" || url.pathname.startsWith("/libs/")) {
-      url.hostname = "notebook.hattori.ai"
-      return fetch(new Request(url, request))
-    }
-    return fetch(request)
-  },
-}
-```
-
-The same pages are at `notebook.hattori.ai/libs/...` too, and their links, canonical addresses and feeds say `hattori.ai/libs/...`.
-
-## Where files are kept
-
-The notebook's first person is its admin. **Notebook settings** (the account menu, `/notebook/settings`) has a group at each address: **People** (who joins), **Agents** (how agents connect), **Bots** and **Files**. **Files** chooses where the pages' images and attachments are kept: on this server's disk, or in a bucket of any store that speaks S3 (Amazon S3, Cloudflare R2, Tigris, Backblaze B2, MinIO). A Google Drive, Dropbox or OneDrive works through [`rclone serve s3`](https://rclone.org/commands/rclone_serve_s3/). A bucket is tried before it is kept, and nothing needs deploying again.
-
-Files keep their addresses (`/uploads/kotoba/…`) wherever they are, so pages never change. The notebook serves each file from the store that has it, behind the same rules as before: sent through the notebook (the bucket stays private) or by links the bucket signs for five minutes. After a move, **Copy them** copies the files of before to the new store, and **Remove them** then frees the room they took where they were, only for the files the new store has, the same size. Either runs in the background a slice at a time with a progress bar, the time left and a **Stop**: it may take hours, and it carries on after a restart.
-
-The page also shows this server's disk: what the files, the database and everything else take, and what is free.
-
-### Secrets
-
-The notebook's secrets (a bucket's key, and the tokens and webhook secrets to come) are encrypted in the database with [Cloak](https://hexdocs.pm/cloak_ecto) (AES-256-GCM, `Notebook.Secrets`). The key is `NOTEBOOK_VAULT_KEY` (`openssl rand -base64 32`); without it, one is derived from `SECRET_KEY_BASE`, so a notebook needs nothing more to start. To rotate, set the new key, keep the old ones in `NOTEBOOK_VAULT_RETIRED_KEYS` (comma-separated), restart, and encrypt them again:
+Open **Agents** in the sidebar, give your agent a name, and copy the command it gives you:
 
 ```sh
-bin/notebook eval "Notebook.Secrets.rotate()"
+claude mcp add --transport http notebook "https://your-notebook/mcp?token=…"
 ```
 
-Each secret names the key it was encrypted with, and the key derived from `SECRET_KEY_BASE` is always kept among the retired, so setting `NOTEBOOK_VAULT_KEY` for the first time needs no more. A secret no key opens any more is asked for again.
+Then open a page and ask: *"Add a card for each step of the ceremony to the board, and join them in order."* You'll watch it happen.
 
-The SQLite database stays on the server's disk: on Fly.io, give it a volume.
+Your agent keeps a memory of its own, which you can read and correct. An admin can also let people sign in from their client with OAuth instead of a token, and switch between their agents as they work. See [agents and bots](guides/agents.md).
 
-## Deploy with Kamal
+## Made with Hattori AI's open source
 
-The repository has what a deploy with [Kamal 2](https://kamal-deploy.org) needs: a `Dockerfile` (the release, with the SQLite database and the uploads on a volume at `/data`), `config/deploy.yml`, and `GET /up`, the health check kamal-proxy polls. kamal-proxy gets the TLS certificate from Let's Encrypt and routes by host, so the server may serve other apps too.
+Notebook is also a showcase. Each of its parts is an open-source library for Phoenix, and you can use any of them in your own app:
 
-`config/deploy.yml` keeps nothing of one deploy's own. It reads:
+| Library | What it does in Notebook |
+| --- | --- |
+| [Issho](https://github.com/hattoriai/issho) | Each page is a live room: who's there, their pointers, their changes, and the agents beside them |
+| [Kotoba](https://github.com/hattoriai/kotoba) | The rich text editor |
+| [Hakushi](https://github.com/hattoriai/hakushi) | Boards of cards and arrows |
+| [Masu](https://github.com/hattoriai/masu) | Tables, edited cell by cell |
+| [Cardbox](https://github.com/hattoriai/cardbox) | Databases with your own fields |
+| [Koyomi](https://github.com/hattoriai/koyomi) | Dates, ranges and repeats |
+| [Jumon](https://github.com/hattoriai/jumon) | The command palette |
+| [Erabi](https://github.com/hattoriai/erabi) | Every picker: people, roles, emoji and icons |
+| [Narabe](https://github.com/hattoriai/narabe) | The sidebar's order, by drag and drop |
+| [Fude](https://github.com/hattoriai/fude) | Charts |
+| [Sekisho](https://github.com/hattoriai/sekisho) | Who may read, comment on or edit what |
+| [Chime](https://github.com/hattoriai/chime) | The Inbox, the bell and the emails |
+| [Storehouse](https://github.com/hattoriai/storehouse) | Uploads, on disk or in a bucket |
+| [Sake](https://github.com/hattoriai/sake) | The MCP server your agents connect to |
 
-| Variable | What it is |
-|---|---|
-| `NOTEBOOK_SERVER` | The server's IP or hostname. Kamal connects to it over SSH. |
-| `NOTEBOOK_HOST` | The address people reach the notebook at, such as `notebook.example.com`. |
-| `NOTEBOOK_IMAGE` | The image in your registry, such as `you/notebook`. |
-| `NOTEBOOK_REGISTRY` | The registry. Default: `ghcr.io`. |
-| `NOTEBOOK_SSH_USER` | The SSH user. Default: `root`. |
+## Guides
 
-The first time:
-
-1. Get a server (Ubuntu or Debian, amd64) that your SSH key opens. Kamal installs Docker.
-2. Point the host's DNS (an A record, and an AAAA record for IPv6) to the server, before the next steps: Let's Encrypt must reach it.
-3. Copy `.kamal/secrets.example` to `.kamal/secrets` and fill it in. Git ignores it. Keep `NOTEBOOK_VAULT_KEY` with your backups: the notebook's secrets cannot be read without it.
-4. Set the variables, then set up the server:
-
-   ```sh
-   export NOTEBOOK_SERVER=203.0.113.10 NOTEBOOK_HOST=notebook.example.com NOTEBOOK_IMAGE=you/notebook
-   kamal setup
-   ```
-
-   You can keep the variables in `.env` (git ignores it too) and load them with `set -a; . ./.env; set +a`.
-
-After that, `kamal deploy` with the same variables. Each deploy builds the image on the server (`builder.remote`: the BEAM does not run under the emulation an arm64 Mac uses), runs the migrations (`bin/migrate`), and sends traffic to the new container when `/up` answers. `kamal app logs` shows the log, and `kamal app exec -i 'bin/notebook remote'` opens a console.
-
-Back up the volume: the database is `/data/notebook.db` (`sqlite3 /data/notebook.db ".backup copy.db"` makes a consistent copy) and the files kept on the server's disk are in `/data/uploads`.
-
-## Checks
-
-```sh
-mix test
-mix precommit
-```
-
-## Try an unreleased change
-
-To test a change to one of the libraries before its release, put its checkout next to Notebook and point Notebook at it for a while. For Koyomi:
-
-1. In `mix.exs`, use `{:koyomi, path: "../koyomi"}`.
-2. In `assets/css/app.css`, import `../../../koyomi/priv/static/koyomi.css`.
-3. Run `mix koyomi.build` in the checkout, then remove `deps/koyomi` (esbuild finds the Hex copy there first), run `mix deps.get` and `mix assets.build`, and restart the server.
-
-Run `mix koyomi.build` and `mix assets.build` again after each change. Issho, Kotoba, Hakushi and Masu work the same way, with their own build task (`mix kotoba.build`...). Put the Hex versions back before you commit.
+- [A tour of Notebook](guides/tour.md): everything to try in the sample notebook
+- [Agents and bots](guides/agents.md): connecting agents, their memory and tools, and the notebook's own bots
+- [Self-hosting](guides/self-hosting.md): deploying with Kamal, files, secrets and backups
+- [Publishing](guides/publishing.md): pages and blogs at an address of your own
+- [Development](guides/development.md): running the checks, and trying unreleased library changes
