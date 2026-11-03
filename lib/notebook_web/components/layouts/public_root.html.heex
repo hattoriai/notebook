@@ -6,10 +6,22 @@
     <%!-- A published page: its HTML may come through a site's proxy, and its
     styles, scripts, files and live socket from the notebook's own address. --%>
     <meta name="live-socket" content={NotebookWeb.Endpoint.url() <> "/public/live"} />
+    <%!-- The site's own icon (Notebook settings → Publishing), else the notebook's. --%>
     <link
+      :if={is_nil(Notebook.Publishing.config().icon)}
       rel="icon"
       href={static_url(NotebookWeb.Endpoint, ~p"/images/favicon.svg")}
       type="image/svg+xml"
+    />
+    <link
+      :if={Notebook.Publishing.config().icon}
+      rel="icon"
+      href={Notebook.Publishing.site_image_url(Notebook.Publishing.config().icon)}
+    />
+    <link
+      :if={Notebook.Publishing.config().icon}
+      rel="apple-touch-icon"
+      href={Notebook.Publishing.site_image_url(Notebook.Publishing.config().icon)}
     />
     <meta name="theme-color" content="#f6f3ec" />
     <.live_title
@@ -23,6 +35,26 @@
     <meta :if={assigns[:page_title]} property="og:title" content={@page_title} />
     <meta :if={assigns[:description]} property="og:description" content={@description} />
     <meta property="og:site_name" content={Notebook.Publishing.config().name} />
+    <%!-- The picture of a link shared: the page's first image, else the site's. --%>
+    <meta
+      :if={assigns[:og_image] || Notebook.Publishing.config().image}
+      property="og:image"
+      content={
+        assigns[:og_image] ||
+          Notebook.Publishing.site_image_url(Notebook.Publishing.config().image)
+      }
+    />
+    <meta property="og:type" content={if assigns[:kind] == :page, do: "article", else: "website"} />
+    <meta
+      name="twitter:card"
+      content={
+        if assigns[:og_image] || Notebook.Publishing.config().image,
+          do: "summary_large_image",
+          else: "summary"
+      }
+    />
+    <meta :if={assigns[:page_title]} name="twitter:title" content={@page_title} />
+    <meta :if={assigns[:description]} name="twitter:description" content={@description} />
     <link
       :if={assigns[:feed]}
       rel="alternate"

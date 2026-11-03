@@ -46,7 +46,8 @@ defmodule NotebookWeb.PublicLive do
       page: page,
       scope: scope,
       page_title: page.title,
-      description: Publishing.summary(page),
+      description: Publishing.description(page),
+      og_image: Publishing.social_image(page),
       canonical: Publishing.url(page),
       feed: page.folder && page.folder.published_at && Publishing.feed_url(page.folder),
       # The bots that answer visitors here (Notebook.Bots), and what was asked.
@@ -132,7 +133,8 @@ defmodule NotebookWeb.PublicLive do
       pages: pages,
       blogs: blogs,
       page_title: space.name,
-      description: space.description || "Pages of #{space.name}",
+      description:
+        space.description || Publishing.config().description || "Pages of #{space.name}",
       canonical: Publishing.space_url(space),
       feed: nil
     )
@@ -224,16 +226,18 @@ defmodule NotebookWeb.PublicLive do
         <a href={Publishing.url(@page.folder)}>{@page.folder.name}</a>
       </p>
       <h1>{@page.title}</h1>
-      <p class="public-byline">
+      <% options = Publishing.page_options(@page) %>
+      <% author? = options.show_author and @page.published_by != nil %>
+      <p :if={author? or options.show_date} class="public-byline" id="public-byline">
         <a
-          :if={@page.published_by && Publishing.paths_of(@page) == :people}
+          :if={author? and Publishing.paths_of(@page) == :people}
           href={Publishing.person_url(@page.published_by)}
         >
           {@page.published_by.name}
         </a>
-        <span :if={@page.published_by && Publishing.paths_of(@page) != :people}>{@page.published_by.name}</span>
-        <span>·</span>
-        <time datetime={DateTime.to_iso8601(@page.published_at)}>{Calendar.strftime(
+        <span :if={author? and Publishing.paths_of(@page) != :people}>{@page.published_by.name}</span>
+        <span :if={author? and options.show_date}>·</span>
+        <time :if={options.show_date} datetime={DateTime.to_iso8601(@page.published_at)}>{Calendar.strftime(
           @page.published_at,
           "%-d %B %Y"
         )}</time>

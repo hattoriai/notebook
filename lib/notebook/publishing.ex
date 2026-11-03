@@ -61,7 +61,11 @@ defmodule Notebook.Publishing do
       prefix: (saved["prefix"] || app[:prefix]) |> to_string() |> String.trim_trailing("/"),
       # The spaces' default; each space may choose its own (paths_of/1).
       paths: if(app[:paths] == :solo, do: :solo, else: :people),
-      name: present(saved["name"]) || present(app[:name]) || "Notebook"
+      name: present(saved["name"]) || present(app[:name]) || "Notebook",
+      # The site's own: its favicon, the picture of a shared link, its line.
+      icon: present(saved["icon"]),
+      image: present(saved["image"]),
+      description: present(saved["description"])
     }
   end
 
@@ -75,20 +79,26 @@ defmodule Notebook.Publishing do
   defp present(value) when is_binary(value) and value != "", do: value
   defp present(_value), do: nil
 
-  @settings_types %{url: :string, prefix: :string, name: :string}
+  @settings_types %{url: :string, prefix: :string, name: :string, description: :string}
 
   @doc "A form of the publishing settings, as they are now (or with `attrs`)."
   def change_settings(attrs \\ %{}) do
-    %{url: url, prefix: prefix, name: name} = config()
+    %{url: url, prefix: prefix, name: name, description: description} = config()
     own = NotebookWeb.Endpoint.url()
 
-    {%{url: if(url == own, do: "", else: url), prefix: prefix, name: name}, @settings_types}
+    {%{
+       url: if(url == own, do: "", else: url),
+       prefix: prefix,
+       name: name,
+       description: description || ""
+     }, @settings_types}
     |> Ecto.Changeset.cast(attrs, Map.keys(@settings_types), empty_values: [])
     |> Ecto.Changeset.update_change(:url, &(&1 |> String.trim() |> String.trim_trailing("/")))
     |> Ecto.Changeset.update_change(:prefix, &normalize_prefix/1)
     |> Ecto.Changeset.update_change(:name, &String.trim/1)
     |> Ecto.Changeset.validate_required([:name])
     |> Ecto.Changeset.validate_length(:name, max: 60)
+    |> Ecto.Changeset.validate_length(:description, max: 300)
     |> Ecto.Changeset.validate_format(:url, ~r{\A(https?://[a-z0-9.-]+(:\d+)?)?\z}i,
       message: "is an address such as https://example.com, without a path"
     )
@@ -120,20 +130,127 @@ defmodule Notebook.Publishing do
         {:error, Map.put(changeset, :action, :validate)}
 
       true ->
-        value =
-          changeset
-          |> Ecto.Changeset.apply_changes()
-          |> Map.new(fn {key, value} -> {to_string(key), value} end)
-          |> Map.put("saved_by", scope.user.id)
-
-        Repo.insert!(%Setting{key: @setting, value: value},
-          on_conflict: [set: [value: value, updated_at: DateTime.utc_now(:second)]],
-          conflict_target: :key
-        )
+        changeset
+        |> Ecto.Changeset.apply_changes()
+        |> Map.new(fn {key, value} -> {to_string(key), value} end)
+        |> put_settings(scope)
 
         {:ok, config()}
     end
   end
+
+  # The saved settings with `changes`, keeping the others (the images).
+  defp put_settings(changes, scope) do
+    value = settings() |> Map.merge(changes) |> Map.put("saved_by", scope.user.id)
+
+    Repo.insert!(%Setting{key: @setting, value: value},
+      on_conflict: [set: [value: value, updated_at: DateTime.utc_now(:second)]],
+      conflict_target: :key
+    )
+  end
+
+  @doc """
+  Gives the site an image of its own, from an upload at `path`: its
+  `:icon` (the favicon, square, a PNG of 512 pixels is best) or its
+  `:image` (the picture of a link shared, 1200 × 630). Stored with
+  Storehouse, which checks the bytes; the one before is deleted. The
+  notebook's admins may.
+  """
+  def save_site_image(scope, kind, path, name) when kind in [:icon, :image] do
+    with true <- Scope.admin?(scope) || {:error, :forbidden},
+         {:ok, file} <- store_site_image(path, name) do
+      old = settings()[to_string(kind)]
+      put_settings(%{to_string(kind) => file.url}, scope)
+      discard(old)
+      {:ok, config()}
+    end
+  end
+
+  @doc "Takes the site's icon or image away: the notebook's own, then none."
+  def remove_site_image(scope, kind) when kind in [:icon, :image] do
+    if Scope.admin?(scope) do
+      discard(settings()[to_string(kind)])
+      put_settings(%{to_string(kind) => nil}, scope)
+      {:ok, config()}
+    else
+      {:error, :forbidden}
+    end
+  end
+
+  defp store_site_image(path, name) do
+    case Storehouse.store(path,
+           name: name,
+           accept: ~w(image/png image/jpeg image/gif image/webp),
+           max_bytes: 5_000_000
+         ) do
+      {:ok, file} -> {:ok, file}
+      {:existing, file} -> {:ok, file}
+      {:error, reason} -> {:error, {:image, reason}}
+    end
+  end
+
+  defp discard("/uploads/kotoba/" <> key), do: Notebook.Storage.store_of(key).delete(key)
+  defp discard(_url), do: :ok
+
+  ## A page's own
+
+  @doc """
+  How a published page reads: whether it shows its author and its date
+  (both, unless turned off), and its description (empty: its first lines).
+  """
+  def page_options(%Page{publish_options: options}) do
+    options = options || %{}
+
+    %{
+      show_author: options["show_author"] != false,
+      show_date: options["show_date"] != false,
+      description: present(options["description"])
+    }
+  end
+
+  @doc "Keeps how a page reads, published. Its editors may."
+  def set_page_options(scope, %Page{} = page, attrs) do
+    description = attrs |> Map.get("description", "") |> to_string() |> String.trim()
+
+    options = %{
+      "show_author" => attrs["show_author"] in [true, "true"],
+      "show_date" => attrs["show_date"] in [true, "true"],
+      "description" => String.slice(description, 0, 300)
+    }
+
+    with :ok <- authorize(scope, page) do
+      page |> Ecto.Changeset.change(publish_options: options) |> Repo.update()
+    end
+  end
+
+  @doc "What search engines and link previews say of a page: its own description, else its first lines."
+  def description(%Page{} = page), do: page_options(page).description || summary(page)
+
+  @doc """
+  The picture of a link to the page, as an absolute address: its first
+  image, else the site's, else none.
+  """
+  def social_image(%Page{} = page) do
+    case first_image(page) || config().image do
+      nil -> nil
+      "http" <> _ = url -> url
+      path -> NotebookWeb.Endpoint.url() <> path
+    end
+  end
+
+  # The first image of a text, in its document's order.
+  defp first_image(%Page{kind: "text", body: %Kotoba.Content{doc: doc}}) when is_map(doc),
+    do: find_image(doc)
+
+  defp first_image(_page), do: nil
+
+  defp find_image(%{"type" => "attachment", "contentType" => "image/" <> _, "url" => url})
+       when is_binary(url),
+       do: url
+
+  defp find_image(%{} = node), do: node |> Map.values() |> find_image()
+  defp find_image([_ | _] = nodes), do: Enum.find_value(nodes, &find_image/1)
+  defp find_image(_other), do: nil
 
   ## Slugs and handles
 
@@ -513,12 +630,24 @@ defmodule Notebook.Publishing do
   def public_upload?(key) when is_binary(key) do
     pattern = "%" <> String.replace(key, ~w(% _ \\), &("\\" <> &1)) <> "%"
 
-    Repo.exists?(
-      from p in Page,
-        where: not is_nil(p.published_at) and is_nil(p.archived_at),
-        where: fragment("CAST(? AS TEXT) LIKE ? ESCAPE '\\'", p.body, ^pattern)
-    )
+    # The site's icon and its picture of a shared link are anyone's too.
+    site_image?(key) or
+      Repo.exists?(
+        from p in Page,
+          where: not is_nil(p.published_at) and is_nil(p.archived_at),
+          where: fragment("CAST(? AS TEXT) LIKE ? ESCAPE '\\'", p.body, ^pattern)
+      )
   end
+
+  defp site_image?(key) do
+    %{icon: icon, image: image} = config()
+    ("/uploads/kotoba/" <> key) in [icon, image]
+  end
+
+  @doc "A site image's address, wherever the page is read: the notebook's own."
+  def site_image_url(nil), do: nil
+  def site_image_url("/" <> _ = path), do: NotebookWeb.Endpoint.url() <> path
+  def site_image_url(url), do: url
 
   @doc """
   A page's content as a public page reads it: its files at the notebook's
