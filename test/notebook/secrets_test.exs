@@ -61,4 +61,14 @@ defmodule Notebook.SecretsTest do
     assert Secrets.get("webhook") == nil
     assert Secrets.rotate() == 0
   end
+
+  # A secret Cloak's AES.GCM encrypted (the notebook's vault before), with
+  # the key @old: it still opens, so a notebook's secrets outlive Cloak.
+  @cloaked "ARBBRVMuR0NNLjcyY2Q2ZTg00C5LoImp00XI4gabqVLQbhqQ9zljy4NhVTEfVZzoPTKENJq+2aJ4Pk3S"
+
+  test "a secret Cloak encrypted still opens" do
+    restart_vault(%{"NOTEBOOK_VAULT_KEY" => @old})
+    assert Vault.decrypt(Base.decode64!(@cloaked)) == {:ok, "no-more-swords"}
+    assert Vault.decrypt("not a secret") == :error
+  end
 end

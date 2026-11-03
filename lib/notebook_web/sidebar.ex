@@ -100,7 +100,7 @@ defmodule NotebookWeb.Sidebar do
             navigate={~p"/spaces/#{space.id}"}
             class={["sidebar-space-name", @current == {:space, space.id} && "is-current"]}
           >
-            <.icon name={space_icon(space)} class="size-4" />{space.name}
+            <Icons.named name={space_icon(space)} class="size-4" />{space.name}
           </.link>
           <.link
             navigate={~p"/pages/new?space=#{space.id}"}
@@ -260,7 +260,8 @@ defmodule NotebookWeb.Sidebar do
   defp label(%{kind: "folder", record: folder}), do: folder.name
   defp label(%{record: page}), do: page.title
 
-  @doc "The icon of a space."
+  @doc "The icon of a space: its own, or its kind's (as `Icons.named/1` draws it)."
+  def space_icon(%{icon: icon}) when is_binary(icon), do: icon
   def space_icon(%{kind: "general"}), do: "hero-building-office-2"
   def space_icon(%{kind: "private"}), do: "hero-lock-closed"
   def space_icon(_team), do: "hero-user-group"

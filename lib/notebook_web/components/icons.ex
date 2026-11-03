@@ -53,10 +53,29 @@ defmodule NotebookWeb.Icons do
     """
   end
 
-  @doc "An icon of these, or a Heroicon, by its name: for the palette's actions."
+  @doc """
+  An icon by its name: one of these (`"notebook-robot"`), a Heroicon
+  (`"hero-fire"`), an image (`"image:<url>"`, a space's own), or an emoji
+  (`"🔥"`), each the size the class gives.
+  """
   attr :name, :string, required: true
   attr :class, :any, default: nil
 
   def named(%{name: "notebook-robot"} = assigns), do: ~H"<.robot class={@class} />"
-  def named(assigns), do: ~H"<NotebookWeb.CoreComponents.icon name={@name} class={@class} />"
+
+  def named(%{name: "hero-" <> _} = assigns),
+    do: ~H"<NotebookWeb.CoreComponents.icon name={@name} class={@class} />"
+
+  def named(%{name: "image:" <> url} = assigns) do
+    assigns = assign(assigns, :url, url)
+
+    ~H"""
+    <img src={@url} alt="" class={["notebook-icon-image", @class]} />
+    """
+  end
+
+  def named(assigns),
+    do: ~H"""
+    <span class={["notebook-icon-emoji", @class]} aria-hidden="true">{@name}</span>
+    """
 end

@@ -16,6 +16,12 @@ defmodule Notebook.Spaces.Space do
     field :description, :string
     # Off limits to agents, with every page in it (Notebook.Permissions).
     field :closed_to_agents, :boolean, default: false
+    # One of the notebook's icons ("hero-fire"), an emoji, or an image
+    # ("image:<url>"), as NotebookWeb.Icons.named/1 draws it; nil for its kind's.
+    field :icon, :string
+    # In the Archive, with its pages: out of the sidebar, the lists and the
+    # search, for everyone, until it is restored or deleted for good.
+    field :archived_at, :utc_datetime
     belongs_to :owner, Notebook.Accounts.User
     has_many :members, Notebook.Spaces.Member
     has_many :folders, Notebook.Spaces.Folder
@@ -24,6 +30,24 @@ defmodule Notebook.Spaces.Space do
   end
 
   def kinds, do: @kinds
+
+  @doc """
+  A space's icon: one of `icons` (the notebook's), an emoji, an uploaded
+  image (`"image:<url>"`), or none.
+  """
+  def icon_changeset(space, icon, icons) do
+    space
+    |> change(icon: icon)
+    |> validate_change(:icon, fn :icon, icon ->
+      if icon_ok?(icon, icons), do: [], else: [icon: "is not an icon"]
+    end)
+  end
+
+  defp icon_ok?("image:" <> url, _icons), do: String.starts_with?(url, ["/", "https://"])
+  defp icon_ok?(icon, icons), do: icon in icons or emoji?(icon)
+
+  # An emoji Erabi's picker has (in any skin tone).
+  defp emoji?(icon), do: Erabi.Emoji.name(icon, "en") != nil
 
   @doc "A team space's name and description; General and Private keep theirs."
   def changeset(space, attrs) do

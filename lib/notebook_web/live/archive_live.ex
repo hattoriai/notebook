@@ -1,11 +1,14 @@
 defmodule NotebookWeb.ArchiveLive do
   @moduledoc """
   The archived pages the person may read: out of the sidebar and the
-  lists, never lost. An editor of a page's space brings it back.
+  lists, never lost. An editor of a page's space brings it back. And the
+  archived spaces the person manages, with all their pages: restored, or
+  deleted for good.
   """
   use NotebookWeb, :live_view
 
-  alias Notebook.Pages
+  alias Notebook.{Pages, Spaces}
+  alias Notebook.Spaces.Space
   alias NotebookWeb.Sidebar
 
   @impl true
@@ -15,7 +18,11 @@ defmodule NotebookWeb.ArchiveLive do
   defp load(socket) do
     scope = socket.assigns.current_scope
     pages = Pages.list(scope, archived: true)
-    assign(socket, pages: Enum.map(pages, &{&1, Pages.allowed?(scope, :edit, &1)}))
+
+    assign(socket,
+      pages: Enum.map(pages, &{&1, Pages.allowed?(scope, :edit, &1)}),
+      spaces: Spaces.archived(scope)
+    )
   end
 
   @impl true
@@ -33,6 +40,44 @@ defmodule NotebookWeb.ArchiveLive do
               Pages you put away. They keep their words, their comments and their place, and come back when you restore them.
             </p>
           </div>
+          <section :if={@spaces != []} class="archive-spaces" id="archived-spaces">
+            <h2 class="archive-heading">Spaces</h2>
+            <div class="page-list">
+              <div
+                :for={space <- @spaces}
+                class="page-row archive-row"
+                id={"archived-space-#{space.id}"}
+              >
+                <div>
+                  <span class="page-kicker">
+                    <Icons.named name={Sidebar.space_icon(space)} class="size-3.5" /> Space
+                  </span>
+                  <h2>{space.name}</h2>
+                </div>
+                <div class="page-meta">
+                  <time>Archived {Calendar.strftime(space.archived_at, "%-d %b %Y")}</time>
+                  <button
+                    type="button"
+                    class="copy-action"
+                    phx-click="restore_space"
+                    phx-value-id={space.id}
+                  >
+                    <.icon name="hero-arrow-uturn-left" class="size-4" /> Restore
+                  </button>
+                  <button
+                    type="button"
+                    class="copy-action danger"
+                    phx-click="delete_space"
+                    phx-value-id={space.id}
+                    data-confirm={"Delete #{space.name} for good, with all its pages? It cannot be undone."}
+                  >
+                    <.icon name="hero-trash" class="size-4" /> Delete forever
+                  </button>
+                </div>
+              </div>
+            </div>
+            <h2 class="archive-heading">Pages</h2>
+          </section>
           <div class="page-list">
             <div :if={@pages == []} class="empty-state">
               <span class="empty-mark">✳</span>
@@ -72,6 +117,31 @@ defmodule NotebookWeb.ArchiveLive do
   end
 
   @impl true
+  def handle_event("restore_space", %{"id" => id}, socket) do
+    space = Notebook.Repo.get!(Space, id)
+
+    case Spaces.restore(socket.assigns.current_scope, space) do
+      {:ok, space} ->
+        {:noreply, socket |> put_flash(:info, "#{space.name} is back, with its pages.") |> load()}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "You may not restore #{space.name}.")}
+    end
+  end
+
+  def handle_event("delete_space", %{"id" => id}, socket) do
+    space = Notebook.Repo.get!(Space, id)
+
+    case Spaces.delete(socket.assigns.current_scope, space) do
+      {:ok, _space} ->
+        {:noreply,
+         socket |> put_flash(:info, "#{space.name} is deleted, with its pages.") |> load()}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "You may not delete #{space.name}.")}
+    end
+  end
+
   def handle_event("restore", %{"id" => id}, socket) do
     scope = socket.assigns.current_scope
     page = Pages.get!(scope, id)

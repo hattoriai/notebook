@@ -13,7 +13,18 @@ defmodule NotebookWeb.SpaceLive do
 
   @impl true
   def mount(params, _session, socket) do
-    {:ok, socket |> assign(folder_form: nil, renaming: false) |> load(params)}
+    {:ok,
+     socket
+     |> assign(folder_form: nil, renaming: false)
+     # A space's own image, as its icon: stored as soon as it is chosen.
+     |> allow_upload(:space_icon,
+       accept: ~w(.png .jpg .jpeg .gif .webp),
+       max_entries: 1,
+       max_file_size: 2_000_000,
+       auto_upload: true,
+       progress: &icon_progress/3
+     )
+     |> load(params)}
   end
 
   # The tree is the sidebar's, loaded again when anything in it changes,
@@ -70,6 +81,7 @@ defmodule NotebookWeb.SpaceLive do
         in_space? && folder && folder.parent_id && Spaces.get_folder!(scope, folder.parent_id),
       can_edit?: Spaces.allowed?(scope, :edit, space),
       can_manage?: Spaces.allowed?(scope, :manage, space),
+      manage_space?: Spaces.manage?(scope, space),
       in_space?: in_space?,
       shared_node: if(in_space?, do: nil, else: shared_node(scope, folder)),
       members: if(in_space?, do: Spaces.members(space), else: []),
@@ -206,12 +218,46 @@ defmodule NotebookWeb.SpaceLive do
 
           <div class="page-heading space-heading">
             <p class="eyebrow">
-              <.icon
+              <Icons.named
                 name={if(@folder, do: "hero-folder", else: Sidebar.space_icon(@space))}
                 class="size-3.5"
               />
               {heading_kicker(@space, @folder, @members)}
             </p>
+            <div :if={is_nil(@folder) and @manage_space?} class="space-icon-edit" id="space-icon">
+              <form id="space-icon-form" phx-change="set_icon">
+                <Erabi.Components.emoji_picker
+                  id={icon_picker_id(@space.icon)}
+                  name="icon"
+                  value={@space.icon}
+                  options={icon_options(@space.icon)}
+                  label={"#{@space.name}'s icon"}
+                  placeholder="Choose an icon"
+                  clearable={false}
+                >
+                  <:icon :let={name}><Icons.named name={name} class="size-5" /></:icon>
+                </Erabi.Components.emoji_picker>
+              </form>
+              <form id="space-icon-upload" phx-change="icon_upload" class="space-icon-upload">
+                <label class="copy-action">
+                  <.live_file_input upload={@uploads.space_icon} class="sr-only" />
+                  <.icon name="hero-photo" class="size-4" /> Upload an image
+                </label>
+              </form>
+              <button
+                :if={@space.icon}
+                id="space-icon-reset"
+                type="button"
+                class="copy-action"
+                phx-click="set_icon"
+                phx-value-icon=""
+              >
+                <.icon name="hero-arrow-uturn-left" class="size-4" /> Its usual icon
+              </button>
+              <p :for={error <- icon_errors(@uploads.space_icon)} class="field-error" role="alert">
+                {error}
+              </p>
+            </div>
             <h1 :if={not @renaming}>{if @folder, do: @folder.name, else: @space.name}</h1>
             <.form
               :if={@renaming}
@@ -295,6 +341,16 @@ defmodule NotebookWeb.SpaceLive do
                 class="size-4"
               />
               {if @space.closed_to_agents, do: "Off limits to agents", else: "Close to agents"}
+            </button>
+            <button
+              :if={is_nil(@folder) and @space.kind == "team" and @manage_space?}
+              id="space-archive"
+              type="button"
+              class="copy-action"
+              phx-click="archive_space"
+              data-confirm={"Archive #{@space.name}? It leaves the sidebar with its pages, for everyone. Restore it, or delete it for good, from the Archive."}
+            >
+              <.icon name="hero-archive-box" class="size-4" /> Archive space
             </button>
             <button
               :if={@folder && @can_edit?}
@@ -492,6 +548,32 @@ defmodule NotebookWeb.SpaceLive do
   end
 
   @impl true
+  def handle_event("set_icon", %{"icon" => icon}, socket) do
+    %{current_scope: scope, space: space} = socket.assigns
+
+    case Spaces.set_icon(scope, space, icon) do
+      {:ok, space} -> {:noreply, assign(socket, space: space)}
+      {:error, _reason} -> {:noreply, put_flash(socket, :error, "That is not an icon.")}
+    end
+  end
+
+  def handle_event("icon_upload", _params, socket), do: {:noreply, socket}
+
+  def handle_event("archive_space", _params, socket) do
+    %{current_scope: scope, space: space} = socket.assigns
+
+    case Spaces.archive(scope, space) do
+      {:ok, space} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "#{space.name} is in the Archive, with its pages.")
+         |> push_navigate(to: ~p"/archive")}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "You may not archive #{space.name}.")}
+    end
+  end
+
   def handle_event("toggle_agents", _params, socket) do
     %{current_scope: scope, space: space} = socket.assigns
 
@@ -669,4 +751,61 @@ defmodule NotebookWeb.SpaceLive do
        )}
 
   def handle_info(_message, socket), do: {:noreply, socket}
+
+  # The image chosen as the space's icon, stored as soon as it is uploaded.
+  defp icon_progress(:space_icon, entry, socket) do
+    if entry.done? do
+      %{current_scope: scope, space: space} = socket.assigns
+
+      result =
+        consume_uploaded_entry(socket, entry, fn %{path: path} ->
+          {:ok, Spaces.set_icon_image(scope, space, path, entry.client_name)}
+        end)
+
+      case result do
+        {:ok, space} ->
+          {:noreply, assign(socket, space: space)}
+
+        {:error, _reason} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             "That image could not be the icon: use a PNG, JPEG, GIF or WebP."
+           )}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # Erabi's picker ignores LiveView's patches inside it (phx-update="ignore"),
+  # so it never sees the <template> of a new image: a new image is a new
+  # picker, which mounts again with it.
+  defp icon_picker_id("image:" <> url), do: "space-icon-picker-#{:erlang.phash2(url)}"
+  defp icon_picker_id(_icon), do: "space-icon-picker"
+
+  # The notebook's icons, as the emoji picker's second tab; first, the
+  # space's own image, when it has one, so the picker shows it and it can
+  # be chosen again.
+  defp icon_options(icon) do
+    own =
+      case icon do
+        "image:" <> _ -> [%{value: icon, label: "Its image", icon: icon, keywords: ~w(upload)}]
+        _other -> []
+      end
+
+    own ++
+      for {name, label, keywords} <- Spaces.icons(),
+          do: %{value: name, label: label, icon: name, keywords: keywords}
+  end
+
+  defp icon_errors(upload) do
+    errors = upload_errors(upload) ++ Enum.flat_map(upload.entries, &upload_errors(upload, &1))
+    errors |> Enum.uniq() |> Enum.map(&icon_error/1)
+  end
+
+  defp icon_error(:too_large), do: "The image is larger than 2 MB."
+  defp icon_error(:not_accepted), do: "Use a PNG, JPEG, GIF or WebP image."
+  defp icon_error(_error), do: "The image could not be uploaded."
 end

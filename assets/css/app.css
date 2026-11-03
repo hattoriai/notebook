@@ -1272,3 +1272,21 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 /* A small picker in a row of a list or a table: a word and its chevron. */
 .erabi.is-compact { --erabi-field-height: 2rem; --erabi-font-size: 13px; }
 .erabi.is-compact { min-width: 8.5rem; }
+/* A space's own icon: an emoji or an image, the size of the icons beside it. */
+.notebook-icon-emoji { display: inline-grid; place-items: center; flex: none; font-size: 0.95em; line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.notebook-icon-emoji.size-4 { font-size: 15px; }
+.notebook-icon-emoji.size-3\.5 { font-size: 13px; }
+.notebook-icon-image { flex: none; object-fit: cover; border-radius: 3px; }
+/* The Archive's spaces, above its pages. */
+.archive-heading { margin: 8px 0 4px; font: 600 11px ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.archive-spaces { margin-bottom: 24px; }
+.archive-spaces .page-list { margin-bottom: 36px; }
+/* A space's icon, chosen in its heading: an emoji, one of the notebook's, or an image. */
+.space-icon-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 14px 0 -4px; }
+.space-icon-edit .erabi { --erabi-field-height: 2.25rem; min-width: 11rem; }
+.space-icon-upload label { cursor: pointer; }
+.space-icon-edit .field-error { flex-basis: 100%; margin: 0; color: #a3322a; font: 13px ui-sans-serif, system-ui, sans-serif; }
+.space-icon-edit .copy-action { font: 13px ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
+.space-icon-edit .copy-action:hover { color: var(--accent); }
+/* Erabi's own boxes have its focus ring: not the notebook's fields' outline too. */
+.erabi input:focus, .erabi input:focus-visible { outline: none; box-shadow: none; }
