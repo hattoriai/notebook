@@ -95,10 +95,19 @@ defmodule Notebook.Accounts do
     User.registration_changeset(user, attrs, opts)
   end
 
-  def change_user_handle(user, attrs \\ %{}), do: User.handle_changeset(user, attrs)
+  def change_user_handle(user, attrs \\ %{}),
+    do: user |> User.handle_changeset(attrs) |> not_a_slug()
 
   @doc "Changes a person's handle: the paths of the pages they publish change with it."
-  def update_user_handle(user, attrs), do: user |> User.handle_changeset(attrs) |> Repo.update()
+  def update_user_handle(user, attrs), do: user |> change_user_handle(attrs) |> Repo.update()
+
+  # Slugs and handles are one list of names (Notebook.Publishing): a page at
+  # the top of the site and a person's index are at the same level.
+  defp not_a_slug(changeset) do
+    Ecto.Changeset.validate_change(changeset, :handle, fn :handle, handle ->
+      if Notebook.Publishing.slug?(handle), do: [handle: "is a page's address"], else: []
+    end)
+  end
 
   def change_user_name(user, attrs \\ %{}) do
     user

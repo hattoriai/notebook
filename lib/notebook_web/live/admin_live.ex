@@ -8,7 +8,7 @@ defmodule NotebookWeb.AdminLive do
   use NotebookWeb, :live_view
 
   alias Notebook.Accounts.Scope
-  alias Notebook.{Invitations, Storage}
+  alias Notebook.{Invitations, Publishing, Storage}
   alias Notebook.Storage.Usage
 
   @impl true
@@ -22,6 +22,7 @@ defmodule NotebookWeb.AdminLive do
        |> assign(page_title: title(socket.assigns.live_action), config: config, samples: [])
        |> assign_form(Storage.change(config))
        |> assign_joining()
+       |> assign(publishing_form: to_form(Publishing.change_settings(), as: :publishing))
        |> assign_other()
        |> assign_usage()}
     else
@@ -35,6 +36,7 @@ defmodule NotebookWeb.AdminLive do
   defp title(:people), do: "People · Notebook settings"
   defp title(:agents), do: "Agents · Notebook settings"
   defp title(:files), do: "Files · Notebook settings"
+  defp title(:publishing), do: "Publishing · Notebook settings"
 
   defp assign_form(socket, changeset) do
     assign(socket,
@@ -72,6 +74,27 @@ defmodule NotebookWeb.AdminLive do
   defp provider(id), do: Enum.find(Storage.providers(), &(&1.id == id)) || hd(Storage.providers())
 
   @impl true
+  def handle_event("publishing_validate", %{"publishing" => params}, socket) do
+    changeset = params |> Publishing.change_settings() |> Map.put(:action, :validate)
+    {:noreply, assign(socket, publishing_form: to_form(changeset, as: :publishing))}
+  end
+
+  def handle_event("publishing_save", %{"publishing" => params}, socket) do
+    case Publishing.save_settings(socket.assigns.current_scope, params) do
+      {:ok, config} ->
+        {:noreply,
+         socket
+         |> assign(publishing_form: to_form(Publishing.change_settings(), as: :publishing))
+         |> put_flash(:info, "Published pages are read at #{config.url}#{config.prefix} now.")}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply, assign(socket, publishing_form: to_form(changeset, as: :publishing))}
+
+      {:error, :forbidden} ->
+        {:noreply, put_flash(socket, :error, "Only the notebook's admins change its settings.")}
+    end
+  end
+
   def handle_event("validate", %{"storage" => params}, socket) do
     params = fill_region(params, socket.assigns.provider)
     changeset = socket.assigns.config |> Storage.change(params) |> Map.put(:action, :validate)
@@ -327,6 +350,51 @@ defmodule NotebookWeb.AdminLive do
               </label>
             </fieldset>
           </form>
+        </section>
+
+        <section :if={@live_action == :publishing} class="settings-wide" id="publishing">
+          <h2>Where published pages are read</h2>
+          <p>
+            A page or a folder published is for anyone to read, at an address of the
+            notebook's own. It can also be read at a site of yours, beside its own pages, through
+            that site's proxy: see <a
+              href="https://github.com/hattoriai/notebook/blob/main/guides/publishing.md"
+              target="_blank"
+              rel="noopener"
+            >Publishing</a>.
+          </p>
+
+          <.form
+            for={@publishing_form}
+            id="publishing-form"
+            class="settings-form"
+            phx-change="publishing_validate"
+            phx-submit="publishing_save"
+          >
+            <.input
+              field={@publishing_form[:url]}
+              type="text"
+              label="Its site"
+              placeholder={NotebookWeb.Endpoint.url()}
+              autocomplete="off"
+            />
+            <p class="field-hint">Empty, the notebook's own address.</p>
+            <.input
+              field={@publishing_form[:prefix]}
+              type="text"
+              label="Under a path"
+              placeholder="Nothing: at the top of the site"
+              autocomplete="off"
+            />
+            <.input field={@publishing_form[:name]} type="text" label="The site's name" />
+            <p class="publishing-example" id="publishing-example">
+              A page is read at <strong>{example(@publishing_form, nil)}</strong>
+              in a space at the top, and at
+              <strong>{example(@publishing_form, @current_scope.user.handle)}</strong>
+              in a space by person. Each space chooses, on its page.
+            </p>
+            <button class="button button-primary" type="submit">Save</button>
+          </.form>
         </section>
 
         <section :if={@live_action == :files} class="settings-wide" id="storage">
@@ -776,4 +844,20 @@ defmodule NotebookWeb.AdminLive do
   # Where the files of `from` go: the other place.
   defp where_to(Storehouse.Local), do: "the bucket"
   defp where_to(_bucket), do: "this server"
+
+  # Where a page published as "kotoba" is read, with the form's values: at
+  # the top, or under a handle.
+  defp example(form, handle) do
+    url = present(form[:url].value) || NotebookWeb.Endpoint.url()
+    prefix = form[:prefix].value |> to_string() |> String.trim() |> String.trim("/")
+
+    [url, prefix, handle, "kotoba"]
+    |> Enum.reject(&(&1 in [nil, ""]))
+    |> Enum.join("/")
+  end
+
+  defp present(value) when is_binary(value),
+    do: if(String.trim(value) == "", do: nil, else: String.trim(value))
+
+  defp present(_value), do: nil
 end

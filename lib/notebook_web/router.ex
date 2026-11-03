@@ -131,6 +131,7 @@ defmodule NotebookWeb.Router do
       live "/notebook/settings/agents", AdminLive, :agents
       live "/notebook/settings/bots", BotsLive, :index
       live "/notebook/settings/files", AdminLive, :files
+      live "/notebook/settings/publishing", AdminLive, :publishing
     end
 
     post "/users/update-password", UserSessionController, :update_password

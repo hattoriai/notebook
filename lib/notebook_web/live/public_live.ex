@@ -211,12 +211,12 @@ defmodule NotebookWeb.PublicLive do
       <h1>{@page.title}</h1>
       <p class="public-byline">
         <a
-          :if={@page.published_by && Publishing.config().paths == :people}
+          :if={@page.published_by && Publishing.paths_of(@page) == :people}
           href={Publishing.person_url(@page.published_by)}
         >
           {@page.published_by.name}
         </a>
-        <span :if={@page.published_by && Publishing.config().paths == :solo}>{@page.published_by.name}</span>
+        <span :if={@page.published_by && Publishing.paths_of(@page) == :solo}>{@page.published_by.name}</span>
         <span>·</span>
         <time datetime={DateTime.to_iso8601(@page.published_at)}>{Calendar.strftime(
           @page.published_at,
@@ -375,7 +375,7 @@ defmodule NotebookWeb.PublicLive do
     <section class="public-index">
       <p class="eyebrow">
         <a
-          :if={@folder.published_by && Publishing.config().paths == :people}
+          :if={@folder.published_by && Publishing.paths_of(@folder) == :people}
           href={Publishing.person_url(@folder.published_by)}
         >
           {@folder.published_by.name}

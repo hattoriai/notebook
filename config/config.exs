@@ -126,6 +126,10 @@ config :notebook, Oban,
 # Who the notifications' emails are from.
 config :notebook, :email_from, {"Notebook", "notebook@localhost"}
 
+# Erabi's emoji picker fetches its emoji under /assets, a path of the
+# notebook's own, so no page's slug is taken by it (NotebookWeb.Endpoint).
+config :erabi, emoji_url: "/assets/erabi-emoji"
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

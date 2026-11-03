@@ -155,4 +155,76 @@ defmodule Notebook.PublishingTest do
 
     assert url == NotebookWeb.Endpoint.url() <> "/uploads/kotoba/" <> key
   end
+
+  describe "where pages are read: the notebook's settings and each space's choice" do
+    test "the admins keep the site, its prefix and its name", %{scope: scope, kotoba: kotoba} do
+      admin = Scope.for_user(user_fixture(%{name: "Okazaki Masamune", admin: true}))
+
+      assert {:error, :forbidden} = Publishing.save_settings(scope, %{"url" => "https://x.dev"})
+
+      assert {:error, %Ecto.Changeset{}} =
+               Publishing.save_settings(admin, %{"url" => "hattori.ai/libs", "name" => "Hattori"})
+
+      assert {:ok, %{url: "https://hattori.ai", prefix: "", name: "Hattori"}} =
+               Publishing.save_settings(admin, %{
+                 "url" => "https://hattori.ai/",
+                 "name" => "Hattori"
+               })
+
+      {:ok, page} = Publishing.publish(scope, kotoba)
+      assert Publishing.url(page) == "https://hattori.ai/hanzo/kotoba"
+
+      # Saved empty, the address is the notebook's own.
+      {:ok, _} = Publishing.save_settings(admin, %{"url" => "", "name" => "Notebook"})
+      assert Publishing.url(page) == NotebookWeb.Endpoint.url() <> "/hanzo/kotoba"
+    end
+
+    test "a space's pages at the top, another's under a handle, both read", %{
+      hanzo: hanzo,
+      scope: scope,
+      kotoba: kotoba
+    } do
+      {:ok, oss} = Spaces.create_team(scope, %{name: "OSS"})
+      {:ok, oss} = Spaces.set_publish_paths(scope, oss, "solo")
+      {:ok, jumon} = Pages.create(scope, %{"title" => "Jumon", "space_id" => oss.id})
+
+      {:ok, jumon} = Publishing.publish(scope, jumon)
+      {:ok, kotoba} = Publishing.publish(scope, kotoba)
+
+      assert Publishing.path(jumon) == "/jumon"
+      assert Publishing.path(kotoba) == "/hanzo/kotoba"
+      assert {:page, %{id: id}} = Publishing.resolve(["jumon"])
+      assert id == jumon.id
+      assert {:page, _} = Publishing.resolve(["hanzo", "kotoba"])
+      assert {:redirect, "/jumon"} = Publishing.resolve(["hanzo", "jumon"])
+
+      # A person's index has their pages by person, not those at the top.
+      assert {:person, _, %{pages: [%{title: "Kotoba"}]}} = Publishing.resolve([hanzo.handle])
+    end
+
+    test "only its admins choose", %{yuki: yuki, scope: scope} do
+      {:ok, oss} = Spaces.create_team(scope, %{name: "OSS"})
+      {:ok, _} = Spaces.add_member(scope, oss, yuki, "editor")
+      assert {:error, _} = Spaces.set_publish_paths(Scope.for_user(yuki), oss, "solo")
+    end
+
+    test "slugs and handles are one list of names", %{
+      hanzo: hanzo,
+      yuki: yuki,
+      scope: scope,
+      kotoba: kotoba
+    } do
+      assert {:error, "“" <> _} = Publishing.publish(scope, kotoba, yuki.handle)
+
+      {:ok, _} = Publishing.publish(scope, kotoba, "kotoba")
+
+      assert {:error, changeset} =
+               Notebook.Accounts.update_user_handle(hanzo, %{handle: "kotoba"})
+
+      assert "is a page's address" in errors_on(changeset).handle
+
+      # A new person's handle steps around a slug.
+      assert Publishing.free_handle("Ana Kotoba") == "kotoba-2"
+    end
+  end
 end

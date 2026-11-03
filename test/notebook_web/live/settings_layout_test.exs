@@ -22,7 +22,8 @@ defmodule NotebookWeb.SettingsLayoutTest do
           {~p"/notebook/settings/people", "people", "#joining", "#connecting"},
           {~p"/notebook/settings/agents", "agents", "#connecting", "#joining"},
           {~p"/notebook/settings/bots", "bots", "#bots-list", "#joining"},
-          {~p"/notebook/settings/files", "files", "#storage", "#connecting"}
+          {~p"/notebook/settings/files", "files", "#storage", "#connecting"},
+          {~p"/notebook/settings/publishing", "publishing", "#publishing-form", "#storage"}
         ] do
       {:ok, view, _html} = live(conn, path)
       assert has_element?(view, "#settings-nav-#{current}[aria-current=page]")
@@ -63,5 +64,26 @@ defmodule NotebookWeb.SettingsLayoutTest do
     for path <- ["/admin", "/bots", "/users/settings"] do
       assert_error_sent 404, fn -> get(conn, path) end
     end
+  end
+
+  test "an admin keeps where published pages are read", %{conn: conn, admin: admin} do
+    {:ok, view, _html} = live(log_in_user(conn, admin), ~p"/notebook/settings/publishing")
+
+    view
+    |> form("#publishing-form",
+      publishing: %{url: "https://hattori.ai", prefix: "", name: "Hattori"}
+    )
+    |> render_change()
+
+    assert has_element?(view, "#publishing-example", "https://hattori.ai/kotoba")
+
+    view
+    |> form("#publishing-form",
+      publishing: %{url: "https://hattori.ai", prefix: "", name: "Hattori"}
+    )
+    |> render_submit()
+
+    assert Notebook.Publishing.config().url == "https://hattori.ai"
+    assert Notebook.Publishing.config().name == "Hattori"
   end
 end

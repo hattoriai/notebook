@@ -215,6 +215,20 @@ defmodule Notebook.Spaces do
 
   defp discard_image(_old, _new), do: :ok
 
+  ## Publishing
+
+  @doc """
+  Where the space's published pages are read: `"people"` under their
+  publisher's handle (`/freitas/notes`), `"solo"` at the top of the site
+  (`/kotoba`), or `nil` for the notebook's default. Its admins may, and the
+  notebook's.
+  """
+  def set_publish_paths(scope, %Space{} = space, paths) when paths in ["people", "solo", nil] do
+    with :ok <- authorize_manage(scope, space) do
+      space |> Ecto.Changeset.change(publish_paths: paths) |> Repo.update() |> changed()
+    end
+  end
+
   ## The Archive
 
   @doc """
