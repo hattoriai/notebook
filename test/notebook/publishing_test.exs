@@ -50,13 +50,13 @@ defmodule Notebook.PublishingTest do
 
     {:ok, page} = Publishing.publish(scope, kotoba)
     assert page.slug == "kotoba"
-    assert Publishing.url(page) == NotebookWeb.Endpoint.url() <> "/hanzo/kotoba"
-    assert {:page, %{id: id}} = Publishing.resolve(["hanzo", "kotoba"])
+    assert Publishing.url(page) == NotebookWeb.Endpoint.url() <> "/the-forge/kotoba"
+    assert {:page, %{id: id}} = Publishing.resolve(["the-forge", "kotoba"])
     assert id == kotoba.id
 
     {:ok, page} = Publishing.unpublish(scope, page)
     assert page.slug == "kotoba"
-    assert Publishing.resolve(["hanzo", "kotoba"]) == :not_found
+    assert Publishing.resolve(["the-forge", "kotoba"]) == :not_found
   end
 
   test "a slug is free, and no path of the notebook", %{scope: scope, kotoba: kotoba, day: day} do
@@ -80,31 +80,64 @@ defmodule Notebook.PublishingTest do
     day: day
   } do
     {:ok, journal} = Publishing.publish(scope, journal)
-    assert {:blog, _, []} = Publishing.resolve(["hanzo", "journal"])
+    assert {:blog, _, []} = Publishing.resolve(["the-forge", "journal"])
 
     {:ok, day} = Publishing.publish(scope, day)
-    assert Publishing.path(day) == "/hanzo/journal/day-one-without-steel"
+    assert Publishing.path(day) == "/the-forge/journal/day-one-without-steel"
 
     assert {:blog, _, [%{title: "Day one without steel"}]} =
-             Publishing.resolve(["hanzo", "journal"])
+             Publishing.resolve(["the-forge", "journal"])
 
-    assert {:redirect, "/hanzo/journal/day-one-without-steel"} =
-             Publishing.resolve(["hanzo", "day-one-without-steel"])
+    assert {:redirect, "/the-forge/journal/day-one-without-steel"} =
+             Publishing.resolve(["the-forge", "day-one-without-steel"])
 
-    assert {:feed, folder, posts} = Publishing.resolve(["hanzo", "journal", "feed.xml"])
+    assert {:feed, folder, posts} = Publishing.resolve(["the-forge", "journal", "feed.xml"])
     feed = Publishing.feed(folder, posts)
     assert feed =~ "<title>Day one without steel</title>"
-    assert feed =~ "/hanzo/journal/day-one-without-steel</link>"
-    assert Publishing.feed_url(journal) =~ "/hanzo/journal/feed.xml"
+    assert feed =~ "/the-forge/journal/day-one-without-steel</link>"
+    assert Publishing.feed_url(journal) =~ "/the-forge/journal/feed.xml"
   end
 
-  test "a person's handle is their index", %{scope: scope, hanzo: hanzo, kotoba: kotoba} do
-    {:ok, _} = Publishing.publish(scope, kotoba)
+  test "a person's handle is the index of their Private space's pages", %{
+    scope: scope,
+    hanzo: hanzo,
+    kotoba: kotoba
+  } do
+    {:ok, note} =
+      Pages.create(scope, %{"title" => "A note", "space_id" => Spaces.private!(hanzo).id})
 
-    assert {:person, %{id: id}, %{pages: [%{title: "Kotoba"}], blogs: []}} =
+    {:ok, note} = Publishing.publish(scope, note)
+    {:ok, _} = Publishing.publish(scope, kotoba)
+    assert Publishing.path(note) == "/hanzo/a-note"
+
+    assert {:person, %{id: id}, %{pages: [%{title: "A note"}], blogs: []}} =
              Publishing.resolve(["hanzo"])
 
     assert id == hanzo.id
+  end
+
+  test "a space's slug is its index, and its admins change it", %{
+    scope: scope,
+    yuki: yuki,
+    kotoba: kotoba
+  } do
+    {:ok, page} = Publishing.publish(scope, kotoba)
+    forge = Spaces.get!(scope, page.space_id)
+    assert forge.slug == "the-forge"
+    assert {:space, _, %{pages: [%{title: "Kotoba"}]}} = Publishing.resolve(["the-forge"])
+
+    assert {:error, _} = Spaces.set_slug(Scope.for_user(yuki), forge, "forge")
+    assert {:error, "“hanzo” is someone's handle" <> _} = Spaces.set_slug(scope, forge, "hanzo")
+    assert {:error, "A page is published as" <> _} = Spaces.set_slug(scope, forge, "kotoba")
+    assert {:ok, forge} = Spaces.set_slug(scope, forge, "forge")
+
+    assert Publishing.path(page) == "/forge/kotoba"
+    assert {:redirect, "/forge/kotoba"} = Publishing.resolve(["the-forge", "kotoba"])
+
+    # A Private space's pages are always under its person's handle.
+    assert {:error, :fixed} = Spaces.set_slug(scope, Spaces.private!(scope.user), "mine")
+    assert {:error, :fixed} = Spaces.set_publish_paths(scope, Spaces.private!(scope.user), "solo")
+    assert forge.slug == "forge"
   end
 
   test "under a prefix, at another address, or the notebook's alone", %{
@@ -113,8 +146,8 @@ defmodule Notebook.PublishingTest do
   } do
     Application.put_env(:notebook, :publishing, url: "https://hattori.ai", prefix: "/libs")
     {:ok, page} = Publishing.publish(scope, kotoba)
-    assert Publishing.url(page) == "https://hattori.ai/libs/hanzo/kotoba"
-    assert {:page, _} = Publishing.resolve(["libs", "hanzo", "kotoba"])
+    assert Publishing.url(page) == "https://hattori.ai/libs/the-forge/kotoba"
+    assert {:page, _} = Publishing.resolve(["libs", "the-forge", "kotoba"])
 
     Application.put_env(:notebook, :publishing,
       url: "https://hattori.ai",
@@ -124,7 +157,7 @@ defmodule Notebook.PublishingTest do
 
     assert Publishing.url(page) == "https://hattori.ai/libs/kotoba"
     assert {:page, _} = Publishing.resolve(["libs", "kotoba"])
-    assert {:redirect, "/libs/kotoba"} = Publishing.resolve(["libs", "hanzo", "kotoba"])
+    assert {:redirect, "/libs/kotoba"} = Publishing.resolve(["libs", "the-forge", "kotoba"])
 
     assert Publishing.origin?(URI.parse("https://hattori.ai"))
     refute Publishing.origin?(URI.parse("https://elsewhere.example"))
@@ -172,11 +205,11 @@ defmodule Notebook.PublishingTest do
                })
 
       {:ok, page} = Publishing.publish(scope, kotoba)
-      assert Publishing.url(page) == "https://hattori.ai/hanzo/kotoba"
+      assert Publishing.url(page) == "https://hattori.ai/the-forge/kotoba"
 
       # Saved empty, the address is the notebook's own.
       {:ok, _} = Publishing.save_settings(admin, %{"url" => "", "name" => "Notebook"})
-      assert Publishing.url(page) == NotebookWeb.Endpoint.url() <> "/hanzo/kotoba"
+      assert Publishing.url(page) == NotebookWeb.Endpoint.url() <> "/the-forge/kotoba"
     end
 
     test "a space's pages at the top, another's under a handle, both read", %{
@@ -192,14 +225,15 @@ defmodule Notebook.PublishingTest do
       {:ok, kotoba} = Publishing.publish(scope, kotoba)
 
       assert Publishing.path(jumon) == "/jumon"
-      assert Publishing.path(kotoba) == "/hanzo/kotoba"
+      assert Publishing.path(kotoba) == "/the-forge/kotoba"
       assert {:page, %{id: id}} = Publishing.resolve(["jumon"])
       assert id == jumon.id
-      assert {:page, _} = Publishing.resolve(["hanzo", "kotoba"])
-      assert {:redirect, "/jumon"} = Publishing.resolve(["hanzo", "jumon"])
+      assert {:page, _} = Publishing.resolve(["the-forge", "kotoba"])
+      assert {:redirect, "/jumon"} = Publishing.resolve(["the-forge", "jumon"])
 
-      # A person's index has their pages by person, not those at the top.
-      assert {:person, _, %{pages: [%{title: "Kotoba"}]}} = Publishing.resolve([hanzo.handle])
+      # A space's index has its pages; a person's, those of their Private space.
+      assert {:space, _, %{pages: [%{title: "Kotoba"}]}} = Publishing.resolve(["the-forge"])
+      assert {:person, _, %{pages: []}} = Publishing.resolve([hanzo.handle])
     end
 
     test "only its admins choose", %{yuki: yuki, scope: scope} do

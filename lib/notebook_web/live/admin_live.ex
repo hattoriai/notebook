@@ -388,10 +388,8 @@ defmodule NotebookWeb.AdminLive do
             />
             <.input field={@publishing_form[:name]} type="text" label="The site's name" />
             <p class="publishing-example" id="publishing-example">
-              A page is read at <strong>{example(@publishing_form, nil)}</strong>
-              in a space at the top, and at
-              <strong>{example(@publishing_form, @current_scope.user.handle)}</strong>
-              in a space by person. Each space chooses, on its page.
+              A page of your Private space is read at <strong>{example(@publishing_form, @current_scope.user.handle)}</strong>; one of a
+              team space, under the space's name, such as <strong>{example(@publishing_form, "open-source")}</strong>, or at the top, <strong>{example(@publishing_form, nil)}</strong>, as its admins choose on its page.
             </p>
             <button class="button button-primary" type="submit">Save</button>
           </.form>
