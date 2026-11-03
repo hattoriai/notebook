@@ -91,8 +91,8 @@ defmodule NotebookWeb.AgentsLive do
             <div class="agent-connected-head">
               <.icon name="hero-check-circle" class="size-5" />
               <div>
-                <strong>{@connected.agent.name} is connected</strong>
-                <p>Copy its address now: it holds the agent's token, which is not shown again.</p>
+                <strong>{@connected.agent.name} is ready</strong>
+                <p>Copy its address now and add it to your agent: its token is not shown again.</p>
               </div>
             </div>
             <div class="agent-address">
@@ -157,6 +157,11 @@ defmodule NotebookWeb.AgentsLive do
 
           <section class="agent-new" id="agent-new">
             <h2>Connect an agent</h2>
+            <p id="agent-new-help" class="agent-new-help">
+              Connect gives you an address with a token, shown once. Add it to Claude Code or Codex:
+              every session there then works here as this agent. Nothing runs until you do, and
+              Revoke stops it.
+            </p>
             <.form
               for={@form}
               id="agent-form"
