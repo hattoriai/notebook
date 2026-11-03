@@ -10,12 +10,6 @@
 #   NOTEBOOK_IMAGE   the image, in your registry (required)
 #   NOTEBOOK_REGISTRY  the registry (default ghcr.io)
 #   NOTEBOOK_SSH_USER  the SSH user (default root)
-#
-# And, to read published pages at a site of your own (guides/publishing.md):
-#   NOTEBOOK_PUBLISH_URL     the site, such as https://example.com
-#   NOTEBOOK_PUBLISH_PREFIX  the path its proxy sends to the notebook, such as /notes
-#   NOTEBOOK_PUBLISH_PATHS   solo, for /kotoba without a person's handle
-#   NOTEBOOK_SITE_NAME       the site's name, in the pages and the feeds
 
 service: notebook
 image: <%= ENV.fetch("NOTEBOOK_IMAGE") %>
@@ -51,11 +45,6 @@ env:
   clear:
     PHX_HOST: <%= ENV.fetch("NOTEBOOK_HOST") %>
     PORT: "4000"
-<% %w(NOTEBOOK_PUBLISH_URL NOTEBOOK_PUBLISH_PREFIX NOTEBOOK_PUBLISH_PATHS NOTEBOOK_SITE_NAME).each do |name| %>
-<% if ENV[name].to_s != "" %>
-    <%= name %>: "<%= ENV[name] %>"
-<% end %>
-<% end %>
   secret:
     - SECRET_KEY_BASE
     - NOTEBOOK_VAULT_KEY

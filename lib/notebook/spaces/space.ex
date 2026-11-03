@@ -22,6 +22,10 @@ defmodule Notebook.Spaces.Space do
     # In the Archive, with its pages: out of the sidebar, the lists and the
     # search, for everyone, until it is restored or deleted for good.
     field :archived_at, :utc_datetime
+    # Where its published pages are read: "people" under their publisher's
+    # handle (/freitas/notes), "solo" at the top (/kotoba), nil the
+    # notebook's default (Notebook.Publishing).
+    field :publish_paths, :string
     belongs_to :owner, Notebook.Accounts.User
     has_many :members, Notebook.Spaces.Member
     has_many :folders, Notebook.Spaces.Folder

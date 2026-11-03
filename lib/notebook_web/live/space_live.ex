@@ -363,6 +363,26 @@ defmodule NotebookWeb.SpaceLive do
             </button>
           </div>
 
+          <form
+            :if={is_nil(@folder) and @manage_space?}
+            id="space-publishing"
+            class="space-publishing"
+            phx-change="set_publish_paths"
+          >
+            <span id="space-publishing-label" class="space-publishing-label">
+              <.icon name="hero-globe-alt" class="size-4" /> Its published pages
+            </span>
+            <Erabi.Components.select
+              id="space-publishing-paths"
+              name="paths"
+              value={to_string(Notebook.Publishing.paths_of(@space))}
+              options={publish_options(@current_scope)}
+              label_id="space-publishing-label"
+              clearable={false}
+              class="is-compact"
+            />
+          </form>
+
           <.form
             :if={@folder_form}
             for={@folder_form}
@@ -558,6 +578,16 @@ defmodule NotebookWeb.SpaceLive do
   end
 
   def handle_event("icon_upload", _params, socket), do: {:noreply, socket}
+
+  def handle_event("set_publish_paths", %{"paths" => paths}, socket)
+      when paths in ~w(people solo) do
+    %{current_scope: scope, space: space} = socket.assigns
+
+    case Spaces.set_publish_paths(scope, space, paths) do
+      {:ok, space} -> {:noreply, assign(socket, space: space)}
+      {:error, _reason} -> {:noreply, put_flash(socket, :error, "You may not change this.")}
+    end
+  end
 
   def handle_event("archive_space", _params, socket) do
     %{current_scope: scope, space: space} = socket.assigns
@@ -808,4 +838,15 @@ defmodule NotebookWeb.SpaceLive do
   defp icon_error(:too_large), do: "The image is larger than 2 MB."
   defp icon_error(:not_accepted), do: "Use a PNG, JPEG, GIF or WebP image."
   defp icon_error(_error), do: "The image could not be uploaded."
+
+  # Where a space's published pages are read, with the site's real address.
+  defp publish_options(scope) do
+    %{url: url, prefix: prefix} = Notebook.Publishing.config()
+    site = URI.parse(url).host <> prefix
+
+    [
+      {"Under each person's handle: #{site}/#{scope.user.handle}/…", "people"},
+      {"At the top of the site: #{site}/…", "solo"}
+    ]
+  end
 end

@@ -53,6 +53,19 @@ defmodule NotebookWeb.SpaceArchiveLiveTest do
     assert html =~ "data-confirm="
   end
 
+  test "its admin chooses where its published pages are read", %{conn: conn, forge: forge} do
+    {:ok, view, _html} = live(conn, ~p"/spaces/#{forge.id}")
+    assert has_element?(view, "#space-publishing .erabi")
+
+    view |> form("#space-publishing") |> render_change(%{"paths" => "solo"})
+    assert Notebook.Repo.get!(Notebook.Spaces.Space, forge.id).publish_paths == "solo"
+  end
+
+  test "the emoji are under /assets, and no library's name is a notebook path", %{conn: conn} do
+    assert conn |> get("/assets/erabi-emoji/emoji-en.json") |> response(200) =~ "grinning"
+    refute "erabi" in Notebook.Publishing.reserved()
+  end
+
   test "an editor neither chooses its icon nor archives it", %{
     conn: conn,
     yuki: yuki,
@@ -61,6 +74,7 @@ defmodule NotebookWeb.SpaceArchiveLiveTest do
     {:ok, view, _html} = live(log_in_user(conn, yuki), ~p"/spaces/#{forge.id}")
     refute has_element?(view, "#space-icon")
     refute has_element?(view, "#space-archive")
+    refute has_element?(view, "#space-publishing")
   end
 
   test "archived from its page, then restored, then deleted for good", %{

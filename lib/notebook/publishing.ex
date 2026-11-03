@@ -4,15 +4,19 @@ defmodule Notebook.Publishing do
   publish it, under a slug; a folder published is a blog of its published
   pages, with an RSS feed.
 
-  The paths are by person, `/hanzo/kotoba` (a team's notebook), or the
-  notebook's alone, `/kotoba` (one person's); never with an `@`. They may
+  Each space chooses its paths (`Spaces.set_publish_paths/3`): by person,
+  `/hanzo/notes`, or at the top, `/kotoba`; never with an `@`. Slugs and
+  handles are one list of names, so no path means two things. They may
   sit under a prefix, and be read at another address: a site's own, whose
   proxy (a Cloudflare Worker) sends the prefix to the notebook.
+
+  The notebook's admins choose them in Notebook settings → Publishing
+  (`save_settings/2`). The app's config gives the values until then:
 
       config :notebook, :publishing,
         url: "https://hattori.ai",   # where readers read (the notebook's own by default)
         prefix: "/libs",             # what the proxy sends to the notebook ("" by default)
-        paths: :people,              # /hanzo/kotoba, or :solo for /kotoba
+        paths: :people,              # the spaces' default: /hanzo/kotoba, or :solo for /kotoba
         name: "Hattori"              # the site's name, in the pages and the feeds
 
   A public page's HTML goes through the proxy; its styles, scripts, files
@@ -25,26 +29,107 @@ defmodule Notebook.Publishing do
   alias Notebook.Pages.Page
   alias Notebook.Spaces.Folder
   alias Notebook.{Pages, Repo, Spaces}
+  alias Notebook.Storage.Setting
+
+  @setting "publishing"
 
   # The first words of the notebook's own paths: no handle or slug at the
   # top takes them.
-  @reserved ~w(account admin agents api archive assets bots dev erabi favicon.ico feed fonts images inbox issho live
+  @reserved ~w(account admin agents api archive assets bots dev favicon.ico feed fonts images inbox issho live
                login logout made-with mcp notebook notifications oauth pages phoenix public robots.txt settings spaces
                up uploads users)
 
   @doc "The words no handle or slug takes: the notebook's own paths."
   def reserved, do: @reserved
 
-  @doc "The publishing config, with its defaults."
+  @doc """
+  The publishing config: the admins' settings, else the app's config,
+  else the notebook's own address, by person, named "Notebook".
+  """
   def config do
-    config = Application.get_env(:notebook, :publishing, [])
+    app = Application.get_env(:notebook, :publishing, [])
+    saved = settings()
 
     %{
-      url: config[:url] || NotebookWeb.Endpoint.url(),
-      prefix: config[:prefix] |> to_string() |> String.trim_trailing("/"),
-      paths: if(config[:paths] == :solo, do: :solo, else: :people),
-      name: config[:name] || "Notebook"
+      # Saved empty, it is the notebook's own address, whatever the app's config says.
+      url:
+        if(Map.has_key?(saved, "url"), do: present(saved["url"]), else: present(app[:url])) ||
+          NotebookWeb.Endpoint.url(),
+      prefix: (saved["prefix"] || app[:prefix]) |> to_string() |> String.trim_trailing("/"),
+      # The spaces' default; each space may choose its own (paths_of/1).
+      paths: if(app[:paths] == :solo, do: :solo, else: :people),
+      name: present(saved["name"]) || present(app[:name]) || "Notebook"
     }
+  end
+
+  defp settings do
+    case Repo.get(Setting, @setting) do
+      %Setting{value: value} when is_map(value) -> value
+      nil -> %{}
+    end
+  end
+
+  defp present(value) when is_binary(value) and value != "", do: value
+  defp present(_value), do: nil
+
+  @settings_types %{url: :string, prefix: :string, name: :string}
+
+  @doc "A form of the publishing settings, as they are now (or with `attrs`)."
+  def change_settings(attrs \\ %{}) do
+    %{url: url, prefix: prefix, name: name} = config()
+    own = NotebookWeb.Endpoint.url()
+
+    {%{url: if(url == own, do: "", else: url), prefix: prefix, name: name}, @settings_types}
+    |> Ecto.Changeset.cast(attrs, Map.keys(@settings_types), empty_values: [])
+    |> Ecto.Changeset.update_change(:url, &(&1 |> String.trim() |> String.trim_trailing("/")))
+    |> Ecto.Changeset.update_change(:prefix, &normalize_prefix/1)
+    |> Ecto.Changeset.update_change(:name, &String.trim/1)
+    |> Ecto.Changeset.validate_required([:name])
+    |> Ecto.Changeset.validate_length(:name, max: 60)
+    |> Ecto.Changeset.validate_format(:url, ~r{\A(https?://[a-z0-9.-]+(:\d+)?)?\z}i,
+      message: "is an address such as https://example.com, without a path"
+    )
+    |> Ecto.Changeset.validate_format(:prefix, ~r{\A(/[a-z0-9-]+)*\z},
+      message: "is a path such as /notes, or nothing"
+    )
+  end
+
+  defp normalize_prefix(prefix) do
+    case prefix |> String.trim() |> String.trim("/") do
+      "" -> ""
+      path -> "/" <> path
+    end
+  end
+
+  @doc """
+  Keeps the publishing settings: where published pages are read, their
+  prefix, and the site's name. The notebook's
+  admins may. An empty address is the notebook's own.
+  """
+  def save_settings(scope, attrs) do
+    changeset = change_settings(attrs)
+
+    cond do
+      not Scope.admin?(scope) ->
+        {:error, :forbidden}
+
+      not changeset.valid? ->
+        {:error, Map.put(changeset, :action, :validate)}
+
+      true ->
+        value =
+          changeset
+          |> Ecto.Changeset.apply_changes()
+          |> Map.new(fn {key, value} -> {to_string(key), value} end)
+          |> Map.put("saved_by", scope.user.id)
+
+        Repo.insert!(%Setting{key: @setting, value: value},
+          on_conflict: [set: [value: value, updated_at: DateTime.utc_now(:second)]],
+          conflict_target: :key
+        )
+
+        {:ok, config()}
+    end
   end
 
   ## Slugs and handles
@@ -66,8 +151,20 @@ defmodule Notebook.Publishing do
   def free_handle(name) do
     base = name |> to_string() |> String.split() |> List.last() |> slugify()
     base = if String.length(base) < 2 or base in @reserved, do: "person", else: base
-    free(base, fn handle -> Repo.exists?(from u in User, where: u.handle == ^handle) end)
+    free(base, &(handle?(&1) or slug?(&1)))
   end
+
+  defp handle?(name), do: Repo.exists?(from u in User, where: u.handle == ^name)
+
+  @doc """
+  Whether a page or a folder has `name` as its slug: a handle may not, as
+  slugs and handles are one list of names (a page at the top, `/kotoba`,
+  and a person's index, `/freitas`, at the same level).
+  """
+  def slug?(name),
+    do:
+      Repo.exists?(from p in Page, where: p.slug == ^name) or
+        Repo.exists?(from f in Folder, where: f.slug == ^name)
 
   defp free(base, taken?) do
     Stream.iterate(1, &(&1 + 1))
@@ -94,6 +191,9 @@ defmodule Notebook.Publishing do
       slug_taken?(slug, resource) ->
         {:error, "Another page or folder is published as “#{slug}”."}
 
+      handle?(slug) ->
+        {:error, "“#{slug}” is someone's handle: choose another."}
+
       true ->
         :ok
     end
@@ -105,7 +205,7 @@ defmodule Notebook.Publishing do
   def suggest_slug(resource) do
     base = resource |> title() |> slugify()
     base = if base == "" or base in @reserved, do: "page", else: base
-    free(base, &slug_taken?(&1, resource))
+    free(base, &(slug_taken?(&1, resource) or handle?(&1)))
   end
 
   defp title(%Page{title: title}), do: title
@@ -164,13 +264,37 @@ defmodule Notebook.Publishing do
   """
   def path(resource) do
     resource = Repo.preload(resource, [:published_by, folder_of(resource)], force: true)
-    %{prefix: prefix, paths: paths} = config()
+    %{prefix: prefix} = config()
 
     words =
-      [paths == :people && resource.published_by && resource.published_by.handle] ++
+      [paths_of(resource) == :people && resource.published_by && resource.published_by.handle] ++
         blog_words(resource) ++ [resource.slug]
 
     prefix <> "/" <> Enum.join(Enum.filter(words, & &1), "/")
+  end
+
+  @doc """
+  Whether its space's pages are read by person (`:people`, under their
+  publisher's handle) or at the top (`:solo`): the space's choice, else
+  the notebook's default.
+  """
+  def paths_of(%{space_id: space_id}) when is_integer(space_id) do
+    case Repo.one(from s in Spaces.Space, where: s.id == ^space_id, select: s.publish_paths) do
+      "solo" -> :solo
+      "people" -> :people
+      _default -> config().paths
+    end
+  end
+
+  def paths_of(_resource), do: config().paths
+
+  # The spaces whose pages are read at the top: not on a person's index.
+  defp solo_spaces do
+    default_solo? = config().paths == :solo
+
+    from s in Spaces.Space,
+      where: s.publish_paths == "solo" or (^default_solo? and is_nil(s.publish_paths)),
+      select: s.id
   end
 
   defp folder_of(%Page{}), do: :folder
@@ -216,10 +340,9 @@ defmodule Notebook.Publishing do
     end
   end
 
-  # A person's handle alone, by person: their published pages and blogs.
+  # A person's handle alone: their published pages and blogs of the spaces by person.
   defp person([handle], false) do
-    with :people <- config().paths,
-         %User{} = user <- Repo.get_by(User, handle: handle) do
+    with %User{} = user <- Repo.get_by(User, handle: handle) do
       {:person, user, by(user)}
     else
       _ -> :page
@@ -237,6 +360,7 @@ defmodule Notebook.Publishing do
           where:
             p.published_by_id == ^id and not is_nil(p.published_at) and is_nil(p.archived_at),
           where: is_nil(f.published_at),
+          where: p.space_id not in subquery(solo_spaces()),
           order_by: [desc: p.published_at],
           preload: [:published_by, :folder]
       )
@@ -245,6 +369,7 @@ defmodule Notebook.Publishing do
       Repo.all(
         from f in Folder,
           where: f.published_by_id == ^id and not is_nil(f.published_at),
+          where: f.space_id not in subquery(solo_spaces()),
           order_by: [desc: f.published_at],
           preload: :published_by
       )

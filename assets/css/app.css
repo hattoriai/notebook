@@ -1302,3 +1302,9 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 .confirm-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .confirm-dialog .button.is-danger { background: #933126; border-color: #933126; color: #fffaf5; }
 .confirm-dialog .button.is-danger:hover { background: #7a281f; border-color: #7a281f; }
+.publishing-example { margin: 4px 0 0; padding: 12px 14px; background: #fcfbf7; border: 1px solid var(--rule); color: var(--muted); font: 13px/1.5 ui-sans-serif, system-ui, sans-serif; overflow-wrap: anywhere; }
+.publishing-example strong { color: var(--ink); }
+/* Where a space's published pages are read (its admins choose). */
+.space-publishing { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 18px 0 0; }
+.space-publishing-label { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font: 13px ui-sans-serif, system-ui, sans-serif; }
+.space-publishing .erabi { min-width: 26rem; max-width: 100%; }

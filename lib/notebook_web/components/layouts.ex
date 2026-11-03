@@ -177,7 +177,8 @@ defmodule NotebookWeb.Layouts do
       {:people, "People", "hero-user-group", ~p"/notebook/settings/people"},
       {:agents, "Agents", "notebook-robot", ~p"/notebook/settings/agents"},
       {:bots, "Bots", "hero-sparkles", ~p"/notebook/settings/bots"},
-      {:files, "Files", "hero-folder", ~p"/notebook/settings/files"}
+      {:files, "Files", "hero-folder", ~p"/notebook/settings/files"},
+      {:publishing, "Publishing", "hero-globe-alt", ~p"/notebook/settings/publishing"}
     ]
   end
 

@@ -24,8 +24,9 @@ defmodule NotebookWeb.Endpoint do
 
   socket "/issho/socket", NotebookWeb.CollabSocket, websocket: [max_frame_size: 1_000_000]
 
-  # The emoji of Erabi's picker (a space's icon), a file of the page's language.
-  plug Plug.Static, at: "/erabi/emoji", from: {:erabi, "priv/emoji"}, gzip: true
+  # The emoji of Erabi's picker (a space's icon), a file of the page's
+  # language: under /assets, a path of the notebook's own (config :erabi).
+  plug Plug.Static, at: "/assets/erabi-emoji", from: {:erabi, "priv/emoji"}, gzip: true
 
   # Serve at "/" the static files from "priv/static" directory.
   #
