@@ -18,6 +18,8 @@ defmodule NotebookWeb.PageHTML do
     {"masu", "Masu", "Tables", "Tables of tasks, edited cell by cell."},
     {"cardbox", "Cardbox", "Collections", "Databases of records, with the fields you give them."},
     {"koyomi", "Koyomi", "Dates", "The dates of pages and tasks."},
+    {"erabi", "Erabi", "Pickers",
+     "Every choice in a list: roles, people, places, models, and when you hear of things."},
     {"jumon", "Jumon", "Commands", "The command palette (⌘K): pages, spaces and actions."},
     {"fude", "Fude", "Charts", "Charts of a page's numbers."},
     {"narabe", "Narabe", "Ordering",

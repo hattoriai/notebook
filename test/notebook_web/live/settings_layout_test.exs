@@ -47,6 +47,11 @@ defmodule NotebookWeb.SettingsLayoutTest do
       refute has_element?(view, hidden)
     end
 
+    # The notifications are Erabi's pickers: no browser <select> but theirs.
+    {:ok, view, _html} = live(conn, ~p"/account/settings/notifications")
+    assert has_element?(view, "#notifications .erabi")
+    refute has_element?(view, "select:not(.erabi-native)")
+
     # The account's nav has no notebook settings.
     {:ok, view, _html} = live(conn, ~p"/account/settings")
     refute has_element?(view, "#settings-nav-files")

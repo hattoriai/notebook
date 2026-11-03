@@ -99,7 +99,20 @@ defmodule NotebookWeb.UserLive.Settings do
             What you hear of, in your Inbox and by email. An email waits ten minutes,
             and doesn't go if you read the notification first.
           </p>
-          <Chime.Components.preferences id="notifications" chime={@chime} />
+          <Chime.Components.preferences id="notifications" chime={@chime}>
+            <:setting :let={control}>
+              <Erabi.Components.select
+                id={control.id}
+                name={control.name}
+                value={control.value}
+                options={control.options}
+                label={control.label}
+                disabled={control.disabled}
+                clearable={false}
+                class="is-compact"
+              />
+            </:setting>
+          </Chime.Components.preferences>
         </section>
       </div>
     </Layouts.settings>

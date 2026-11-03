@@ -752,16 +752,16 @@ defmodule NotebookWeb.NotebookLive do
             phx-submit="create"
             class="page-form"
           >
-            <label for="page_place" class="field-label">In</label>
-            <select id="page_place" name="page[place]" class="page-place">
-              <option
-                :for={{label, space_id, folder_id} <- @places}
-                value={"#{space_id}:#{folder_id}"}
-                selected={{label, space_id, folder_id} == @place}
-              >
-                {label}
-              </option>
-            </select>
+            <label id="page_place-label" class="field-label">In</label>
+            <Erabi.Components.select
+              id="page_place"
+              name="page[place]"
+              value={place_value(@place)}
+              options={for {label, _s, _f} = place <- @places, do: {label, place_value(place)}}
+              label_id="page_place-label"
+              clearable={false}
+              class="page-place"
+            />
             <fieldset class="page-kinds">
               <legend class="field-label">A page of</legend>
               <label :for={{kind, name, hint} <- kinds()} class="page-kind">
@@ -914,25 +914,23 @@ defmodule NotebookWeb.NotebookLive do
             phx-submit="db_attach"
             class="folder-form database-attach"
           >
-            <select name="attach[record]" aria-label="Record" required>
-              <option value="">A record…</option>
-              <option
-                :for={{id, title} <- @attach_records}
-                value={id}
-                selected={to_string(id) == @attach_form[:record].value}
-              >
-                {title}
-              </option>
-            </select>
-            <select name="attach[field]" aria-label="Field">
-              <option
-                :for={{key, name} <- Databases.fields_of(@collection, ["file"])}
-                value={key}
-                selected={key == @attach_form[:field].value}
-              >
-                {name}
-              </option>
-            </select>
+            <Erabi.Components.select
+              id="attach-record"
+              name="attach[record]"
+              value={@attach_form[:record].value}
+              options={for {id, title} <- @attach_records, do: {title, to_string(id)}}
+              label="Record"
+              placeholder="A record…"
+              required
+            />
+            <Erabi.Components.select
+              id="attach-field"
+              name="attach[field]"
+              value={@attach_form[:field].value}
+              options={for {key, name} <- Databases.fields_of(@collection, ["file"]), do: {name, key}}
+              label="Field"
+              clearable={false}
+            />
             <.live_file_input upload={@uploads.record_files} />
             <span :for={entry <- @uploads.record_files.entries} class="field-hint">
               {entry.client_name}
@@ -959,28 +957,23 @@ defmodule NotebookWeb.NotebookLive do
               required
               autofocus
             />
-            <select name="field[type]" aria-label="Type">
-              <option
-                :for={{type, name} <- Databases.field_types()}
-                value={type}
-                selected={type == @field_form[:type].value}
-              >
-                {name}
-              </option>
-            </select>
-            <select
+            <Erabi.Components.select
+              id="field-type"
+              name="field[type]"
+              value={@field_form[:type].value}
+              options={for {type, name} <- Databases.field_types(), do: {name, type}}
+              label="Type"
+              clearable={false}
+            />
+            <Erabi.Components.select
               :if={@field_form[:type].value == "number"}
+              id="field-format"
               name="field[format]"
-              aria-label="Format"
-            >
-              <option
-                :for={{format, name} <- Databases.number_formats()}
-                value={format}
-                selected={format == @field_form[:format].value}
-              >
-                {name}
-              </option>
-            </select>
+              value={@field_form[:format].value}
+              options={for {format, name} <- Databases.number_formats(), do: {name, format}}
+              label="Format"
+              clearable={false}
+            />
             <input
               :if={@field_form[:type].value == "number" and @field_form[:format].value == "currency"}
               name="field[currency]"
@@ -991,24 +984,28 @@ defmodule NotebookWeb.NotebookLive do
               size="4"
             />
             <%= if @field_form[:type].value == "repeat" do %>
-              <select name="field[date]" aria-label="The date it moves">
-                <option
-                  :for={{key, name} <- Databases.fields_of(@collection, ["date"])}
-                  value={key}
-                  selected={key == @field_form[:date].value}
-                >
-                  Moves {name}
-                </option>
-              </select>
-              <select name="field[done]" aria-label="When it is done">
-                <option
-                  :for={{key, name} <- Databases.fields_of(@collection, ~w(status checkbox))}
-                  value={key}
-                  selected={key == @field_form[:done].value}
-                >
-                  When {name} is done
-                </option>
-              </select>
+              <Erabi.Components.select
+                id="field-date"
+                name="field[date]"
+                value={@field_form[:date].value}
+                options={
+                  for {key, name} <- Databases.fields_of(@collection, ["date"]),
+                      do: {"Moves #{name}", key}
+                }
+                label="The date it moves"
+                clearable={false}
+              />
+              <Erabi.Components.select
+                id="field-done"
+                name="field[done]"
+                value={@field_form[:done].value}
+                options={
+                  for {key, name} <- Databases.fields_of(@collection, ~w(status checkbox)),
+                      do: {"When #{name} is done", key}
+                }
+                label="When it is done"
+                clearable={false}
+              />
             <% end %>
             <button class="button button-primary" type="submit">Add field</button>
             <button class="copy-action" type="button" phx-click="db_cancel_field">Cancel</button>
@@ -1605,10 +1602,16 @@ defmodule NotebookWeb.NotebookLive do
         </header>
         <blockquote :if={@asking.text != ""} class="ask-selection">{@asking.text}</blockquote>
         <form id="ask-form" class="ask-form" phx-submit="ask">
-          <label :if={length(@agents) > 1} class="field-label" for="ask-agent">Agent</label>
-          <select :if={length(@agents) > 1} id="ask-agent" name="agent">
-            <option :for={agent <- @agents} value={agent.id}>{agent.name}</option>
-          </select>
+          <label :if={length(@agents) > 1} class="field-label" id="ask-agent-label">Agent</label>
+          <Erabi.Components.person_picker
+            :if={length(@agents) > 1}
+            id="ask-agent"
+            name="agent"
+            value={hd(@agents).id}
+            people={for agent <- @agents, do: %{id: agent.id, name: agent.name, kind: :agent}}
+            label_id="ask-agent-label"
+            clearable={false}
+          />
           <input :if={length(@agents) == 1} type="hidden" name="agent" value={hd(@agents).id} />
           <label class="field-label" for="ask-question">
             What should {if length(@agents) == 1, do: hd(@agents).name, else: "it"} do?
@@ -1827,6 +1830,9 @@ defmodule NotebookWeb.NotebookLive do
         ""
     end
   end
+
+  defp place_value({_label, space_id, folder_id}), do: "#{space_id}:#{folder_id}"
+  defp place_value(_place), do: nil
 
   defp format_name(:markdown), do: "Markdown"
   defp format_name(:text), do: "Plain text"
