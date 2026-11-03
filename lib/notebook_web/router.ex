@@ -42,6 +42,9 @@ defmodule NotebookWeb.Router do
     plug NotebookWeb.AgentAuth
   end
 
+  # The health check kamal-proxy polls before it sends traffic.
+  get "/up", NotebookWeb.UpController, :index
+
   scope "/" do
     pipe_through :mail
     chime_mail("/notifications/mail", app_name: "Notebook")

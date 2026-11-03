@@ -1,0 +1,58 @@
+# Kamal 2 deployment of Notebook. See README.md ("Deploy with Kamal") and
+# https://kamal-deploy.org/docs/configuration/overview/
+#
+# Nothing here is one deploy's own: the server, the address and the image
+# come from the environment, and the secrets from .kamal/secrets (ignored
+# by git). kamal-proxy routes by host, so the server may serve other apps.
+#
+#   NOTEBOOK_SERVER  the server's IP or hostname (required)
+#   NOTEBOOK_HOST    the address people reach it at (required)
+#   NOTEBOOK_IMAGE   the image, in your registry (required)
+#   NOTEBOOK_REGISTRY  the registry (default ghcr.io)
+#   NOTEBOOK_SSH_USER  the SSH user (default root)
+
+service: notebook
+image: <%= ENV.fetch("NOTEBOOK_IMAGE") %>
+
+servers:
+  web:
+    hosts:
+      - <%= ENV.fetch("NOTEBOOK_SERVER") %>
+
+proxy:
+  ssl: true
+  host: <%= ENV.fetch("NOTEBOOK_HOST") %>
+  app_port: 4000
+  healthcheck:
+    path: /up
+    interval: 3
+    timeout: 60
+
+registry:
+  server: <%= ENV.fetch("NOTEBOOK_REGISTRY", "ghcr.io") %>
+  username:
+    - KAMAL_REGISTRY_USERNAME
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+  # Builds on the server (amd64): the BEAM crashes under the QEMU emulation
+  # an arm64 Mac uses. Take this line away to build where you run Kamal.
+  remote: ssh://<%= ENV.fetch("NOTEBOOK_SSH_USER", "root") %>@<%= ENV.fetch("NOTEBOOK_SERVER") %>
+
+env:
+  clear:
+    PHX_HOST: <%= ENV.fetch("NOTEBOOK_HOST") %>
+    PORT: "4000"
+  secret:
+    - SECRET_KEY_BASE
+    - NOTEBOOK_VAULT_KEY
+
+# The SQLite database and the uploads. The volume outlives each container;
+# a deploy runs the new container's migrations before it takes traffic.
+volumes:
+  - notebook-data:/data
+
+ssh:
+  user: <%= ENV.fetch("NOTEBOOK_SSH_USER", "root") %>
