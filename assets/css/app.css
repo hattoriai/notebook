@@ -18,6 +18,7 @@
 @source "../js";
 @source "../../lib/notebook_web";
 @source "../../lib/notebook/databases.ex";
+@source "../../lib/notebook/spaces.ex";
 /* Required for Tailwind to automatically pick up changes in colocated CSS files in dev */
 @source "../../_build/dev/phoenix-colocated/notebook/*/";
 
