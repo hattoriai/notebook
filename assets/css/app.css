@@ -693,6 +693,7 @@ html.space-maximized { overflow: hidden; }
 .agent-revoke { padding: 6px 12px; border: 1px solid var(--rule); background: none; color: var(--muted); font: 12.5px ui-sans-serif, system-ui, sans-serif; cursor: pointer; transition: color .15s ease, border-color .15s ease; }
 .agent-revoke:hover { border-color: #a3362b; color: #a3362b; }
 .agent-empty { color: var(--muted); font: italic 15px "Palatino Linotype", Palatino, Georgia, serif; }
+.agent-new-help { max-width: 44rem; margin: -4px 0 16px; color: var(--muted); font: 13px/1.55 ui-sans-serif, system-ui, sans-serif; }
 .agent-form { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; gap: 14px; align-items: end; font: 14px ui-sans-serif, system-ui, sans-serif; }
 .agent-form .fieldset { margin: 0; }
 .agent-form label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }

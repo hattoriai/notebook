@@ -18,7 +18,7 @@ defmodule NotebookWeb.AgentsLiveTest do
     |> form("#agent-form", agent: %{name: "Claude, for Hanzo", lifetime: "30"})
     |> render_submit()
 
-    assert has_element?(view, "#agent-connected", "Claude, for Hanzo is connected")
+    assert has_element?(view, "#agent-connected", "Claude, for Hanzo is ready")
 
     url =
       view
