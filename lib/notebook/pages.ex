@@ -48,14 +48,25 @@ defmodule Notebook.Pages do
 
   @doc "A page the scope may read, or raises (a 404 for a page they may not read)."
   def get!(scope, id) do
-    page = Page |> Repo.get!(id) |> Repo.preload([:author, :space, :folder])
+    page = id |> by_param() |> Repo.one!() |> Repo.preload([:author, :space, :folder])
     Permissions.authorize!(scope, :read, page)
     page
   end
 
+  # A page by its address: its slug (/pages/kotoba), or its id, as the
+  # links before slugs had it (/pages/1).
+  defp by_param(id) when is_integer(id), do: where(Page, id: ^id)
+
+  defp by_param(param) when is_binary(param) do
+    case Integer.parse(param) do
+      {id, ""} -> where(Page, id: ^id)
+      _slug -> where(Page, slug: ^param)
+    end
+  end
+
   @doc "A page the scope may read, or nil."
   def get(scope, id) do
-    with %Page{} = page <- Repo.get(Page, id),
+    with %Page{} = page <- id |> by_param() |> Repo.one(),
          true <- Permissions.allowed?(scope, :read, page) do
       Repo.preload(page, [:author, :space, :folder])
     else
@@ -103,12 +114,20 @@ defmodule Notebook.Pages do
       with {:ok, page} <-
              %Page{author_id: user.id, space_id: space.id, folder_id: folder_id}
              |> Page.changeset(attrs)
+             |> with_slug()
              |> Narabe.Ecto.Mixed.put_position(Repo, Spaces.order(space))
              |> Repo.insert(),
            :ok <- with_collection(scope, page, attrs["fields"]) do
         {:ok, page}
       end
     end)
+  end
+
+  # Its address in the notebook, from its title: /pages/kotoba. It stays as
+  # the page is renamed, so links to it hold.
+  defp with_slug(changeset) do
+    title = Ecto.Changeset.get_field(changeset, :title)
+    Ecto.Changeset.put_change(changeset, :slug, Notebook.Publishing.free_page_slug(title))
   end
 
   # A database's fields are its default ones, or those of "fields".

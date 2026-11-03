@@ -53,7 +53,7 @@ defmodule Notebook.Tools do
       "space_id" => page.space_id,
       "folder" => page.folder && page.folder.name,
       "room" => room,
-      "url" => NotebookWeb.Endpoint.url() <> "/pages/#{page.id}",
+      "url" => NotebookWeb.Endpoint.url() <> "/pages/" <> Phoenix.Param.to_param(page),
       "due" => page.due_on && Date.to_iso8601(page.due_on),
       "page_tools" => "rename_page, set_due_date, move_page, archive_page, restore_page",
       "use" =>

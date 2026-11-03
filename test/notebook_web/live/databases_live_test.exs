@@ -44,7 +44,7 @@ defmodule NotebookWeb.DatabasesLiveTest do
     page: page,
     collection: collection
   } do
-    {:ok, view, html} = live(log_in_user(conn, hanzo), ~p"/pages/#{page.id}")
+    {:ok, view, html} = live(log_in_user(conn, hanzo), ~p"/pages/#{page}")
     assert html =~ "Commissions"
 
     for name <- ~w(Table Board Calendar Chart),
@@ -66,8 +66,8 @@ defmodule NotebookWeb.DatabasesLiveTest do
     yuki: yuki,
     page: page
   } do
-    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{page.id}")
-    {:ok, other, _html} = live(log_in_user(build_conn(), yuki), ~p"/pages/#{page.id}")
+    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{page}")
+    {:ok, other, _html} = live(log_in_user(build_conn(), yuki), ~p"/pages/#{page}")
 
     view |> element("button", "Field") |> render_click()
 
@@ -82,7 +82,7 @@ defmodule NotebookWeb.DatabasesLiveTest do
   end
 
   test "a commenter reads the database and changes nothing", %{yuki: yuki, conn: conn, page: page} do
-    {:ok, view, html} = live(log_in_user(conn, yuki), ~p"/pages/#{page.id}")
+    {:ok, view, html} = live(log_in_user(conn, yuki), ~p"/pages/#{page}")
     assert html =~ "The rain blade"
     refute has_element?(view, ".database-actions")
   end
@@ -92,7 +92,11 @@ defmodule NotebookWeb.DatabasesLiveTest do
     hanzo: hanzo,
     collection: collection
   } do
-    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{collection.owner_id}")
+    {:ok, view, _html} =
+      live(
+        log_in_user(conn, hanzo),
+        ~p"/pages/#{Notebook.Repo.get!(Notebook.Pages.Page, collection.owner_id)}"
+      )
 
     view |> element("button", "Field") |> render_click()
     refute has_element?(view, "#field-form select[name='field[format]']")
@@ -139,13 +143,13 @@ defmodule NotebookWeb.DatabasesLiveTest do
     page: page,
     collection: collection
   } do
-    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{page.id}")
+    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{page}")
     refute has_element?(view, "button", "Attach")
 
     {:ok, collection} =
       Databases.add_field(scope, collection, %{"name" => "Invoice", "type" => "file"})
 
-    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{page.id}")
+    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{page}")
     [record] = elem(Box.list(collection), 1)
 
     view |> element("button", "Attach") |> render_click()

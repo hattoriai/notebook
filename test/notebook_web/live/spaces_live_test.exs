@@ -138,7 +138,7 @@ defmodule NotebookWeb.SpacesLiveTest do
 
     {:ok, page} = Pages.update(scope, page, %{"body" => body})
 
-    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{page.id}")
+    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{page}")
     assert has_element?(view, "#body-reader[data-readonly='true']")
 
     # The editor tells the page its embed's slot, as it does in the browser.
@@ -210,13 +210,13 @@ defmodule NotebookWeb.SpacesLiveTest do
 
   test "a commenter reads a page and may not edit it", %{conn: conn, yuki: yuki, blade: blade} do
     conn = log_in_user(conn, yuki)
-    {:ok, view, _html} = live(conn, ~p"/pages/#{blade.id}")
+    {:ok, view, _html} = live(conn, ~p"/pages/#{blade}")
     assert has_element?(view, ".breadcrumb", "The forge")
     assert has_element?(view, ".breadcrumb", "Plans")
     refute has_element?(view, ".reader-actions a", "Edit together")
 
-    assert {:error, {:live_redirect, %{to: to}}} = live(conn, ~p"/pages/#{blade.id}/edit")
-    assert to == ~p"/pages/#{blade.id}"
+    assert {:error, {:live_redirect, %{to: to}}} = live(conn, ~p"/pages/#{blade}/edit")
+    assert to == ~p"/pages/#{blade}"
   end
 
   test "a page someone may not read is not there", %{conn: conn, hanzo: hanzo, yuki: yuki} do
@@ -226,7 +226,7 @@ defmodule NotebookWeb.SpacesLiveTest do
         "space_id" => Spaces.private!(hanzo).id
       })
 
-    assert_raise Sekisho.Denied, fn -> live(log_in_user(conn, yuki), ~p"/pages/#{letter.id}") end
+    assert_raise Sekisho.Denied, fn -> live(log_in_user(conn, yuki), ~p"/pages/#{letter}") end
   end
 
   test "an admin manages the members", %{conn: conn, hanzo: hanzo, yuki: yuki, forge: forge} do
@@ -277,7 +277,7 @@ defmodule NotebookWeb.SpacesLiveTest do
     forge: forge,
     blade: blade
   } do
-    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{blade.id}")
+    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{blade}")
 
     assert %{"ok" => true} = run(view, :archive_page)
     assert has_element?(view, ".archived-banner")
@@ -288,7 +288,7 @@ defmodule NotebookWeb.SpacesLiveTest do
     archive |> element("#archived-#{blade.id} button", "Restore") |> render_click()
     refute has_element?(archive, "#archived-#{blade.id}")
 
-    {:ok, view, _html} = live(log_in_user(build_conn(), hanzo), ~p"/pages/#{blade.id}")
+    {:ok, view, _html} = live(log_in_user(build_conn(), hanzo), ~p"/pages/#{blade}")
     assert %{"ok" => true} = run(view, "move-#{forge.id}-")
     assert %{space_id: space_id, folder_id: nil} = Pages.get!(scope, blade.id)
     assert space_id == forge.id
@@ -304,5 +304,25 @@ defmodule NotebookWeb.SpacesLiveTest do
       )
 
     Fude.Test.data(content, "chart-" <> slot)
+  end
+
+  test "a page opened by its id, a link from before slugs, goes to its slug", %{conn: conn} do
+    hanzo = Notebook.AccountsFixtures.user_fixture(%{name: "Hattori Hanzo"})
+    scope = Notebook.Accounts.Scope.for_user(hanzo)
+    space = Notebook.Spaces.private!(hanzo)
+
+    {:ok, page} =
+      Notebook.Pages.create(scope, %{"title" => "The last blade", "space_id" => space.id})
+
+    conn = log_in_user(conn, hanzo)
+
+    slug = page.slug
+    assert slug =~ "the-last-blade"
+    assert {:error, {:live_redirect, %{to: "/pages/" <> ^slug}}} = live(conn, "/pages/#{page.id}")
+
+    assert {:error, {:live_redirect, %{to: to}}} = live(conn, "/pages/#{page.id}/edit")
+    assert to == "/pages/#{slug}/edit"
+
+    assert {:ok, _view, _html} = live(conn, "/pages/#{slug}")
   end
 end

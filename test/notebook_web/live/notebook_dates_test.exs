@@ -41,7 +41,7 @@ defmodule NotebookWeb.NotebookDatesTest do
     assert page.due_on == ~D[2027-03-12]
     assert page.covers == Date.range(~D[2027-03-15], ~D[2027-03-19])
 
-    {:ok, _view, html} = live(conn, ~p"/pages/#{page.id}")
+    {:ok, _view, html} = live(conn, ~p"/pages/#{page}")
     assert html =~ "Friday, 12 March 2027"
     assert html =~ "15 March – 19 March 2027 · 5 days"
     assert html =~ "Wednesday, 10 March 2027 at 14:00 (Lisbon time)"

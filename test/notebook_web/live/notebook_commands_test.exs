@@ -85,7 +85,7 @@ defmodule NotebookWeb.NotebookCommandsTest do
     scope: scope
   } do
     {:ok, page} = Pages.create(scope, %{"title" => "Draft"})
-    {:ok, view, _html} = live(conn, ~p"/pages/#{page.id}")
+    {:ok, view, _html} = live(conn, ~p"/pages/#{page}")
 
     assert %{"ok" => true} = run(view, :rename_page, %{title: "Lisbon trip"})
     assert render(view) =~ "Page renamed"
@@ -104,7 +104,7 @@ defmodule NotebookWeb.NotebookCommandsTest do
     scope: scope
   } do
     {:ok, page} = Pages.create(scope, %{"title" => "Draft"})
-    {:ok, view, _html} = live(conn, ~p"/pages/#{page.id}")
+    {:ok, view, _html} = live(conn, ~p"/pages/#{page}")
 
     assert %{"error" => "invalid", "arg" => "title"} =
              run(view, :rename_page, %{title: String.duplicate("a", 161)})

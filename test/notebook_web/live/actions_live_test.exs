@@ -48,7 +48,7 @@ defmodule NotebookWeb.ActionsLiveTest do
   } do
     hanzo_key = to_string(hanzo.id)
     agent_key = "agent:#{hanzo.id}"
-    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{page.id}")
+    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{page}")
 
     assert %{"ok" => true} = run(view, :rename_page, %{title: "Blades"})
 
@@ -84,7 +84,7 @@ defmodule NotebookWeb.ActionsLiveTest do
   test "the same rules for both: a reader may not, and off limits to agents, the agent may not",
        %{conn: conn, scope: scope, hanzo: hanzo, yuki: yuki, page: page} do
     # Yuki comments: the palette offers her no rename, and her agent is refused.
-    {:ok, view, _html} = live(log_in_user(conn, yuki), ~p"/pages/#{page.id}")
+    {:ok, view, _html} = live(log_in_user(conn, yuki), ~p"/pages/#{page}")
     refute "Rename this page…" in (view |> actions() |> names())
 
     assert {:error, "The room's policy does not allow this."} =
@@ -95,7 +95,7 @@ defmodule NotebookWeb.ActionsLiveTest do
     assert {:error, _closed} =
              tool("rename_page", %{"page_id" => page.id, "title" => "Agents'"}, hanzo)
 
-    {:ok, view, _html} = live(log_in_user(build_conn(), hanzo), ~p"/pages/#{page.id}")
+    {:ok, view, _html} = live(log_in_user(build_conn(), hanzo), ~p"/pages/#{page}")
     assert %{"ok" => true} = run(view, :rename_page, %{title: "Hanzo's"})
     assert Repo.get!(Pages.Page, page.id).title == "Hanzo's"
   end
@@ -114,7 +114,7 @@ defmodule NotebookWeb.ActionsLiveTest do
     :ok = Issho.Events.subscribe(Notebook.Issho, room)
     on_exit(fn -> Issho.Agents.leave(Notebook.Issho, "agent:#{hanzo.id}", room) end)
 
-    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{db.id}")
+    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{db}")
     view |> element("button[phx-click='db_add_record']") |> render_click()
 
     assert_receive {Issho, :event,

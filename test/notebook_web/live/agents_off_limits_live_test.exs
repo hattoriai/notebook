@@ -20,7 +20,7 @@ defmodule NotebookWeb.AgentsOffLimitsLiveTest do
   end
 
   test "an editor closes a page to agents from its Share dialog", %{conn: conn, page: page} do
-    {:ok, view, _html} = live(conn, ~p"/pages/#{page.id}")
+    {:ok, view, _html} = live(conn, ~p"/pages/#{page}")
     refute has_element?(view, "#agents-closed")
     assert render(view) =~ "Hanzo&#39;s agent"
 
@@ -45,7 +45,7 @@ defmodule NotebookWeb.AgentsOffLimitsLiveTest do
     assert has_element?(view, "#space-agents", "Off limits to agents")
     assert Notebook.Repo.get!(Spaces.Space, forge.id).closed_to_agents
 
-    {:ok, page_view, _html} = live(conn, ~p"/pages/#{page.id}")
+    {:ok, page_view, _html} = live(conn, ~p"/pages/#{page}")
     assert has_element?(page_view, "#agents-closed")
     page_view |> element("#share-open") |> render_click()
     assert has_element?(page_view, ".share-agents select[disabled]")

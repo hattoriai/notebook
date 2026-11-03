@@ -65,7 +65,7 @@ defmodule NotebookWeb.AllActionsLiveTest do
     record: record
   } do
     hanzo_key = to_string(hanzo.id)
-    {:ok, view, _html} = live(conn, ~p"/pages/#{db.id}")
+    {:ok, view, _html} = live(conn, ~p"/pages/#{db}")
 
     assert :ok = Masu.Test.edit(view, grid(collection), [{record.id, "name", "The autumn blade"}])
     assert %{by: %{key: ^hanzo_key}} = done("update_records")
@@ -98,7 +98,7 @@ defmodule NotebookWeb.AllActionsLiveTest do
     record: record
   } do
     board = Enum.find(Databases.views(collection), &(&1.type == "board"))
-    {:ok, view, _html} = live(conn, ~p"/pages/#{db.id}")
+    {:ok, view, _html} = live(conn, ~p"/pages/#{db}")
     view |> element(".database-view-tab", "Board") |> render_click()
 
     render_hook(view, "db_move", %{
@@ -130,7 +130,7 @@ defmodule NotebookWeb.AllActionsLiveTest do
     page = Repo.get_by!(Pages.Page, title: "Field notes")
 
     :ok = Issho.Events.subscribe(Notebook.Issho, "page:#{page.id}")
-    {:ok, view, _html} = live(conn, ~p"/pages/#{page.id}")
+    {:ok, view, _html} = live(conn, ~p"/pages/#{page}")
     assert %{"ok" => true} = run(view, :archive_page)
     done("archive_page")
     assert Repo.get!(Pages.Page, page.id).archived_at
@@ -152,7 +152,7 @@ defmodule NotebookWeb.AllActionsLiveTest do
     hanzo: hanzo,
     db: db
   } do
-    {:ok, view, _html} = live(conn, ~p"/pages/#{db.id}")
+    {:ok, view, _html} = live(conn, ~p"/pages/#{db}")
     view |> element("button", "Field") |> render_click()
     view |> form("#field-form", field: %{name: "Price", type: "number"}) |> render_submit()
     done("add_field")
@@ -176,7 +176,7 @@ defmodule NotebookWeb.AllActionsLiveTest do
     yuki: yuki,
     db: db
   } do
-    {:ok, view, _html} = live(conn, ~p"/pages/#{db.id}")
+    {:ok, view, _html} = live(conn, ~p"/pages/#{db}")
     view |> element("#share-open") |> render_click()
 
     view

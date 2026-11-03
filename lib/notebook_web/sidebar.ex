@@ -137,7 +137,7 @@ defmodule NotebookWeb.Sidebar do
         <ul class="sidebar-shared-list">
           <li :for={page <- @shared}>
             <.link
-              navigate={~p"/pages/#{page.id}"}
+              navigate={~p"/pages/#{page}"}
               class={["sidebar-link", @current == {:page, page.id} && "is-current"]}
             >
               <.icon name={page_icon(page.kind)} class="size-4" />
@@ -248,7 +248,7 @@ defmodule NotebookWeb.Sidebar do
 
     ~H"""
     <.link
-      navigate={~p"/pages/#{@page.id}"}
+      navigate={~p"/pages/#{@page}"}
       class={["sidebar-page", @current == {:page, @page.id} && "is-current"]}
     >
       <.icon name={page_icon(@page.kind)} class="size-4" />

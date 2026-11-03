@@ -64,7 +64,7 @@ defmodule NotebookWeb.AskAgentTest do
     page: page,
     agent: agent
   } do
-    {:ok, view, _html} = live(conn, ~p"/pages/#{page.id}/edit")
+    {:ok, view, _html} = live(conn, ~p"/pages/#{page}/edit")
 
     render_hook(view, "kotoba:assist", %{
       "ref" => "r1",
@@ -101,7 +101,7 @@ defmodule NotebookWeb.AskAgentTest do
     page: page,
     agent: agent
   } do
-    {:ok, view, _html} = live(conn, ~p"/pages/#{page.id}/edit")
+    {:ok, view, _html} = live(conn, ~p"/pages/#{page}/edit")
 
     selection = %{
       "anchor" => %{"node" => "t1", "before" => "a3"},
@@ -130,7 +130,7 @@ defmodule NotebookWeb.AskAgentTest do
     agent: agent
   } do
     {:ok, _} = Agents.revoke(scope, agent.id)
-    {:ok, view, _html} = live(conn, ~p"/pages/#{page.id}/edit")
+    {:ok, view, _html} = live(conn, ~p"/pages/#{page}/edit")
     render_hook(view, "kotoba:assist", %{"ref" => "r1", "action" => "ask", "text" => "x"})
     refute has_element?(view, "#ask-dialog")
     assert render(view) =~ "Connect an agent first"

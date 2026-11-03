@@ -110,7 +110,8 @@ defmodule Notebook.Sharing do
   end
 
   @doc "The address of a link to it, with its token."
-  def url(%Page{id: id}, token), do: NotebookWeb.Endpoint.url() <> "/pages/#{id}?key=#{token}"
+  def url(%Page{} = page, token),
+    do: NotebookWeb.Endpoint.url() <> "/pages/#{Phoenix.Param.to_param(page)}?key=#{token}"
 
   def url(%Folder{id: id, space_id: space_id}, token),
     do: NotebookWeb.Endpoint.url() <> "/spaces/#{space_id}/folders/#{id}?key=#{token}"
