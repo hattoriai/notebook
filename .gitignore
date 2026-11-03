@@ -36,3 +36,7 @@ npm-debug.log
 /assets/node_modules/
 
 /.playwright-mcp/
+
+# Kamal: the secrets, and the values of your own deploy (see README).
+/.kamal/secrets
+/.env

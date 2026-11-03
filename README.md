@@ -149,6 +149,38 @@ Each secret names the key it was encrypted with, and the key derived from `SECRE
 
 The SQLite database stays on the server's disk: on Fly.io, give it a volume.
 
+## Deploy with Kamal
+
+The repository has what a deploy with [Kamal 2](https://kamal-deploy.org) needs: a `Dockerfile` (the release, with the SQLite database and the uploads on a volume at `/data`), `config/deploy.yml`, and `GET /up`, the health check kamal-proxy polls. kamal-proxy gets the TLS certificate from Let's Encrypt and routes by host, so the server may serve other apps too.
+
+`config/deploy.yml` keeps nothing of one deploy's own. It reads:
+
+| Variable | What it is |
+|---|---|
+| `NOTEBOOK_SERVER` | The server's IP or hostname. Kamal connects to it over SSH. |
+| `NOTEBOOK_HOST` | The address people reach the notebook at, such as `notebook.example.com`. |
+| `NOTEBOOK_IMAGE` | The image in your registry, such as `you/notebook`. |
+| `NOTEBOOK_REGISTRY` | The registry. Default: `ghcr.io`. |
+| `NOTEBOOK_SSH_USER` | The SSH user. Default: `root`. |
+
+The first time:
+
+1. Get a server (Ubuntu or Debian, amd64) that your SSH key opens. Kamal installs Docker.
+2. Point the host's DNS (an A record, and an AAAA record for IPv6) to the server, before the next steps: Let's Encrypt must reach it.
+3. Copy `.kamal/secrets.example` to `.kamal/secrets` and fill it in. Git ignores it. Keep `NOTEBOOK_VAULT_KEY` with your backups: the notebook's secrets cannot be read without it.
+4. Set the variables, then set up the server:
+
+   ```sh
+   export NOTEBOOK_SERVER=203.0.113.10 NOTEBOOK_HOST=notebook.example.com NOTEBOOK_IMAGE=you/notebook
+   kamal setup
+   ```
+
+   You can keep the variables in `.env` (git ignores it too) and load them with `set -a; . ./.env; set +a`.
+
+After that, `kamal deploy` with the same variables. Each deploy builds the image on the server (`builder.remote`: the BEAM does not run under the emulation an arm64 Mac uses), runs the migrations (`bin/migrate`), and sends traffic to the new container when `/up` answers. `kamal app logs` shows the log, and `kamal app exec -i 'bin/notebook remote'` opens a console.
+
+Back up the volume: the database is `/data/notebook.db` (`sqlite3 /data/notebook.db ".backup copy.db"` makes a consistent copy) and the files kept on the server's disk are in `/data/uploads`.
+
 ## Checks
 
 ```sh

@@ -13,10 +13,8 @@ config :notebook, NotebookWeb.Endpoint, cache_static_manifest: "priv/static/cach
 config :notebook, NotebookWeb.Endpoint,
   force_ssl: [
     rewrite_on: [:x_forwarded_proto],
-    exclude: [
-      # paths: ["/health"],
-      hosts: ["localhost", "127.0.0.1"]
-    ]
+    # kamal-proxy polls /up over plain HTTP.
+    exclude: [hosts: ["localhost", "127.0.0.1"], paths: ["/up"]]
   ]
 
 # Do not print debug messages in production

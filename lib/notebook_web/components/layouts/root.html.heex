@@ -86,7 +86,9 @@
           </div>
         </details>
       <% else %>
-        <.link href={~p"/users/register"}>Register</.link>
+        <.link :if={not Notebook.Invitations.invite_only?()} href={~p"/users/register"}>
+          Register
+        </.link>
         <.link href={~p"/users/log-in"}>Log in</.link>
       <% end %>
     </nav>

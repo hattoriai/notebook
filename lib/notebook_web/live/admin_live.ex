@@ -1,13 +1,14 @@
 defmodule NotebookWeb.AdminLive do
   @moduledoc """
-  The notebook's own settings, for its admins: where its files are kept
-  (`Notebook.Storage`), on this server or in a bucket, and the copy of
-  the files from one to the other.
+  The notebook's own settings, for its admins: who may join
+  (`Notebook.Invitations`), anyone or only with an invitation; where its
+  files are kept (`Notebook.Storage`), on this server or in a bucket, and
+  the copy of the files from one to the other.
   """
   use NotebookWeb, :live_view
 
   alias Notebook.Accounts.Scope
-  alias Notebook.Storage
+  alias Notebook.{Invitations, Storage}
   alias Notebook.Storage.Usage
 
   @impl true
@@ -20,6 +21,7 @@ defmodule NotebookWeb.AdminLive do
        socket
        |> assign(page_title: "Notebook settings", config: config, samples: [])
        |> assign_form(Storage.change(config))
+       |> assign_joining()
        |> assign_other()
        |> assign_usage()}
     else
@@ -35,6 +37,14 @@ defmodule NotebookWeb.AdminLive do
       form: to_form(changeset, as: :storage),
       kind: Ecto.Changeset.get_field(changeset, :kind),
       provider: provider(Ecto.Changeset.get_field(changeset, :provider))
+    )
+  end
+
+  defp assign_joining(socket) do
+    assign(socket,
+      invite_only: Invitations.invite_only?(),
+      invitations: Invitations.pending(),
+      invite_url: socket.assigns[:invite_url]
     )
   end
 
@@ -78,6 +88,39 @@ defmodule NotebookWeb.AdminLive do
 
       {:error, :forbidden} ->
         {:noreply, put_flash(socket, :error, "Only the notebook's admins change its settings.")}
+    end
+  end
+
+  def handle_event("joining", %{"joining" => joining}, socket)
+      when joining in ["open", "invite"] do
+    case Invitations.set_invite_only(socket.assigns.current_scope, joining == "invite") do
+      {:ok, true} ->
+        {:noreply,
+         socket |> assign_joining() |> put_flash(:info, "People join with an invitation now.")}
+
+      {:ok, false} ->
+        {:noreply, socket |> assign_joining() |> put_flash(:info, "Anyone may join now.")}
+
+      {:error, :forbidden} ->
+        {:noreply, put_flash(socket, :error, "Only the notebook's admins change its settings.")}
+    end
+  end
+
+  def handle_event("invite", _params, socket) do
+    case Invitations.create(socket.assigns.current_scope) do
+      {:ok, _invitation, token} ->
+        url = url(~p"/users/register?#{[invite: token]}")
+        {:noreply, socket |> assign(invite_url: url) |> assign_joining()}
+
+      {:error, :forbidden} ->
+        {:noreply, put_flash(socket, :error, "Only the notebook's admins invite people.")}
+    end
+  end
+
+  def handle_event("revoke", %{"id" => id}, socket) do
+    case Invitations.revoke(socket.assigns.current_scope, String.to_integer(id)) do
+      {:ok, _invitation} -> {:noreply, socket |> assign(invite_url: nil) |> assign_joining()}
+      {:error, _reason} -> {:noreply, assign_joining(socket)}
     end
   end
 
@@ -171,6 +214,68 @@ defmodule NotebookWeb.AdminLive do
       <Layouts.flash_group flash={@flash} />
 
       <div class="settings-grid">
+        <section class="settings-wide" id="joining">
+          <h2>Who joins</h2>
+          <p>
+            Anyone may create an account, or only people an admin invites. An invitation is a
+            link: it works once, for seven days. Send it as you like.
+          </p>
+
+          <form id="joining-form" class="settings-form" phx-change="joining">
+            <fieldset class="storage-kinds">
+              <legend>Who may create an account</legend>
+              <label class={["storage-kind", not @invite_only && "is-chosen"]}>
+                <input type="radio" name="joining" value="open" checked={not @invite_only} />
+                <.icon name="hero-globe-alt" class="size-5" />
+                <span><strong>Anyone</strong><small>The Register page is open to all.</small></span>
+              </label>
+              <label class={["storage-kind", @invite_only && "is-chosen"]}>
+                <input type="radio" name="joining" value="invite" checked={@invite_only} />
+                <.icon name="hero-envelope" class="size-5" />
+                <span>
+                  <strong>Invite only</strong><small>People join with a link from an admin.</small>
+                </span>
+              </label>
+            </fieldset>
+          </form>
+
+          <div :if={@invite_only} id="invitations" class="invitations">
+            <button id="invite-button" type="button" class="button" phx-click="invite">
+              Make an invitation link
+            </button>
+            <div :if={@invite_url} class="share-url">
+              <input id="invite-url" type="text" value={@invite_url} readonly aria-label="The link" />
+              <button
+                type="button"
+                class="button"
+                phx-click={JS.dispatch("notebook:copy", to: "#invite-url")}
+              >
+                Copy
+              </button>
+              <p>Copy it now: it shows once.</p>
+            </div>
+            <ul :if={@invitations != []} class="invitation-list">
+              <li :for={invitation <- @invitations} id={"invitation-#{invitation.id}"}>
+                <span>
+                  Made {Calendar.strftime(invitation.inserted_at, "%-d %B")}{if invitation.invited_by,
+                    do: " by #{invitation.invited_by.name}"} · expires {Calendar.strftime(
+                    invitation.expires_at,
+                    "%-d %B"
+                  )}
+                </span>
+                <button
+                  type="button"
+                  class="copy-action"
+                  phx-click="revoke"
+                  phx-value-id={invitation.id}
+                >
+                  Take back
+                </button>
+              </li>
+            </ul>
+          </div>
+        </section>
+
         <section class="settings-wide" id="storage">
           <h2>Where files are kept</h2>
           <p>
