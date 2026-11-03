@@ -290,7 +290,14 @@ defmodule NotebookWeb.AdminLive do
               Make an invitation link
             </button>
             <div :if={@invite_url} class="share-url">
-              <input id="invite-url" type="text" value={@invite_url} readonly aria-label="The link" />
+              <input
+                data-1p-ignore
+                id="invite-url"
+                type="text"
+                value={@invite_url}
+                readonly
+                aria-label="The link"
+              />
               <button
                 type="button"
                 class="button"

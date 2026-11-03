@@ -216,7 +216,12 @@ defmodule NotebookWeb.AgentMemoryLive do
               </.link>
               <p :if={length(@files) == 1} class="memory-empty">Nothing noted yet.</p>
               <form phx-submit="new" class="memory-new">
-                <input name="path" placeholder="people/hanzo.md" aria-label="A new file's path" />
+                <input
+                  data-1p-ignore
+                  name="path"
+                  placeholder="people/hanzo.md"
+                  aria-label="A new file's path"
+                />
                 <button type="submit" class="button">New</button>
               </form>
             </nav>
@@ -257,7 +262,13 @@ defmodule NotebookWeb.AgentMemoryLive do
                 }>read its version</.link>.
               </p>
               <form phx-change="edit" phx-submit="save" id="memory-form">
-                <textarea name="content" rows="18" spellcheck="false" aria-label="The file">{@draft || @file.content}</textarea>
+                <textarea
+                  data-1p-ignore
+                  name="content"
+                  rows="18"
+                  spellcheck="false"
+                  aria-label="The file"
+                >{@draft || @file.content}</textarea>
                 <div class="memory-actions">
                   <button type="submit" class="button button-primary">Save</button>
                   <button

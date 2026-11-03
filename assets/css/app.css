@@ -1234,7 +1234,7 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 .public-ask-form textarea { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--rule); background: #fbf9f4; font: 15px/1.5 ui-sans-serif, system-ui, sans-serif; resize: vertical; }
 .public-ask-note { margin-top: 8px; font: 12px ui-sans-serif, system-ui, sans-serif; color: #6f6a60; }
 @media (max-width: 640px) { .public-ask-form { flex-direction: column; align-items: stretch; } }
-.bot-editor input[type="checkbox"] { width: 16px; height: 16px; flex: none; padding: 0; margin: 2px 0 0; accent-color: var(--accent); }
+.bot-editor input[type="checkbox"] { margin: 2px 0 0; }
 .bot-editor .bot-tool, .bot-editor .bot-wakes .label { display: flex; align-items: flex-start; gap: 10px; text-transform: none; letter-spacing: normal; font: 14px/1.4 ui-sans-serif, system-ui, sans-serif; color: var(--ink); text-align: left; }
 .bot-editor .bot-tool strong { font-weight: 600; }
 .bot-editor .bot-tool small { font-weight: 400; }
@@ -1330,6 +1330,36 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 .error-mark { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); color: var(--muted); font: 600 10px ui-sans-serif, system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase; white-space: nowrap; }
 .error-mark:hover { color: var(--accent); }
 .error-actions .copy-action { font: 600 13px ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
+/* A field that is not right yet: the notebook's word under it, not the browser's bubble (validation.js). */
+.field-invalid { margin: 6px 0 0; color: #a3322a; font: 13px/1.4 ui-sans-serif, system-ui, sans-serif; animation: field-invalid-in .18s ease-out; }
+@keyframes field-invalid-in { from { opacity: 0; transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .field-invalid { animation: none; } }
+input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: #a3322a !important; box-shadow: 0 0 0 3px rgb(163 50 42 / .1); }
+
+/* Checkboxes in the notebook's ink, not the browser's accent: a square of paper, ticked in rust. */
+input[type="checkbox"] { appearance: none; -webkit-appearance: none; display: inline-grid; place-content: center; flex: none; width: 17px; height: 17px; margin: 0; padding: 0; border: 1.5px solid #8c9088; border-radius: 3px; background: #fcfbf7; cursor: pointer; transition: background .15s ease, border-color .15s ease, box-shadow .15s ease; }
+input[type="checkbox"]::before { content: ""; width: 11px; height: 11px; transform: scale(0); transition: transform .12s ease-out; background: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.2 6.3 4.8 8.8 9.8 3.4' fill='none' stroke='%23fffaf5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+input[type="checkbox"]:checked::before { transform: scale(1); }
+input[type="checkbox"]:hover:not(:disabled) { border-color: var(--accent); }
+input[type="checkbox"]:focus-visible { outline: none; box-shadow: 0 0 0 3px rgb(164 85 55 / .25); }
+input[type="checkbox"]:disabled { cursor: default; opacity: .55; }
+@media (prefers-reduced-motion: reduce) { input[type="checkbox"], input[type="checkbox"]::before { transition: none; } }
+
+/* A bot's schedule: how often, and at what time, in Koyomi's pickers. */
+.bot-schedule { display: flex; flex-direction: column; gap: 8px; }
+.bot-schedule-label { color: var(--muted); font: 600 11px ui-sans-serif, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.bot-schedule-pickers { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+.bot-schedule .field-hint { margin: 0; }
+
+/* An amount of money: its currency inside the field. */
+.money-field { display: flex; flex-direction: column; gap: 8px; }
+.money-field label { color: var(--muted); font: 600 11px ui-sans-serif, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.money-input { display: flex; align-items: center; border: 1px solid var(--rule); background: #fcfbf7; }
+.money-input:focus-within { border-color: var(--accent); }
+.money-input span { padding: 0 2px 0 14px; color: var(--muted); font: 15px ui-sans-serif, system-ui, sans-serif; }
+.settings-form .money-input input { border: 0; background: transparent; padding-left: 4px; outline: none; font-variant-numeric: tabular-nums; }
+
 .space-publishing-address { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); }
 .space-slug { display: inline-flex; align-items: center; border: 1px solid var(--rule); background: #fcfbf7; padding-left: 10px; font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
 .space-slug:focus-within { border-color: var(--accent); }

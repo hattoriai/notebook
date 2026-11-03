@@ -655,6 +655,7 @@ defmodule NotebookWeb.NotebookLive do
             <form id="page-search" phx-change="search" role="search">
               <label for="search">Find a page</label>
               <input
+                data-1p-ignore
                 id="search"
                 type="search"
                 name="query"
@@ -776,6 +777,7 @@ defmodule NotebookWeb.NotebookLive do
             </fieldset>
             <label for="page_title" class="field-label">Title</label>
             <input
+              data-1p-ignore
               id="page_title"
               type="text"
               name="page[title]"
@@ -950,6 +952,7 @@ defmodule NotebookWeb.NotebookLive do
             class="folder-form"
           >
             <input
+              data-1p-ignore
               name="field[name]"
               value={@field_form[:name].value}
               placeholder="A field's name: Client, Price, Due…"
@@ -976,6 +979,7 @@ defmodule NotebookWeb.NotebookLive do
             />
             <input
               :if={@field_form[:type].value == "number" and @field_form[:format].value == "currency"}
+              data-1p-ignore
               name="field[currency]"
               value={@field_form[:currency].value || "EUR"}
               aria-label="Currency"
@@ -1195,6 +1199,7 @@ defmodule NotebookWeb.NotebookLive do
           >
             <label class="field-label" for="page_title">Title</label>
             <input
+              data-1p-ignore
               id="page_title"
               name="page[title]"
               value={@form[:title].value}
@@ -1617,6 +1622,7 @@ defmodule NotebookWeb.NotebookLive do
             What should {if length(@agents) == 1, do: hd(@agents).name, else: "it"} do?
           </label>
           <textarea
+            data-1p-ignore
             id="ask-question"
             name="question"
             rows="3"

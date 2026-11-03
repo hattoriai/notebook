@@ -102,6 +102,7 @@ defmodule NotebookWeb.AgentsLive do
             </div>
             <div class="agent-address">
               <input
+                data-1p-ignore
                 id="agent-url"
                 type="text"
                 readonly

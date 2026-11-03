@@ -298,6 +298,7 @@ defmodule NotebookWeb.PublicLive do
         <form id={"ask-form-#{bot.id}"} phx-submit="ask_bot" class="public-ask-form">
           <input type="hidden" name="bot" value={bot.id} />
           <textarea
+            data-1p-ignore
             name="question"
             rows="2"
             maxlength="2000"
