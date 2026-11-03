@@ -227,11 +227,10 @@ defmodule NotebookWeb.SpaceLive do
             <div :if={is_nil(@folder) and @manage_space?} class="space-icon-edit" id="space-icon">
               <form id="space-icon-form" phx-change="set_icon">
                 <Erabi.Components.emoji_picker
-                  id="space-icon-picker"
+                  id={icon_picker_id(@space.icon)}
                   name="icon"
                   value={@space.icon}
-                  options={icon_options()}
-                  selected={icon_selected(@space.icon)}
+                  options={icon_options(@space.icon)}
                   label={"#{@space.name}'s icon"}
                   placeholder="Choose an icon"
                   clearable={false}
@@ -780,15 +779,26 @@ defmodule NotebookWeb.SpaceLive do
     end
   end
 
-  # The notebook's icons, as the emoji picker's second tab.
-  defp icon_options do
-    for {name, label, keywords} <- Spaces.icons(),
-        do: %{value: name, label: label, icon: name, keywords: keywords}
-  end
+  # Erabi's picker ignores LiveView's patches inside it (phx-update="ignore"),
+  # so it never sees the <template> of a new image: a new image is a new
+  # picker, which mounts again with it.
+  defp icon_picker_id("image:" <> url), do: "space-icon-picker-#{:erlang.phash2(url)}"
+  defp icon_picker_id(_icon), do: "space-icon-picker"
 
-  # An image is no option of the picker: it is named, and drawn, as the chosen one.
-  defp icon_selected("image:" <> _ = icon), do: [%{value: icon, label: "Its image", icon: icon}]
-  defp icon_selected(_icon), do: []
+  # The notebook's icons, as the emoji picker's second tab; first, the
+  # space's own image, when it has one, so the picker shows it and it can
+  # be chosen again.
+  defp icon_options(icon) do
+    own =
+      case icon do
+        "image:" <> _ -> [%{value: icon, label: "Its image", icon: icon, keywords: ~w(upload)}]
+        _other -> []
+      end
+
+    own ++
+      for {name, label, keywords} <- Spaces.icons(),
+          do: %{value: name, label: label, icon: name, keywords: keywords}
+  end
 
   defp icon_errors(upload) do
     errors = upload_errors(upload) ++ Enum.flat_map(upload.entries, &upload_errors(upload, &1))

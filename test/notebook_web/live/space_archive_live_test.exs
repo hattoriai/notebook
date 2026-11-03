@@ -17,7 +17,7 @@ defmodule NotebookWeb.SpaceArchiveLiveTest do
 
   test "its admin chooses its icon, and the sidebar shows it", %{conn: conn, forge: forge} do
     {:ok, view, _html} = live(conn, ~p"/spaces/#{forge.id}")
-    assert has_element?(view, "#space-icon-picker")
+    assert has_element?(view, "#space-icon-form .erabi")
 
     view |> form("#space-icon-form") |> render_change(%{"icon" => "⚔️"})
     assert has_element?(view, ".sidebar-space .notebook-icon-emoji", "⚔️")
@@ -25,6 +25,22 @@ defmodule NotebookWeb.SpaceArchiveLiveTest do
 
     view |> element("#space-icon-reset") |> render_click()
     refute has_element?(view, ".notebook-icon-emoji", "⚔️")
+  end
+
+  test "its image is the picker's first icon, so the picker shows it", %{
+    conn: conn,
+    hanzo: hanzo,
+    forge: forge
+  } do
+    {:ok, _} = Spaces.set_icon(Scope.for_user(hanzo), forge, "image:/uploads/kotoba/forge.png")
+    {:ok, view, _html} = live(conn, ~p"/spaces/#{forge.id}")
+
+    assert has_element?(
+             view,
+             ~s(#space-icon-form template[data-erabi-icon="image:/uploads/kotoba/forge.png"])
+           )
+
+    assert has_element?(view, ".sidebar-space img[src='/uploads/kotoba/forge.png']")
   end
 
   test "an editor neither chooses its icon nor archives it", %{
