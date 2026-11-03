@@ -184,7 +184,14 @@ defmodule NotebookWeb.ShareComponent do
           />
         </form>
         <div :if={@link_url} class="share-url">
-          <input id={@id <> "-url"} type="text" value={@link_url} readonly aria-label="The link" />
+          <input
+            data-1p-ignore
+            id={@id <> "-url"}
+            type="text"
+            value={@link_url}
+            readonly
+            aria-label="The link"
+          />
           <button
             type="button"
             class="button"

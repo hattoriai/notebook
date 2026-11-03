@@ -170,6 +170,7 @@ defmodule NotebookWeb.SpaceLive do
           >
             <label for="space_name" class="field-label">Name</label>
             <input
+              data-1p-ignore
               id="space_name"
               type="text"
               name="space[name]"
@@ -182,6 +183,7 @@ defmodule NotebookWeb.SpaceLive do
             <p :for={msg <- errors(@form[:name])} class="field-error">{msg}</p>
             <label for="space_description" class="field-label">What it is for</label>
             <input
+              data-1p-ignore
               id="space_description"
               type="text"
               name="space[description]"
@@ -268,6 +270,7 @@ defmodule NotebookWeb.SpaceLive do
               class="rename-form"
             >
               <input
+                data-1p-ignore
                 name="rename[name]"
                 value={if @folder, do: @folder.name, else: @space.name}
                 maxlength="80"
@@ -391,6 +394,7 @@ defmodule NotebookWeb.SpaceLive do
             class="folder-form"
           >
             <input
+              data-1p-ignore
               name="folder[name]"
               placeholder={
                 if @folder, do: "A folder in #{@folder.name}", else: "A folder in #{@space.name}"

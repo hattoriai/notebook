@@ -126,17 +126,43 @@ defmodule NotebookWeb.BotsLive do
   end
 
   # The form's values as a bot takes them: its groups of tools without the
-  # empty one the form sends, its budget in cents from dollars.
+  # empty one the form sends, its schedule from its two pickers (a rule and
+  # a time, "FREQ=WEEKLY;BYDAY=MO@09:00"), its budget in cents from dollars
+  # ("5.00" or "5,00").
   defp attrs(params) do
     params
     |> Map.update("tools", [], fn tools -> Enum.reject(List.wrap(tools), &(&1 == "")) end)
+    |> schedule_attrs()
     |> then(fn params ->
-      case Float.parse(to_string(params["budget"] || "")) do
+      dollars = params["budget"] |> to_string() |> String.trim() |> String.replace(",", ".")
+
+      case Float.parse(dollars) do
         {dollars, _} -> Map.put(params, "monthly_budget_cents", round(dollars * 100))
         :error -> params
       end
     end)
   end
+
+  defp schedule_attrs(%{"schedule_rule" => rule} = params) do
+    time = params |> Map.get("schedule_time", "") |> to_string() |> String.slice(0, 5)
+    time = if time == "", do: "09:00", else: time
+    schedule = if String.trim(to_string(rule)) == "", do: "", else: "#{rule}@#{time}"
+    Map.put(params, "schedule", schedule)
+  end
+
+  defp schedule_attrs(params), do: params
+
+  # A schedule's rule ("FREQ=WEEKLY;BYDAY=MO") or time ("09:00").
+  defp schedule_part(schedule, part) when is_binary(schedule) and schedule != "" do
+    case {String.split(schedule, "@", parts: 2), part} do
+      {[rule, _time], :rule} -> rule
+      {[_rule, time], :time} -> time
+      {[rule], :rule} -> rule
+      _other -> nil
+    end
+  end
+
+  defp schedule_part(_schedule, _part), do: nil
 
   defp dollars(micros), do: :erlang.float_to_binary(micros / 1_000_000, decimals: 2)
   defp budget(cents), do: :erlang.float_to_binary((cents || 0) / 100, decimals: 2)
@@ -291,12 +317,32 @@ defmodule NotebookWeb.BotsLive do
                 type="checkbox"
                 label="A new page in a space it reads"
               />
-              <.input
-                field={@form[:schedule]}
-                type="text"
-                label="A schedule (a rule and a time)"
-                placeholder="FREQ=WEEKLY;BYDAY=MO@09:00"
-              />
+              <div class="bot-schedule" id="bot-schedule">
+                <span id="bot-schedule-label" class="bot-schedule-label">On a schedule</span>
+                <div class="bot-schedule-pickers">
+                  <.recurrence_picker
+                    id="bot-schedule-rule"
+                    name="bot[schedule_rule]"
+                    value={schedule_part(@form[:schedule].value, :rule)}
+                    label_id="bot-schedule-label"
+                  />
+                  <.time_picker
+                    :if={schedule_part(@form[:schedule].value, :rule) not in [nil, ""]}
+                    id="bot-schedule-time"
+                    name="bot[schedule_time]"
+                    value={schedule_part(@form[:schedule].value, :time)}
+                    label_id="bot-schedule-label"
+                  />
+                </div>
+                <p
+                  :if={schedule_part(@form[:schedule].value, :rule) not in [nil, ""]}
+                  class="field-hint"
+                  id="bot-schedule-words"
+                >
+                  {Notebook.Bots.Schedule.describe(@form[:schedule].value)}, in the notebook's time zone.
+                </p>
+                <p :for={{message, _} <- @form[:schedule].errors} class="field-error">{message}</p>
+              </div>
               <.input
                 :if={@form[:schedule].value not in [nil, ""]}
                 field={@form[:schedule_task]}
@@ -306,14 +352,21 @@ defmodule NotebookWeb.BotsLive do
             </fieldset>
 
             <div class="storage-pair">
-              <.input
-                name="bot[budget]"
-                value={budget(@form[:monthly_budget_cents].value)}
-                type="number"
-                step="0.01"
-                min="0"
-                label="Most it spends a month ($)"
-              />
+              <div class="money-field">
+                <label for="bot-budget">Most it spends a month</label>
+                <div class="money-input">
+                  <span aria-hidden="true">$</span>
+                  <input
+                    id="bot-budget"
+                    name="bot[budget]"
+                    value={budget(@form[:monthly_budget_cents].value)}
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    data-1p-ignore
+                  />
+                </div>
+              </div>
               <.input field={@form[:enabled]} type="checkbox" label="On" />
             </div>
             <p :for={{message, _} <- @form[:monthly_budget_cents].errors} class="field-error">

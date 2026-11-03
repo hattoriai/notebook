@@ -45,7 +45,8 @@ defmodule NotebookWeb.BotsLiveTest do
         model: "claude-sonnet-5-5",
         tools: ["", "comment", "hand_off"],
         on_new_page: "true",
-        budget: "12.50"
+        # A comma, as some keyboards write it.
+        budget: "12,50"
       }
     )
     |> render_submit()
@@ -59,6 +60,19 @@ defmodule NotebookWeb.BotsLiveTest do
              on_new_page: true,
              monthly_budget_cents: 1250
            } = bot
+
+    # Its schedule from Koyomi's two pickers: how often, and at what time.
+    view
+    |> form("#bot-form")
+    |> render_submit(%{
+      bot: %{
+        schedule_rule: "FREQ=WEEKLY;BYDAY=MO",
+        schedule_time: "08:30",
+        schedule_task: "Sum up last week's changes in General."
+      }
+    })
+
+    assert %{schedule: "FREQ=WEEKLY;BYDAY=MO@08:30"} = Notebook.Repo.reload!(bot)
 
     view
     |> form("#bot-space-#{forge.id}", %{space: forge.id, role: "commenter"})

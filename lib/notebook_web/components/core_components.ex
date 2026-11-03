@@ -325,7 +325,7 @@ defmodule NotebookWeb.CoreComponents do
             name={@name}
             value="true"
             checked={@checked}
-            class={@class || "checkbox checkbox-sm"}
+            class={@class}
             {@rest}
           />{@label}
         </span>
@@ -408,6 +408,7 @@ defmodule NotebookWeb.CoreComponents do
       <label for={@id}>
         <span :if={@label} class="label mb-1">{@label}</span>
         <textarea
+          data-1p-ignore
           id={@id}
           name={@name}
           class={[
@@ -424,6 +425,8 @@ defmodule NotebookWeb.CoreComponents do
 
   # All other inputs text, datetime-local, url, password, etc. are handled here...
   def input(assigns) do
+    assigns = assign(assigns, :ignore_1p, not credential?(assigns))
+
     ~H"""
     <div class="fieldset mb-2">
       <label for={@id}>
@@ -433,6 +436,7 @@ defmodule NotebookWeb.CoreComponents do
           name={@name}
           id={@id}
           value={Phoenix.HTML.Form.normalize_value(@type, @value)}
+          data-1p-ignore={@ignore_1p}
           class={[
             @class || "w-full input",
             @errors != [] && (@error_class || "input-error")
@@ -444,6 +448,15 @@ defmodule NotebookWeb.CoreComponents do
     </div>
     """
   end
+
+  # A field of signing in (an email, a password, a one-time code), which a
+  # password manager may fill: 1Password stays off the notebook's others.
+  defp credential?(%{type: type}) when type in ~w(email password), do: true
+
+  defp credential?(%{rest: rest}),
+    do: rest[:autocomplete] in ~w(username email current-password new-password one-time-code)
+
+  defp credential?(_assigns), do: false
 
   # The options of a select, as Phoenix takes them (`{label, value}`, a
   # keyword list of label: value, values, `{group, options}`), as Erabi's.
