@@ -19,7 +19,7 @@ defmodule Notebook.Secrets do
   rescue
     # A key that is gone (`NOTEBOOK_VAULT_KEY` changed, the old one not
     # kept): the secret is to be given again.
-    _error in [Cloak.MissingCipher, ArgumentError] -> nil
+    _error in ArgumentError -> nil
   end
 
   @doc "Keeps `value` as the secret named `name`."
