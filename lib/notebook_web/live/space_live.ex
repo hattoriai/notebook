@@ -384,14 +384,22 @@ defmodule NotebookWeb.SpaceLive do
             phx-submit="add_member"
             class="member-add"
           >
-            <select name="user_id" aria-label="Person">
-              <option :for={user <- @outsiders} value={user.id}>{user.name}</option>
-            </select>
-            <select name="role" aria-label="Role">
-              <option :for={role <- Member.roles()} value={role} selected={role == "editor"}>
-                {role_name(role)}
-              </option>
-            </select>
+            <Erabi.Components.person_picker
+              id="member-add-person"
+              name="user_id"
+              people={@outsiders}
+              label="Person"
+              placeholder="A person…"
+              required
+            />
+            <Erabi.Components.select
+              id="member-add-role"
+              name="role"
+              value="editor"
+              options={role_options()}
+              label="Role"
+              clearable={false}
+            />
             <button class="button button-primary" type="submit">Add</button>
           </.form>
 
@@ -403,11 +411,15 @@ defmodule NotebookWeb.SpaceLive do
               </span>
               <form id={"member-role-#{member.id}"} phx-change="set_role" class="member-role">
                 <input type="hidden" name="member_id" value={member.id} />
-                <select name="role" aria-label={"Role of #{member.user.name}"}>
-                  <option :for={role <- Member.roles()} value={role} selected={role == member.role}>
-                    {role_name(role)}
-                  </option>
-                </select>
+                <Erabi.Components.select
+                  id={"member-role-#{member.id}-picker"}
+                  name="role"
+                  value={member.role}
+                  options={role_options()}
+                  label={"Role of #{member.user.name}"}
+                  clearable={false}
+                  class="is-compact"
+                />
               </form>
               <button
                 type="button"
@@ -468,6 +480,8 @@ defmodule NotebookWeb.SpaceLive do
   defp kind_name("table"), do: "TABLE"
   defp kind_name("database"), do: "DATABASE"
   defp kind_name(_text), do: "PAGE"
+
+  defp role_options, do: for(role <- Member.roles(), do: {role_name(role), role})
 
   defp role_name(role), do: String.capitalize(role)
 

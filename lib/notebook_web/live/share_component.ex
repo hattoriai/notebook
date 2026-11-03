@@ -106,15 +106,22 @@ defmodule NotebookWeb.ShareComponent do
         <p :if={@error} class="publish-error" role="alert">{@error}</p>
 
         <form id={@id <> "-invite"} class="share-invite" phx-submit="share" phx-target={@myself}>
-          <select name="user_id" aria-label="A person" required>
-            <option value="">Share with a person…</option>
-            <option :for={user <- @candidates} value={user.id}>{user.name}</option>
-          </select>
-          <select name="role" aria-label="As">
-            <option :for={role <- Sharing.roles()} value={role} selected={role == "viewer"}>
-              {role_name(role)}
-            </option>
-          </select>
+          <Erabi.Components.person_picker
+            id={@id <> "-invite-person"}
+            name="user_id"
+            people={@candidates}
+            label="A person"
+            placeholder="Share with a person…"
+            required
+          />
+          <Erabi.Components.select
+            id={@id <> "-invite-role"}
+            name="role"
+            value="viewer"
+            options={role_options(Sharing.roles())}
+            label="As"
+            clearable={false}
+          />
           <button type="submit" class="button button-primary">Share</button>
         </form>
 
@@ -135,11 +142,15 @@ defmodule NotebookWeb.ShareComponent do
             <span class="share-who">{user.name}<small>{user.email}</small></span>
             <form id={"#{@id}-role-#{user.id}"} phx-change="role" phx-target={@myself}>
               <input type="hidden" name="user_id" value={user.id} />
-              <select name="role" aria-label={"#{user.name}'s role"}>
-                <option :for={r <- Sharing.roles()} value={r} selected={r == role}>
-                  {role_name(r)}
-                </option>
-              </select>
+              <Erabi.Components.select
+                id={"#{@id}-role-#{user.id}-picker"}
+                name="role"
+                value={role}
+                options={role_options(Sharing.roles())}
+                label={"#{user.name}'s role"}
+                clearable={false}
+                class="is-compact"
+              />
             </form>
             <button
               type="button"
@@ -162,12 +173,15 @@ defmodule NotebookWeb.ShareComponent do
             {if @access.link, do: "On", else: "Off"}
             <small>{link_hint(@access.link, @resource)}</small>
           </span>
-          <select name="role" aria-label="What the link gives">
-            <option value="off" selected={is_nil(@access.link)}>No link</option>
-            <option :for={r <- Sharing.link_roles(@resource)} value={r} selected={r == @access.link}>
-              {role_name(r)}
-            </option>
-          </select>
+          <Erabi.Components.select
+            id={@id <> "-link-role"}
+            name="role"
+            value={@access.link || "off"}
+            options={[{"No link", "off"} | role_options(Sharing.link_roles(@resource))]}
+            label="What the link gives"
+            clearable={false}
+            class="is-compact"
+          />
         </form>
         <div :if={@link_url} class="share-url">
           <input id={@id <> "-url"} type="text" value={@link_url} readonly aria-label="The link" />
@@ -202,14 +216,16 @@ defmodule NotebookWeb.ShareComponent do
               {if closed?(@resource), do: "Off limits", else: "May work here"}
               <small>{agents_hint(@resource)}</small>
             </span>
-            <select
+            <Erabi.Components.select
+              id={@id <> "-agents-picker"}
               name="agents"
-              aria-label="Whether agents may work on this page"
+              value={if @resource.closed_to_agents, do: "closed", else: "open"}
+              options={[{"May work here", "open"}, {"Off limits", "closed"}]}
+              label="Whether agents may work on this page"
               disabled={space_closed?(@resource)}
-            >
-              <option value="open" selected={not @resource.closed_to_agents}>May work here</option>
-              <option value="closed" selected={@resource.closed_to_agents}>Off limits</option>
-            </select>
+              clearable={false}
+              class="is-compact"
+            />
           </form>
         <% end %>
       </section>
@@ -222,6 +238,8 @@ defmodule NotebookWeb.ShareComponent do
 
   defp name(%Page{title: title}), do: title
   defp name(folder), do: folder.name
+
+  defp role_options(roles), do: for(role <- roles, do: {role_name(role), role})
 
   defp role_name("viewer"), do: "Can read"
   defp role_name("commenter"), do: "Can comment"

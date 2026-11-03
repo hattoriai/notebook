@@ -347,12 +347,15 @@ defmodule NotebookWeb.BotsLive do
             >
               <input type="hidden" name="space" value={space.id} />
               <span>{space.name}</span>
-              <select name="role" aria-label={"Its role in #{space.name}"}>
-                <option value="" selected={is_nil(role)}>Not in it</option>
-                <option :for={r <- ~w(viewer commenter editor)} value={r} selected={role == r}>
-                  {r}
-                </option>
-              </select>
+              <Erabi.Components.select
+                id={"bot-space-#{space.id}-role"}
+                name="role"
+                value={role || ""}
+                options={[{"Not in it", ""} | for(r <- ~w(viewer commenter editor), do: {r, r})]}
+                label={"Its role in #{space.name}"}
+                clearable={false}
+                class="is-compact"
+              />
             </form>
           </div>
 

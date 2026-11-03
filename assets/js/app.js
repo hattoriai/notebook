@@ -31,6 +31,7 @@ import {Jumon} from "jumon"
 import {Hooks as IsshoHooks} from "issho"
 import {Hakushi} from "hakushi"
 import {Masu} from "masu"
+import {Erabi} from "erabi"
 import {Narabe} from "narabe"
 import {Fude} from "fude"
 
@@ -43,7 +44,7 @@ const socketPath = document.querySelector("meta[name='live-socket']")?.getAttrib
 const liveSocket = new LiveSocket(socketPath, Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, ...IsshoHooks, Kotoba, Koyomi, Jumon, Hakushi, Masu, Narabe, Fude},
+  hooks: {...colocatedHooks, ...IsshoHooks, Kotoba, Koyomi, Jumon, Hakushi, Masu, Narabe, Fude, Erabi},
 })
 
 // Show progress bar on live navigation and form submits

@@ -225,7 +225,8 @@ defmodule NotebookWeb.CoreComponents do
 
   This function accepts all HTML input types, considering that:
 
-    * You may also set `type="select"` to render a `<select>` tag
+    * You may also set `type="select"` to render an Erabi picker: `Erabi.Components.select/1`,
+      or `multi_select/1` with `multiple`. It posts what a `<select>` would
 
     * `type="checkbox"` is used exclusively to render boolean values
 
@@ -270,6 +271,11 @@ defmodule NotebookWeb.CoreComponents do
   attr :errors, :list, default: []
   attr :checked, :boolean, doc: "the checked flag for checkbox inputs"
   attr :prompt, :string, default: nil, doc: "the prompt for select inputs"
+
+  attr :label_id, :string,
+    default: nil,
+    doc: "for a select without `label`: the id of the element that labels it"
+
   attr :options, :list, doc: "the options to pass to Phoenix.HTML.Form.options_for_select/2"
   attr :multiple, :boolean, default: false, doc: "the multiple flag for select inputs"
   attr :class, :any, default: nil, doc: "the input class to use over defaults"
@@ -330,21 +336,67 @@ defmodule NotebookWeb.CoreComponents do
   end
 
   def input(%{type: "select"} = assigns) do
+    {disabled, rest} = Map.pop(assigns.rest, :disabled)
+    {required, rest} = Map.pop(rest, :required)
+    options = select_options(assigns.options)
+
+    base =
+      if assigns.multiple, do: String.replace_suffix(assigns.name, "[]", ""), else: assigns.name
+
+    assigns =
+      assign(assigns,
+        rest: Map.drop(rest, [:placeholder, :multiple]),
+        placeholder: assigns.prompt || rest[:placeholder],
+        disabled: disabled in [true, "true", "disabled", ""],
+        required: required in [true, "true", "required", ""],
+        erabi_options: options,
+        label_id: if(assigns.label, do: "#{assigns.id || base}-label", else: assigns.label_id)
+      )
+
+    # A field, so that the picker's <select> (before its hook mounts, and
+    # without JavaScript) keeps the input's id and name.
+    assigns =
+      assign(assigns,
+        picker_field: %Phoenix.HTML.FormField{
+          id: assigns.id || base,
+          name: base,
+          field: base,
+          form: nil,
+          errors: [],
+          value: select_value(assigns, options)
+        }
+      )
+
     ~H"""
     <div class="fieldset mb-2">
-      <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
-        <select
-          id={@id}
-          name={@name}
-          class={[@class || "w-full select", @errors != [] && (@error_class || "select-error")]}
-          multiple={@multiple}
-          {@rest}
-        >
-          <option :if={@prompt} value="">{@prompt}</option>
-          {Phoenix.HTML.Form.options_for_select(@options, @value)}
-        </select>
+      <label :if={@label} for={@picker_field.id} id={@label_id}>
+        <span class="label mb-1">{@label}</span>
       </label>
+      <Erabi.Components.multi_select
+        :if={@multiple}
+        field={@picker_field}
+        options={@erabi_options}
+        label_id={@label_id}
+        placeholder={@placeholder}
+        disabled={@disabled}
+        required={@required}
+        class={@class}
+        aria-invalid={@errors != [] && "true"}
+        {@rest}
+      />
+      <Erabi.Components.select
+        :if={!@multiple}
+        field={@picker_field}
+        options={@erabi_options}
+        label_id={@label_id}
+        placeholder={@placeholder}
+        clearable={@prompt != nil}
+        disabled={@disabled}
+        required={@required}
+        class={@class}
+        aria-invalid={@errors != [] && "true"}
+        {@rest}
+      />
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
     """
@@ -392,6 +444,41 @@ defmodule NotebookWeb.CoreComponents do
     </div>
     """
   end
+
+  # The options of a select, as Phoenix takes them (`{label, value}`, a
+  # keyword list of label: value, values, `{group, options}`), as Erabi's.
+  defp select_options(options) do
+    Enum.flat_map(options || [], fn
+      {group, options} when is_list(options) ->
+        options |> select_options() |> Enum.map(&Map.put(&1, :group, to_string(group)))
+
+      option ->
+        [select_option(option)]
+    end)
+  end
+
+  defp select_option({label, value}), do: %{label: to_string(label), value: value}
+
+  defp select_option(option) when is_list(option) do
+    %{
+      label: to_string(Keyword.fetch!(option, :key)),
+      value: Keyword.fetch!(option, :value),
+      disabled: Keyword.get(option, :disabled, false)
+    }
+  end
+
+  defp select_option(value), do: %{label: to_string(value), value: value}
+
+  # The value a select posts: without a prompt, a browser's <select> posts
+  # its first option when no option is chosen, and so does this.
+  defp select_value(%{multiple: true, value: value}, _options), do: value || []
+
+  defp select_value(%{prompt: nil, value: value}, [first | _] = options) do
+    param = Erabi.Option.param(value)
+    if Enum.any?(options, &(Erabi.Option.param(&1.value) == param)), do: value, else: first.value
+  end
+
+  defp select_value(%{value: value}, _options), do: value
 
   # Helper used by inputs to generate form errors
   defp error(assigns) do
