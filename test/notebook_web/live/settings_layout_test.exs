@@ -86,4 +86,18 @@ defmodule NotebookWeb.SettingsLayoutTest do
     assert Notebook.Publishing.config().url == "https://hattori.ai"
     assert Notebook.Publishing.config().name == "Hattori"
   end
+
+  test "password managers stay on the fields of signing in, and off the others", %{
+    conn: conn,
+    yuki: yuki
+  } do
+    {:ok, view, _html} = live(log_in_user(conn, yuki), ~p"/account/settings/profile")
+    assert has_element?(view, "#name_form input[name='user[name]'][data-1p-ignore]")
+
+    {:ok, view, _html} = live(log_in_user(conn, yuki), ~p"/account/settings/password")
+    refute has_element?(view, "#password_form input[type=password][data-1p-ignore]")
+
+    {:ok, view, _html} = live(build_conn(), ~p"/users/log-in")
+    refute has_element?(view, "input[type=email][data-1p-ignore]")
+  end
 end

@@ -99,7 +99,14 @@ defmodule NotebookWeb.PublishComponent do
           <a class="button" href={@url} target="_blank" rel="noopener">Open ↗</a>
         </div>
         <div :if={@url} class="share-url">
-          <input id={@id <> "-url"} type="text" value={@url} readonly aria-label="Its address" />
+          <input
+            data-1p-ignore
+            id={@id <> "-url"}
+            type="text"
+            value={@url}
+            readonly
+            aria-label="Its address"
+          />
           <button
             type="button"
             class="button"
@@ -114,6 +121,7 @@ defmodule NotebookWeb.PublishComponent do
           <div class="publish-slug">
             <span>{prefix(@resource, @scope.user)}</span>
             <input
+              data-1p-ignore
               id={@id <> "-slug"}
               name="slug"
               value={@slug}
