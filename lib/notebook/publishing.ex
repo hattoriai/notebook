@@ -28,7 +28,7 @@ defmodule Notebook.Publishing do
 
   # The first words of the notebook's own paths: no handle or slug at the
   # top takes them.
-  @reserved ~w(account admin agents api archive assets bots dev favicon.ico feed fonts images inbox issho live
+  @reserved ~w(account admin agents api archive assets bots dev erabi favicon.ico feed fonts images inbox issho live
                login logout made-with mcp notebook notifications oauth pages phoenix public robots.txt settings spaces
                up uploads users)
 

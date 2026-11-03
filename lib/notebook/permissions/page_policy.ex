@@ -32,9 +32,18 @@ defmodule Notebook.Permissions.PagePolicy do
   # Off limits to agents: the page, or its space. Over every role.
   @impl true
   def deny(%Notebook.Accounts.User{as_agent: true}, _permission) do
-    closed = from(s in Notebook.Spaces.Space, where: s.closed_to_agents, select: s.id)
+    closed =
+      from(s in Notebook.Spaces.Space,
+        where: s.closed_to_agents or not is_nil(s.archived_at),
+        select: s.id
+      )
+
     dynamic([p], p.closed_to_agents or p.space_id in subquery(closed))
   end
 
-  def deny(_actor, _permission), do: false
+  # A page of a space in the Archive is there for no one, until it is restored.
+  def deny(_actor, _permission) do
+    archived = from(s in Notebook.Spaces.Space, where: not is_nil(s.archived_at), select: s.id)
+    dynamic([p], p.space_id in subquery(archived))
+  end
 end

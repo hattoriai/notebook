@@ -32,6 +32,7 @@ import {Hooks as IsshoHooks} from "issho"
 import {Hakushi} from "hakushi"
 import {Masu} from "masu"
 import {Erabi} from "erabi"
+import "erabi/emoji"
 import {Narabe} from "narabe"
 import {Fude} from "fude"
 

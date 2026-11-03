@@ -127,7 +127,7 @@ defmodule NotebookWeb.Commands do
 
   defp space_action(space) do
     action("space-#{space.id}", space.name,
-      icon: "hero-rectangle-stack",
+      icon: NotebookWeb.Sidebar.space_icon(space),
       subtitle: "Space",
       navigate: ~p"/spaces/#{space.id}",
       actions: [
