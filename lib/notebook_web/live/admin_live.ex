@@ -19,7 +19,7 @@ defmodule NotebookWeb.AdminLive do
 
       {:ok,
        socket
-       |> assign(page_title: "Notebook settings", config: config, samples: [])
+       |> assign(page_title: title(socket.assigns.live_action), config: config, samples: [])
        |> assign_form(Storage.change(config))
        |> assign_joining()
        |> assign_other()
@@ -31,6 +31,10 @@ defmodule NotebookWeb.AdminLive do
        |> push_navigate(to: ~p"/")}
     end
   end
+
+  defp title(:people), do: "People · Notebook settings"
+  defp title(:agents), do: "Agents · Notebook settings"
+  defp title(:files), do: "Files · Notebook settings"
 
   defp assign_form(socket, changeset) do
     assign(socket,
@@ -225,18 +229,15 @@ defmodule NotebookWeb.AdminLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <main class="settings-page admin-page">
-      <div class="page-nav"><.link navigate={~p"/"}>← Back to pages</.link><span>NOTEBOOK</span></div>
-      <div class="page-heading">
-        <p class="eyebrow">This notebook</p>
-        <h1>Notebook settings</h1>
-        <p>What is the whole notebook's, for everyone in it. Only its admins see this.</p>
-        <p><.link navigate={~p"/bots"} class="copy-action">The notebook's bots →</.link></p>
-      </div>
-      <Layouts.flash_group flash={@flash} />
-
+    <Layouts.settings
+      area={:notebook}
+      current={@live_action}
+      flash={@flash}
+      jumon={@jumon}
+      class="admin-page"
+    >
       <div class="settings-grid">
-        <section class="settings-wide" id="joining">
+        <section :if={@live_action == :people} class="settings-wide" id="joining">
           <h2>Who joins</h2>
           <p>
             Anyone may create an account, or only people an admin invites. An invitation is a
@@ -298,7 +299,7 @@ defmodule NotebookWeb.AdminLive do
           </div>
         </section>
 
-        <section class="settings-wide" id="connecting">
+        <section :if={@live_action == :agents} class="settings-wide" id="connecting">
           <h2>How agents connect</h2>
           <p>
             Claude Code, Codex and other MCP clients connect with an agent's token, from each
@@ -328,7 +329,7 @@ defmodule NotebookWeb.AdminLive do
           </form>
         </section>
 
-        <section class="settings-wide" id="storage">
+        <section :if={@live_action == :files} class="settings-wide" id="storage">
           <h2>Where files are kept</h2>
           <p>
             The images and attachments of the pages. Keep them on this server, or in a bucket
@@ -461,8 +462,7 @@ defmodule NotebookWeb.AdminLive do
           <.transfer other={@other} transfer={@transfer} files={@files} rate={rate(@samples)} />
         </section>
       </div>
-      <Layouts.palette jumon={@jumon} />
-    </main>
+    </Layouts.settings>
     """
   end
 

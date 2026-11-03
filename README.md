@@ -27,7 +27,7 @@ claude mcp add --transport http notebook "http://localhost:4000/mcp?token=…"
 
 For Codex, `codex mcp add notebook --url "…"`, or the same URL in `~/.codex/config.toml`.
 
-An admin can also turn on **OAuth** in Notebook settings (**How agents connect**). Then a client connects with no token: `claude mcp add --transport http notebook "https://your-notebook/mcp"` opens the Notebook to sign in, and the client acts as any of the person's agents, one at a time, and as the notebook's bots for an admin. It never acts as the person themselves. The model switches between them with `list_actors` and `act_as` (Sake's actors), and each agent keeps its own name, persona (`self.md`) and memory. Tokens keep working beside it, and with OAuth off, nothing tells a client to sign in. Your agent works on your behalf, in the rooms of the pages: open a page in your browser, then ask it.
+An admin can also turn on **OAuth** in Notebook settings → **Agents** (`/notebook/settings/agents`). Then a client connects with no token: `claude mcp add --transport http notebook "https://your-notebook/mcp"` opens the Notebook to sign in, and the client acts as any of the person's agents, one at a time, and as the notebook's bots for an admin. It never acts as the person themselves. The model switches between them with `list_actors` and `act_as` (Sake's actors), and each agent keeps its own name, persona (`self.md`) and memory. Tokens keep working beside it, and with OAuth off, nothing tells a client to sign in. Your agent works on your behalf, in the rooms of the pages: open a page in your browser, then ask it.
 
 - “Open the board *The forge, planned*, add a card for each step of the ceremony, and join them in order.”
 - “In *Blades in progress*, give every task without an owner to Masamune.”
@@ -45,7 +45,7 @@ mix run --no-start scripts/agent.exs "http://localhost:4000/mcp?token=…" board
 
 ## Bots
 
-The notebook can have bots of its own, besides its people's agents: **Bots** (`/bots`, from **Notebook settings**) is for its admins, and the notebook comes with none. Each one is what you make it:
+The notebook can have bots of its own, besides its people's agents: **Bots** (`/notebook/settings/bots`) is for its admins, and the notebook comes with none. Each one is what you make it:
 
 - **What it is told**: who it is, what it does, how it writes.
 - **The model it thinks with** (Claude Opus 5.5 unless you choose another), and how hard it thinks.
@@ -133,7 +133,7 @@ The same pages are at `notebook.hattori.ai/libs/...` too, and their links, canon
 
 ## Where files are kept
 
-The notebook's first person is its admin. **Notebook settings** (the account menu, `/admin`) chooses where the pages' images and attachments are kept: on this server's disk, or in a bucket of any store that speaks S3 (Amazon S3, Cloudflare R2, Tigris, Backblaze B2, MinIO). A Google Drive, Dropbox or OneDrive works through [`rclone serve s3`](https://rclone.org/commands/rclone_serve_s3/). A bucket is tried before it is kept, and nothing needs deploying again.
+The notebook's first person is its admin. **Notebook settings** (the account menu, `/notebook/settings`) has a group at each address: **People** (who joins), **Agents** (how agents connect), **Bots** and **Files**. **Files** chooses where the pages' images and attachments are kept: on this server's disk, or in a bucket of any store that speaks S3 (Amazon S3, Cloudflare R2, Tigris, Backblaze B2, MinIO). A Google Drive, Dropbox or OneDrive works through [`rclone serve s3`](https://rclone.org/commands/rclone_serve_s3/). A bucket is tried before it is kept, and nothing needs deploying again.
 
 Files keep their addresses (`/uploads/kotoba/…`) wherever they are, so pages never change. The notebook serves each file from the store that has it, behind the same rules as before: sent through the notebook (the bucket stays private) or by links the bucket signs for five minutes. After a move, **Copy them** copies the files of before to the new store, and **Remove them** then frees the room they took where they were, only for the files the new store has, the same size. Either runs in the background a slice at a time with a progress bar, the time left and a **Stop**: it may take hours, and it carries on after a restart.
 

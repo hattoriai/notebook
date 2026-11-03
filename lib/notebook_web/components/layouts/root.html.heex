@@ -78,8 +78,11 @@
             <p class="account-menu-identity">
               {@current_scope.user.name}<small>{@current_scope.user.email}</small>
             </p>
-            <.link href={~p"/users/settings"}>Settings</.link>
-            <.link :if={Notebook.Accounts.Scope.admin?(@current_scope)} href={~p"/admin"}>
+            <.link href={~p"/account/settings/profile"}>Settings</.link>
+            <.link
+              :if={Notebook.Accounts.Scope.admin?(@current_scope)}
+              href={~p"/notebook/settings/people"}
+            >
               Notebook settings
             </.link>
             <.link href={~p"/users/log-out"} method="delete">Log out</.link>

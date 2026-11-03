@@ -64,7 +64,7 @@ defmodule NotebookWeb.Commands do
         icon: "hero-cog-6-tooth",
         keywords: ~w(account email password),
         shortcut: "g s",
-        navigate: ~p"/users/settings"
+        navigate: ~p"/account/settings/profile"
       ),
       action(:toggle_sidebar, "Hide or show the sidebar",
         section: "View",
@@ -90,13 +90,13 @@ defmodule NotebookWeb.Commands do
         section: "Go to",
         icon: "hero-sparkles",
         keywords: ~w(bot assistant ai),
-        navigate: ~p"/bots"
+        navigate: ~p"/notebook/settings/bots"
       ),
       action(:notebook_settings, "Notebook settings",
         section: "Go to",
         icon: "hero-adjustments-horizontal",
         keywords: ~w(admin storage bucket invite invitation join register),
-        navigate: ~p"/admin"
+        navigate: ~p"/notebook/settings/people"
       )
     ]
   end

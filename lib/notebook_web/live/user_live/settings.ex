@@ -13,24 +13,23 @@ defmodule NotebookWeb.UserLive.Settings do
        handle_form: to_form(Accounts.change_user_handle(user)),
        password_form: to_form(Accounts.change_user_password(user, %{}, hash_password: false)),
        current_email: user.email,
+       page_title: title(socket.assigns.live_action),
        trigger_submit: false
      )}
   end
 
+  defp title(:profile), do: "Profile · Account settings"
+  defp title(:password), do: "Password · Account settings"
+  defp title(:notifications), do: "Notifications · Account settings"
+
   @impl true
   def render(assigns) do
     ~H"""
-    <main class="settings-page">
-      <div class="page-nav"><.link navigate={~p"/"}>← Back to pages</.link><span>ACCOUNT</span></div>
-      <div class="page-heading">
-        <p class="eyebrow">Your account</p><h1>Settings</h1><p>
-          Your name appears beside your cursor and in @mentions.
-        </p>
-      </div>
-      <Layouts.flash_group flash={@flash} />
+    <Layouts.settings area={:account} current={@live_action} flash={@flash} jumon={@jumon}>
       <div class="settings-grid">
-        <section>
-          <h2>Display name</h2><p>Let your collaborators know who is writing.</p>
+        <section :if={@live_action == :profile} id="profile-name">
+          <h2>Display name</h2>
+          <p>It appears beside your cursor, and in @mentions.</p>
           <.form
             for={@name_form}
             id="name_form"
@@ -42,7 +41,7 @@ defmodule NotebookWeb.UserLive.Settings do
             <button class="button button-primary" type="submit">Save name</button>
           </.form>
         </section>
-        <section>
+        <section :if={@live_action == :profile} id="profile-handle">
           <h2>Handle</h2>
           <p>
             The address of the pages you publish: <strong>{handle_example(@current_scope.user)}</strong>.
@@ -65,7 +64,7 @@ defmodule NotebookWeb.UserLive.Settings do
             <button class="button button-primary" type="submit">Save handle</button>
           </.form>
         </section>
-        <section>
+        <section :if={@live_action == :password} id="password">
           <h2>Password</h2><p>Use at least 12 characters.</p>
           <.form
             for={@password_form}
@@ -94,7 +93,7 @@ defmodule NotebookWeb.UserLive.Settings do
             <button class="button button-primary" type="submit">Save password</button>
           </.form>
         </section>
-        <section class="settings-wide">
+        <section :if={@live_action == :notifications} class="settings-wide" id="notifications-prefs">
           <h2>Notifications</h2>
           <p>
             What you hear of, in your Inbox and by email. An email waits ten minutes,
@@ -103,8 +102,7 @@ defmodule NotebookWeb.UserLive.Settings do
           <Chime.Components.preferences id="notifications" chime={@chime} />
         </section>
       </div>
-      <Layouts.palette jumon={@jumon} />
-    </main>
+    </Layouts.settings>
     """
   end
 

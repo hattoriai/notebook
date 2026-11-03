@@ -17,7 +17,7 @@ defmodule NotebookWeb.InvitationsLiveTest do
     do: %{"name" => "Yuki Hattori", "email" => email, "password" => "a long password!"}
 
   test "an admin makes the notebook invite only, and makes a link", %{conn: conn, admin: admin} do
-    {:ok, view, _html} = live(log_in_user(conn, admin), ~p"/admin")
+    {:ok, view, _html} = live(log_in_user(conn, admin), ~p"/notebook/settings/people")
     refute has_element?(view, "#invite-button")
 
     view |> element("#joining-form") |> render_change(%{"joining" => "invite"})

@@ -12,7 +12,8 @@ defmodule NotebookWeb.PaletteLiveTest do
   test "the palette is on every page of a person signed in", %{conn: conn, admin: admin} do
     conn = log_in_user(conn, admin)
 
-    for path <- ~w(/ /inbox /archive /agents /users/settings /admin /bots) do
+    for path <-
+          ~w(/ /inbox /archive /agents /account/settings /account/settings/password /account/settings/notifications /notebook/settings /notebook/settings/agents /notebook/settings/bots /notebook/settings/files) do
       {:ok, view, _html} = live(conn, path)
       assert has_element?(view, "#jumon[phx-hook='Jumon']"), "no palette at #{path}"
       assert "Notebook settings" in (view |> actions() |> names()), "no actions at #{path}"

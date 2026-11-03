@@ -27,7 +27,7 @@ defmodule NotebookWeb.BotsLiveTest do
     hanzo: hanzo,
     forge: forge
   } do
-    {:ok, view, html} = live(log_in_user(conn, hanzo), ~p"/bots")
+    {:ok, view, html} = live(log_in_user(conn, hanzo), ~p"/notebook/settings/bots")
     assert html =~ "The notebook comes with none"
     refute Bots.api_key?()
 
@@ -71,7 +71,8 @@ defmodule NotebookWeb.BotsLiveTest do
   end
 
   test "someone who is not an admin is sent away", %{conn: conn, yuki: yuki} do
-    assert {:error, {:live_redirect, %{to: "/"}}} = live(log_in_user(conn, yuki), ~p"/bots")
+    assert {:error, {:live_redirect, %{to: "/"}}} =
+             live(log_in_user(conn, yuki), ~p"/notebook/settings/bots")
   end
 
   test "a visitor asks a published page's bot, and reads its answer", %{

@@ -101,6 +101,78 @@ defmodule NotebookWeb.Layouts do
   end
 
   @doc """
+  The frame of a settings page: the notebook's (`:notebook`, for its
+  admins) or the person's own (`:account`). Its groups are on the left,
+  each at its own address; the current group's sections are on the right.
+  """
+  attr :area, :atom, values: [:notebook, :account], required: true
+  attr :current, :atom, required: true, doc: "the group shown"
+  attr :flash, :map, required: true
+  attr :jumon, :any, required: true
+  attr :class, :any, default: nil
+  slot :inner_block, required: true
+
+  def settings(assigns) do
+    assigns = assign(assigns, :groups, settings_groups(assigns.area))
+
+    ~H"""
+    <main class={["settings-page settings-shell", @class]} id={"#{@area}-settings"}>
+      <div class="page-nav">
+        <.link navigate={~p"/"}>← Back to pages</.link><span>{area_label(@area)}</span>
+      </div>
+      <div class="page-heading">
+        <p class="eyebrow">{area_eyebrow(@area)}</p>
+        <h1>{area_title(@area)}</h1>
+      </div>
+      <.flash_group flash={@flash} />
+      <div class="settings-layout">
+        <nav class="settings-nav" aria-label={area_title(@area)} id="settings-nav">
+          <.link
+            :for={{key, label, icon, path} <- @groups}
+            id={"settings-nav-#{key}"}
+            navigate={path}
+            class={[key == @current && "is-current"]}
+            aria-current={if(key == @current, do: "page")}
+          >
+            <Icons.named name={icon} class="size-4" />
+            <span>{label}</span>
+          </.link>
+        </nav>
+        <div class="settings-body">
+          {render_slot(@inner_block)}
+        </div>
+      </div>
+      <.palette jumon={@jumon} />
+    </main>
+    """
+  end
+
+  @doc "The groups of a settings area, as `{key, label, icon, path}`."
+  def settings_groups(:notebook) do
+    [
+      {:people, "People", "hero-user-group", ~p"/notebook/settings/people"},
+      {:agents, "Agents", "notebook-robot", ~p"/notebook/settings/agents"},
+      {:bots, "Bots", "hero-sparkles", ~p"/notebook/settings/bots"},
+      {:files, "Files", "hero-folder", ~p"/notebook/settings/files"}
+    ]
+  end
+
+  def settings_groups(:account) do
+    [
+      {:profile, "Profile", "hero-user-circle", ~p"/account/settings/profile"},
+      {:password, "Password", "hero-key", ~p"/account/settings/password"},
+      {:notifications, "Notifications", "hero-bell", ~p"/account/settings/notifications"}
+    ]
+  end
+
+  defp area_label(:notebook), do: "Notebook"
+  defp area_label(:account), do: "Account"
+  defp area_eyebrow(:notebook), do: "This notebook · only its admins see this"
+  defp area_eyebrow(:account), do: "Your account"
+  defp area_title(:notebook), do: "Notebook settings"
+  defp area_title(:account), do: "Account settings"
+
+  @doc """
   Shows the flash group with standard titles and content.
 
   ## Examples
