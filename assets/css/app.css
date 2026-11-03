@@ -638,9 +638,18 @@ html.space-maximized { overflow: hidden; }
 .agent-step { margin-top: 36px; }
 .agent-oauth { margin-top: 40px; }
 .agent-oauth h2 { font: 600 13px ui-sans-serif, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 0 0 12px; }
-.agent-oauth pre { margin: 0 0 8px; padding: 14px 18px; background: var(--ink); color: var(--paper); font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-all; }
+.agent-oauth .command-block + .command-block { margin-top: 8px; }
 .agent-step h2 { font: 600 13px ui-sans-serif, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 0 0 12px; }
-.agent-step pre { margin: 0; padding: 16px 18px; background: var(--ink); color: var(--paper); font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-all; }
+/* A command to run, with its copy button (CoreComponents.command/1). */
+.command-block { position: relative; background: var(--ink); color: var(--paper); }
+.command-block pre { margin: 0; padding: 14px 56px 14px 18px; font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-all; }
+.command-copy { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid rgb(255 255 255 / .14); border-radius: 6px; background: rgb(255 255 255 / .04); color: rgb(255 255 255 / .62); cursor: pointer; transition: color .15s ease, background .15s ease, border-color .15s ease; }
+.command-copy:hover { color: var(--paper); background: rgb(255 255 255 / .1); border-color: rgb(255 255 255 / .28); }
+.command-copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.command-copy .copied-icon { display: none; color: #9cc78a; }
+.command-copy[data-copied] .copy-icon { display: none; }
+.command-copy[data-copied] .copied-icon { display: inline-block; animation: copy-pop .25s ease-out; }
+@media (prefers-reduced-motion: reduce) { .command-copy[data-copied] .copied-icon { animation: none; } }
 .agent-step p { margin: 12px 0; color: var(--muted); }
 .agent-prompts { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
 .agent-prompts li { padding: 14px 18px; border-left: 3px solid var(--accent); background: #fcfbf7; }

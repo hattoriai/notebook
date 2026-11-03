@@ -114,6 +114,8 @@ defmodule NotebookWeb.MCP.OAuthTest do
       oauth!(admin)
       {:ok, view, _html} = live(log_in_user(conn, yuki), ~p"/agents")
       assert has_element?(view, "#oauth-claude-command", "/mcp")
+      assert has_element?(view, "#oauth-claude-command-copy[data-copy*=\"/mcp\"]")
+      assert has_element?(view, "#oauth-codex-command-copy[data-copy*=\"/mcp\"]")
     end
   end
 end

@@ -1128,43 +1128,15 @@ defmodule NotebookWeb.NotebookLive do
               data-issho-anchor="edit-together"
               data-issho-follow
             >Edit together</.link>
-            <button
+            <.copy_button
               :for={{format, label} <- [markdown: "Copy Markdown", text: "Copy text"]}
               id={"copy-#{format}"}
-              type="button"
-              class="copy-action"
-              phx-hook=".Copy"
-              data-format={format}
-              data-copy={copy_text(@page, format, @current_scope)}
+              text={copy_text(@page, format, @current_scope)}
+              what={format_name(format)}
             >
-              <.icon name="hero-clipboard-document" class="copy-icon size-4" />
-              <.icon name="hero-check" class="copied-icon size-4" />
               {label}
-            </button>
+            </.copy_button>
           </div>
-          <script :type={Phoenix.LiveView.ColocatedHook} name=".Copy">
-            // Writes the button's text to the clipboard within the click, as
-            // Safari requires, then asks the server for the toast.
-            export default {
-              mounted() {
-                this.el.addEventListener("click", async () => {
-                  const format = this.el.dataset.format
-                  try {
-                    await navigator.clipboard.writeText(this.el.dataset.copy ?? "")
-                    this.el.dataset.copied = "true"
-                    clearTimeout(this.timer)
-                    this.timer = setTimeout(() => delete this.el.dataset.copied, 1600)
-                    this.pushEvent("copied", {format})
-                  } catch (_error) {
-                    this.pushEvent("copy_failed", {format})
-                  }
-                })
-              },
-              destroyed() {
-                clearTimeout(this.timer)
-              }
-            }
-          </script>
           <dl :if={@live_action == :show and dated?(@page)} class="page-dates-summary">
             <div :if={@page.due_on}>
               <dt>Due</dt>
@@ -1856,8 +1828,8 @@ defmodule NotebookWeb.NotebookLive do
     end
   end
 
-  defp format_name("markdown"), do: "Markdown"
-  defp format_name(_text), do: "Plain text"
+  defp format_name(:markdown), do: "Markdown"
+  defp format_name(:text), do: "Plain text"
 
   defp excerpt(%Page{kind: "board"}), do: "A board of notes and arrows, moved together."
   defp excerpt(%Page{kind: "table"}), do: "A table of tasks, edited together."
@@ -2229,18 +2201,6 @@ defmodule NotebookWeb.NotebookLive do
       _none ->
         {:noreply, assign(socket, day: nil, day_records: [])}
     end
-  end
-
-  def handle_event("copied", %{"format" => format}, socket),
-    do: {:noreply, put_flash(socket, :info, "#{format_name(format)} copied to your clipboard")}
-
-  def handle_event("copy_failed", %{"format" => format}, socket) do
-    {:noreply,
-     put_flash(
-       socket,
-       :error,
-       "Could not copy the #{String.downcase(format_name(format))}. Allow clipboard access and try again."
-     )}
   end
 
   def handle_event("kotoba:prompt", params, socket),

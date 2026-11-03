@@ -50,6 +50,8 @@ defmodule NotebookWeb do
     quote do
       use Phoenix.LiveView
 
+      on_mount NotebookWeb.Clipboard
+
       unquote(html_helpers())
       import NotebookWeb.Sidebar, only: [sidebar: 1]
     end

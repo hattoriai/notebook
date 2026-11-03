@@ -97,6 +97,87 @@ defmodule NotebookWeb.CoreComponents do
   end
 
   @doc """
+  A button that copies `text` to the clipboard. A check shows for a
+  moment, and a toast says "<what> copied to your clipboard"
+  (`NotebookWeb.Clipboard`).
+
+  ## Examples
+
+      <.copy_button id="copy-markdown" text={@markdown} what="Markdown">
+        Copy Markdown
+      </.copy_button>
+  """
+  attr :id, :string, required: true
+  attr :text, :string, required: true
+  attr :what, :string, required: true, doc: "what the toast says was copied"
+  attr :class, :any, default: "copy-action"
+  attr :rest, :global
+
+  slot :inner_block
+
+  def copy_button(assigns) do
+    ~H"""
+    <button
+      id={@id}
+      type="button"
+      class={@class}
+      phx-hook=".Copy"
+      data-copy={@text}
+      data-what={@what}
+      aria-label={if(@inner_block == [], do: "Copy the #{String.downcase(@what)}")}
+      {@rest}
+    >
+      <.icon name="hero-clipboard-document" class="copy-icon size-4" />
+      <.icon name="hero-check" class="copied-icon size-4" />
+      {render_slot(@inner_block)}
+    </button>
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".Copy">
+      // Writes the text within the click, as Safari requires, then asks
+      // the server for the toast.
+      export default {
+        mounted() {
+          this.el.addEventListener("click", async () => {
+            const what = this.el.dataset.what
+            try {
+              await navigator.clipboard.writeText(this.el.dataset.copy ?? "")
+              this.el.dataset.copied = "true"
+              clearTimeout(this.timer)
+              this.timer = setTimeout(() => delete this.el.dataset.copied, 1600)
+              this.pushEvent("clipboard:copied", {what})
+            } catch (_error) {
+              this.pushEvent("clipboard:copy_failed", {what})
+            }
+          })
+        },
+        destroyed() {
+          clearTimeout(this.timer)
+        }
+      }
+    </script>
+    """
+  end
+
+  @doc """
+  A command to run, in a dark code block, with its copy button.
+
+  ## Examples
+
+      <.command id="claude-command" what="Claude Code command" text={@claude_command} />
+  """
+  attr :id, :string, required: true
+  attr :text, :string, required: true
+  attr :what, :string, required: true, doc: "what the toast says was copied"
+
+  def command(assigns) do
+    ~H"""
+    <div class="command-block" id={@id}>
+      <pre><code>{@text}</code></pre>
+      <.copy_button id={@id <> "-copy"} text={@text} what={@what} class="command-copy" />
+    </div>
+    """
+  end
+
+  @doc """
   Renders a button with navigation support.
 
   ## Examples
