@@ -57,8 +57,25 @@ defmodule NotebookWeb.SpaceArchiveLiveTest do
     {:ok, view, _html} = live(conn, ~p"/spaces/#{forge.id}")
     assert has_element?(view, "#space-publishing .erabi")
 
+    assert has_element?(view, "#space-slug[value='the-forge']")
+    view |> form("#space-publishing") |> render_submit(%{"slug" => "forge"})
+    assert Notebook.Repo.get!(Notebook.Spaces.Space, forge.id).slug == "forge"
+
+    view |> form("#space-publishing") |> render_submit(%{"slug" => "Not an address!"})
+    assert has_element?(view, "#space-slug-error")
+
     view |> form("#space-publishing") |> render_change(%{"paths" => "solo"})
     assert Notebook.Repo.get!(Notebook.Spaces.Space, forge.id).publish_paths == "solo"
+    refute has_element?(view, "#space-slug")
+  end
+
+  test "a Private space's pages are under its person's handle, and say so", %{
+    conn: conn,
+    hanzo: hanzo
+  } do
+    {:ok, view, _html} = live(conn, ~p"/spaces/#{Spaces.private!(hanzo).id}")
+    assert has_element?(view, "#space-publishing", "/#{hanzo.handle}/")
+    refute has_element?(view, "#space-publishing-paths")
   end
 
   test "the emoji are under /assets, and no library's name is a notebook path", %{conn: conn} do

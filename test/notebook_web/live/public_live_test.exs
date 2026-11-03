@@ -11,13 +11,14 @@ defmodule NotebookWeb.PublicLiveTest do
   setup %{conn: conn} do
     hanzo = user_fixture(%{name: "Hattori Hanzo"})
     scope = Scope.for_user(hanzo)
-    {:ok, forge} = Spaces.create_team(scope, %{name: "The forge"})
-    {:ok, journal} = Spaces.create_folder(scope, forge, %{name: "Journal"})
+    # His journal, in his Private space: under his handle.
+    private = Spaces.private!(hanzo)
+    {:ok, journal} = Spaces.create_folder(scope, private, %{name: "Journal"})
 
     {:ok, day} =
       Pages.create(scope, %{
         "title" => "Day one without steel",
-        "space_id" => forge.id,
+        "space_id" => private.id,
         "folder_id" => journal.id,
         "body" => Kotoba.Content.from_markdown("Woke at four, as always. Lit nothing.")
       })

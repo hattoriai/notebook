@@ -15,7 +15,7 @@ defmodule NotebookWeb.SpaceLive do
   def mount(params, _session, socket) do
     {:ok,
      socket
-     |> assign(folder_form: nil, renaming: false)
+     |> assign(folder_form: nil, renaming: false, slug_error: nil)
      # A space's own image, as its icon: stored as soon as it is chosen.
      |> allow_upload(:space_icon,
        accept: ~w(.png .jpg .jpeg .gif .webp),
@@ -366,11 +366,23 @@ defmodule NotebookWeb.SpaceLive do
             </button>
           </div>
 
+          <div
+            :if={is_nil(@folder) and @manage_space? and @space.kind == "private"}
+            id="space-publishing"
+            class="space-publishing"
+          >
+            <span class="space-publishing-label">
+              <.icon name="hero-globe-alt" class="size-4" /> Its published pages are at
+            </span>
+            <code class="space-publishing-address">{site_host()}/{@current_scope.user.handle}/…</code>
+          </div>
+
           <form
-            :if={is_nil(@folder) and @manage_space?}
+            :if={is_nil(@folder) and @manage_space? and @space.kind != "private"}
             id="space-publishing"
             class="space-publishing"
             phx-change="set_publish_paths"
+            phx-submit="set_space_slug"
           >
             <span id="space-publishing-label" class="space-publishing-label">
               <.icon name="hero-globe-alt" class="size-4" /> Its published pages
@@ -378,12 +390,29 @@ defmodule NotebookWeb.SpaceLive do
             <Erabi.Components.select
               id="space-publishing-paths"
               name="paths"
-              value={to_string(Notebook.Publishing.paths_of(@space))}
-              options={publish_options(@current_scope)}
+              value={if Notebook.Publishing.paths_of(@space) == :solo, do: "solo", else: "space"}
+              options={publish_options(@space)}
               label_id="space-publishing-label"
               clearable={false}
               class="is-compact"
             />
+            <label
+              :if={Notebook.Publishing.paths_of(@space) == :space}
+              class="space-slug"
+              for="space-slug"
+            >
+              <span>{site_host()}/</span>
+              <input
+                id="space-slug"
+                name="slug"
+                value={@space.slug}
+                autocomplete="off"
+                data-1p-ignore
+                aria-label="Its name in the addresses"
+              />
+              <button type="submit" class="copy-action">Save</button>
+            </label>
+            <p :if={@slug_error} class="field-error" id="space-slug-error">{@slug_error}</p>
           </form>
 
           <.form
@@ -584,12 +613,35 @@ defmodule NotebookWeb.SpaceLive do
   def handle_event("icon_upload", _params, socket), do: {:noreply, socket}
 
   def handle_event("set_publish_paths", %{"paths" => paths}, socket)
-      when paths in ~w(people solo) do
+      when paths in ~w(space solo) do
     %{current_scope: scope, space: space} = socket.assigns
+    paths = if paths == "solo", do: "solo"
+    now = if Notebook.Publishing.paths_of(space) == :solo, do: "solo"
 
-    case Spaces.set_publish_paths(scope, space, paths) do
+    # The same form has the space's name: a key typed there changes nothing here.
+    case if(paths == now, do: {:ok, space}, else: Spaces.set_publish_paths(scope, space, paths)) do
       {:ok, space} -> {:noreply, assign(socket, space: space)}
       {:error, _reason} -> {:noreply, put_flash(socket, :error, "You may not change this.")}
+    end
+  end
+
+  def handle_event("set_publish_paths", _params, socket), do: {:noreply, socket}
+
+  def handle_event("set_space_slug", %{"slug" => slug}, socket) do
+    %{current_scope: scope, space: space} = socket.assigns
+
+    case Spaces.set_slug(scope, space, slug) do
+      {:ok, space} ->
+        {:noreply,
+         socket
+         |> assign(space: space, slug_error: nil)
+         |> put_flash(:info, "Its pages are at #{site_host()}/#{space.slug}/… now.")}
+
+      {:error, why} when is_binary(why) ->
+        {:noreply, assign(socket, slug_error: why)}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "You may not change this.")}
     end
   end
 
@@ -844,13 +896,16 @@ defmodule NotebookWeb.SpaceLive do
   defp icon_error(_error), do: "The image could not be uploaded."
 
   # Where a space's published pages are read, with the site's real address.
-  defp publish_options(scope) do
-    %{url: url, prefix: prefix} = Notebook.Publishing.config()
-    site = URI.parse(url).host <> prefix
-
+  defp publish_options(space) do
     [
-      {"Under each person's handle: #{site}/#{scope.user.handle}/…", "people"},
-      {"At the top of the site: #{site}/…", "solo"}
+      {"Under its name: #{site_host()}/#{space.slug || "…"}/…", "space"},
+      {"At the top of the site: #{site_host()}/…", "solo"}
     ]
+  end
+
+  # The site's host and prefix, as readers type them: hattori.ai, notebook.hattori.ai/notes.
+  defp site_host do
+    %{url: url, prefix: prefix} = Notebook.Publishing.config()
+    URI.parse(url).host <> prefix
   end
 end

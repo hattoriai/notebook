@@ -75,7 +75,7 @@ defmodule NotebookWeb.SettingsLayoutTest do
     )
     |> render_change()
 
-    assert has_element?(view, "#publishing-example", "https://hattori.ai/kotoba")
+    assert has_element?(view, "#publishing-example", "https://hattori.ai/open-source/kotoba")
 
     view
     |> form("#publishing-form",

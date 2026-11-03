@@ -22,9 +22,13 @@ defmodule Notebook.Spaces.Space do
     # In the Archive, with its pages: out of the sidebar, the lists and the
     # search, for everyone, until it is restored or deleted for good.
     field :archived_at, :utc_datetime
-    # Where its published pages are read: "people" under their publisher's
-    # handle (/freitas/notes), "solo" at the top (/kotoba), nil the
-    # notebook's default (Notebook.Publishing).
+    # Its name in its published pages' addresses (/open-source/kotoba), for
+    # General and the team spaces: one list of names with handles and
+    # slugs (Notebook.Publishing).
+    field :slug, :string
+    # Where its published pages are read: nil under its slug, "solo" at the
+    # top of the site (/kotoba). A Private space's are under its person's
+    # handle, always.
     field :publish_paths, :string
     belongs_to :owner, Notebook.Accounts.User
     has_many :members, Notebook.Spaces.Member

@@ -64,7 +64,8 @@ defmodule Notebook.Spaces do
           Repo.insert!(%Space{
             name: "General",
             kind: "general",
-            description: "Everyone in the notebook."
+            description: "Everyone in the notebook.",
+            slug: Notebook.Publishing.free_space_slug("General")
           })
 
       join!(general, user, "editor")
@@ -89,7 +90,10 @@ defmodule Notebook.Spaces do
   @doc "Makes a team space, with the scope's person as its admin."
   def create_team(%Scope{user: user}, attrs) do
     Repo.transact(fn ->
-      with {:ok, space} <- %Space{kind: "team"} |> Space.changeset(attrs) |> Repo.insert() do
+      changeset = %Space{kind: "team"} |> Space.changeset(attrs)
+      slug = Notebook.Publishing.free_space_slug(Ecto.Changeset.get_field(changeset, :name))
+
+      with {:ok, space} <- changeset |> Ecto.Changeset.put_change(:slug, slug) |> Repo.insert() do
         join!(space, user, "admin")
         Permissions.changed()
         {:ok, space}
@@ -218,16 +222,35 @@ defmodule Notebook.Spaces do
   ## Publishing
 
   @doc """
-  Where the space's published pages are read: `"people"` under their
-  publisher's handle (`/freitas/notes`), `"solo"` at the top of the site
-  (`/kotoba`), or `nil` for the notebook's default. Its admins may, and the
-  notebook's.
+  Where the space's published pages are read: under its slug
+  (`/open-source/kotoba`, `nil`) or at the top of the site (`/kotoba`,
+  `"solo"`). A Private space's are under its person's handle, always. Its
+  admins may, and the notebook's.
   """
-  def set_publish_paths(scope, %Space{} = space, paths) when paths in ["people", "solo", nil] do
+  def set_publish_paths(scope, %Space{kind: kind} = space, paths)
+      when kind != "private" and paths in ["solo", nil] do
     with :ok <- authorize_manage(scope, space) do
       space |> Ecto.Changeset.change(publish_paths: paths) |> Repo.update() |> changed()
     end
   end
+
+  def set_publish_paths(_scope, %Space{}, _paths), do: {:error, :fixed}
+
+  @doc """
+  Its name in its pages' addresses (`open-source`): free in the one list of
+  handles and slugs. Its pages' addresses change with it. Its admins may,
+  and the notebook's.
+  """
+  def set_slug(scope, %Space{kind: kind} = space, slug) when kind != "private" do
+    slug = slug |> to_string() |> String.trim() |> String.downcase()
+
+    with :ok <- authorize_manage(scope, space),
+         :ok <- Notebook.Publishing.check_space_slug(slug, space) do
+      space |> Ecto.Changeset.change(slug: slug) |> Repo.update() |> changed()
+    end
+  end
+
+  def set_slug(_scope, %Space{}, _slug), do: {:error, :fixed}
 
   ## The Archive
 

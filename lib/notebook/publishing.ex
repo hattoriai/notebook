@@ -4,9 +4,12 @@ defmodule Notebook.Publishing do
   publish it, under a slug; a folder published is a blog of its published
   pages, with an RSS feed.
 
-  Each space chooses its paths (`Spaces.set_publish_paths/3`): by person,
-  `/hanzo/notes`, or at the top, `/kotoba`; never with an `@`. Slugs and
-  handles are one list of names, so no path means two things. They may
+  A Private space's pages are under their person's handle, `/hanzo/notes`;
+  General's and a team space's under the space's own slug,
+  `/open-source/kotoba`, or at the top of the site, `/kotoba`, as its
+  admins choose (`Spaces.set_publish_paths/3`); never with an `@`.
+  Handles, spaces' slugs and pages' slugs are one list of names, so no path
+  means two things. They may
   sit under a prefix, and be read at another address: a site's own, whose
   proxy (a Cloudflare Worker) sends the prefix to the notebook.
 
@@ -155,16 +158,49 @@ defmodule Notebook.Publishing do
   end
 
   defp handle?(name), do: Repo.exists?(from u in User, where: u.handle == ^name)
+  defp space_slug?(name), do: Repo.exists?(from s in Spaces.Space, where: s.slug == ^name)
 
   @doc """
-  Whether a page or a folder has `name` as its slug: a handle may not, as
-  slugs and handles are one list of names (a page at the top, `/kotoba`,
-  and a person's index, `/freitas`, at the same level).
+  Whether a page, a folder or a space has `name` as its slug: a handle may
+  not, as handles and slugs are one list of names (a page at the top,
+  `/kotoba`, a space, `/open-source`, and a person's index, `/freitas`,
+  are at the same level).
   """
   def slug?(name),
     do:
       Repo.exists?(from p in Page, where: p.slug == ^name) or
-        Repo.exists?(from f in Folder, where: f.slug == ^name)
+        Repo.exists?(from f in Folder, where: f.slug == ^name) or space_slug?(name)
+
+  @doc "A slug for a new space, from its name, free in the one list of names."
+  def free_space_slug(name) do
+    base = slugify(name)
+    base = if base == "" or base in @reserved, do: "space", else: base
+    free(base, &(handle?(&1) or slug?(&1)))
+  end
+
+  @doc "`:ok` when `slug` may be the space's, else `{:error, why}`."
+  def check_space_slug(slug, %Spaces.Space{id: id}) do
+    cond do
+      not Regex.match?(~r/^[a-z0-9][a-z0-9-]{0,59}$/, slug) ->
+        {:error, "A space's address is lowercase letters, digits and dashes."}
+
+      slug in @reserved ->
+        {:error, "“#{slug}” is a path of the notebook: choose another."}
+
+      handle?(slug) ->
+        {:error, "“#{slug}” is someone's handle: choose another."}
+
+      Repo.exists?(from s in Spaces.Space, where: s.slug == ^slug and s.id != ^id) ->
+        {:error, "Another space is at “#{slug}”."}
+
+      Repo.exists?(from p in Page, where: p.slug == ^slug) or
+          Repo.exists?(from f in Folder, where: f.slug == ^slug) ->
+        {:error, "A page is published as “#{slug}”: choose another."}
+
+      true ->
+        :ok
+    end
+  end
 
   defp free(base, taken?) do
     Stream.iterate(1, &(&1 + 1))
@@ -194,6 +230,9 @@ defmodule Notebook.Publishing do
       handle?(slug) ->
         {:error, "“#{slug}” is someone's handle: choose another."}
 
+      space_slug?(slug) ->
+        {:error, "“#{slug}” is a space's address: choose another."}
+
       true ->
         :ok
     end
@@ -205,7 +244,7 @@ defmodule Notebook.Publishing do
   def suggest_slug(resource) do
     base = resource |> title() |> slugify()
     base = if base == "" or base in @reserved, do: "page", else: base
-    free(base, &(slug_taken?(&1, resource) or handle?(&1)))
+    free(base, &(slug_taken?(&1, resource) or handle?(&1) or space_slug?(&1)))
   end
 
   defp title(%Page{title: title}), do: title
@@ -259,43 +298,46 @@ defmodule Notebook.Publishing do
   ## Paths
 
   @doc """
-  Its path, as readers read it: the prefix, the publisher's handle (by
-  person), its blog's slug (a page in a published folder), its slug.
+  Its path, as readers read it: the prefix; its space's slug, or its
+  publisher's handle in a Private space, or neither at the top; its blog's
+  slug (a page in a published folder); its slug.
   """
   def path(resource) do
-    resource = Repo.preload(resource, [:published_by, folder_of(resource)], force: true)
+    resource = Repo.preload(resource, [:published_by, :space, folder_of(resource)], force: true)
     %{prefix: prefix} = config()
 
-    words =
-      [paths_of(resource) == :people && resource.published_by && resource.published_by.handle] ++
-        blog_words(resource) ++ [resource.slug]
+    first =
+      case paths_of(resource.space) do
+        :people -> resource.published_by && resource.published_by.handle
+        :space -> resource.space.slug
+        :solo -> nil
+      end
 
+    words = [first] ++ blog_words(resource) ++ [resource.slug]
     prefix <> "/" <> Enum.join(Enum.filter(words, & &1), "/")
   end
 
   @doc """
-  Whether its space's pages are read by person (`:people`, under their
-  publisher's handle) or at the top (`:solo`): the space's choice, else
-  the notebook's default.
+  Where a space's published pages are read: `:people` under their
+  publisher's handle (a Private space's), `:space` under the space's slug,
+  or `:solo` at the top of the site. A page or a folder, its space's.
   """
-  def paths_of(%{space_id: space_id}) when is_integer(space_id) do
-    case Repo.one(from s in Spaces.Space, where: s.id == ^space_id, select: s.publish_paths) do
-      "solo" -> :solo
-      "people" -> :people
-      _default -> config().paths
-    end
-  end
+  def paths_of(%Spaces.Space{kind: "private"}),
+    do: if(config().paths == :solo, do: :solo, else: :people)
 
-  def paths_of(_resource), do: config().paths
+  def paths_of(%Spaces.Space{publish_paths: "solo"}), do: :solo
+  def paths_of(%Spaces.Space{slug: nil}), do: :solo
 
-  # The spaces whose pages are read at the top: not on a person's index.
-  defp solo_spaces do
-    default_solo? = config().paths == :solo
+  def paths_of(%Spaces.Space{}),
+    do: if(config().paths == :solo, do: :solo, else: :space)
 
-    from s in Spaces.Space,
-      where: s.publish_paths == "solo" or (^default_solo? and is_nil(s.publish_paths)),
-      select: s.id
-  end
+  def paths_of(%{space: %Spaces.Space{} = space}), do: paths_of(space)
+
+  def paths_of(%{space_id: id}) when is_integer(id),
+    do: paths_of(Repo.get!(Spaces.Space, id))
+
+  # The Private spaces, whose pages are on their person's index.
+  defp private_spaces, do: from(s in Spaces.Space, where: s.kind == "private", select: s.id)
 
   defp folder_of(%Page{}), do: :folder
   defp folder_of(%Folder{}), do: :parent
@@ -336,16 +378,23 @@ defmodule Notebook.Publishing do
       end
     else
       {:person, _user, _published} = person -> person
+      {:space, _space, _published} = space -> space
       _ -> :not_found
     end
   end
 
-  # A person's handle alone: their published pages and blogs of the spaces by person.
-  defp person([handle], false) do
-    with %User{} = user <- Repo.get_by(User, handle: handle) do
-      {:person, user, by(user)}
-    else
-      _ -> :page
+  # A name alone: a person's index (their handle: the pages of their
+  # Private space), or a space's (its slug: its pages), else a page.
+  defp person([name], false) do
+    cond do
+      user = Repo.get_by(User, handle: name) ->
+        {:person, user, by(user)}
+
+      space = Repo.one(from s in Spaces.Space, where: s.slug == ^name and is_nil(s.archived_at)) ->
+        if paths_of(space) == :space, do: {:space, space, in_space(space)}, else: :page
+
+      true ->
+        :page
     end
   end
 
@@ -360,7 +409,7 @@ defmodule Notebook.Publishing do
           where:
             p.published_by_id == ^id and not is_nil(p.published_at) and is_nil(p.archived_at),
           where: is_nil(f.published_at),
-          where: p.space_id not in subquery(solo_spaces()),
+          where: p.space_id in subquery(private_spaces()),
           order_by: [desc: p.published_at],
           preload: [:published_by, :folder]
       )
@@ -369,13 +418,39 @@ defmodule Notebook.Publishing do
       Repo.all(
         from f in Folder,
           where: f.published_by_id == ^id and not is_nil(f.published_at),
-          where: f.space_id not in subquery(solo_spaces()),
+          where: f.space_id in subquery(private_spaces()),
           order_by: [desc: f.published_at],
           preload: :published_by
       )
 
     %{pages: pages, blogs: blogs}
   end
+
+  @doc "A space's published pages and blogs, the latest first: its index."
+  def in_space(%Spaces.Space{id: id}) do
+    pages =
+      Repo.all(
+        from p in Page,
+          left_join: f in assoc(p, :folder),
+          where: p.space_id == ^id and not is_nil(p.published_at) and is_nil(p.archived_at),
+          where: is_nil(f.published_at),
+          order_by: [desc: p.published_at],
+          preload: [:published_by, :folder, :space]
+      )
+
+    blogs =
+      Repo.all(
+        from f in Folder,
+          where: f.space_id == ^id and not is_nil(f.published_at),
+          order_by: [desc: f.published_at],
+          preload: [:published_by, :space]
+      )
+
+    %{pages: pages, blogs: blogs}
+  end
+
+  @doc "A space's index: the path of its slug."
+  def space_url(%Spaces.Space{slug: slug}), do: config().url <> config().prefix <> "/" <> slug
 
   @doc "A person's index: the path of their handle, by person."
   def person_url(%User{handle: handle}), do: config().url <> config().prefix <> "/" <> handle

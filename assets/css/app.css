@@ -1359,3 +1359,10 @@ input[type="checkbox"]:disabled { cursor: default; opacity: .55; }
 .money-input:focus-within { border-color: var(--accent); }
 .money-input span { padding: 0 2px 0 14px; color: var(--muted); font: 15px ui-sans-serif, system-ui, sans-serif; }
 .settings-form .money-input input { border: 0; background: transparent; padding-left: 4px; outline: none; font-variant-numeric: tabular-nums; }
+
+.space-publishing-address { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); }
+.space-slug { display: inline-flex; align-items: center; border: 1px solid var(--rule); background: #fcfbf7; padding-left: 10px; font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+.space-slug:focus-within { border-color: var(--accent); }
+.space-slug input { width: 11rem; border: 0; background: transparent; padding: 7px 6px 7px 0; font: inherit; color: var(--ink); outline: none; }
+.space-slug .copy-action { padding: 0 12px; font: 600 12px ui-sans-serif, system-ui, sans-serif; border-left: 1px solid var(--rule); align-self: stretch; }
+.space-publishing .field-error { flex-basis: 100%; margin: 0; }

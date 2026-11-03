@@ -23,6 +23,7 @@ defmodule NotebookWeb.PublicLive do
       {:page, page} -> {:ok, page(socket, page)}
       {:blog, folder, posts} -> {:ok, blog(socket, folder, posts)}
       {:person, user, published} -> {:ok, person(socket, user, published)}
+      {:space, space, published} -> {:ok, space(socket, space, published)}
       {:redirect, path} -> {:ok, redirect(socket, external: Publishing.config().url <> path)}
       _ -> raise NotebookWeb.NotFound
     end
@@ -123,6 +124,20 @@ defmodule NotebookWeb.PublicLive do
     )
   end
 
+  defp space(socket, space, %{pages: pages, blogs: blogs}) do
+    assign(socket,
+      kind: :person,
+      person: %{name: space.name},
+      eyebrow: space.description,
+      pages: pages,
+      blogs: blogs,
+      page_title: space.name,
+      description: space.description || "Pages of #{space.name}",
+      canonical: Publishing.space_url(space),
+      feed: nil
+    )
+  end
+
   ## Live
 
   @impl true
@@ -216,7 +231,7 @@ defmodule NotebookWeb.PublicLive do
         >
           {@page.published_by.name}
         </a>
-        <span :if={@page.published_by && Publishing.paths_of(@page) == :solo}>{@page.published_by.name}</span>
+        <span :if={@page.published_by && Publishing.paths_of(@page) != :people}>{@page.published_by.name}</span>
         <span>·</span>
         <time datetime={DateTime.to_iso8601(@page.published_at)}>{Calendar.strftime(
           @page.published_at,
@@ -381,6 +396,12 @@ defmodule NotebookWeb.PublicLive do
         >
           {@folder.published_by.name}
         </a>
+        <a
+          :if={Publishing.paths_of(@folder) == :space}
+          href={Publishing.space_url(Notebook.Repo.preload(@folder, :space).space)}
+        >
+          {Notebook.Repo.preload(@folder, :space).space.name}
+        </a>
       </p>
       <h1>{@folder.name}</h1>
       <p :if={@posts == []} class="public-empty">Nothing published here yet.</p>
@@ -401,7 +422,7 @@ defmodule NotebookWeb.PublicLive do
   defp public_person(assigns) do
     ~H"""
     <section class="public-index">
-      <p class="eyebrow">Pages by</p>
+      <p class="eyebrow">{assigns[:eyebrow] || "Pages by"}</p>
       <h1>{@person.name}</h1>
       <p :if={@pages == [] and @blogs == []} class="public-empty">Nothing published yet.</p>
       <ol class="public-posts">
