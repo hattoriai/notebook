@@ -16,8 +16,43 @@ defmodule Notebook.Agents do
   alias Notebook.Agents.Agent
   alias Notebook.Repo
 
+  alias Notebook.Storage.Setting
+
   @prefix "nbk_"
+  @setting "mcp"
   @lifetimes %{"30" => 30, "90" => 90, "365" => 365, "never" => nil}
+
+  @doc """
+  Whether MCP clients may also connect with OAuth (Notebook settings): a
+  person signs in to the Notebook from their client, and acts as any of
+  their agents, call by call (`NotebookWeb.MCP.Actors`). Off by default:
+  a notebook needs nothing but its agents' tokens.
+  """
+  def oauth? do
+    case Repo.get(Setting, @setting) do
+      %Setting{value: %{"oauth" => true}} -> true
+      _ -> false
+    end
+  end
+
+  @doc "Turns OAuth for MCP clients on or off. Only an admin may."
+  def set_oauth(scope, oauth) when is_boolean(oauth) do
+    if Scope.admin?(scope) do
+      value = %{"oauth" => oauth, "saved_by" => scope.user.id}
+
+      Repo.insert!(%Setting{key: @setting, value: value},
+        on_conflict: [set: [value: value, updated_at: DateTime.utc_now(:second)]],
+        conflict_target: :key
+      )
+
+      {:ok, oauth}
+    else
+      {:error, :forbidden}
+    end
+  end
+
+  @doc "Whether a bearer token is an agent's (`create/2`), not an OAuth access token."
+  def token?(token), do: is_binary(token) and String.starts_with?(token, @prefix)
 
   @doc "How long a token may last, as the form offers it: days, or `\"never\"`."
   def lifetimes,

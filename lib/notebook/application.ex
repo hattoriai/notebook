@@ -33,8 +33,12 @@ defmodule Notebook.Application do
         store: {Notebook.IsshoStore, Notebook.Repo},
         on_mention: {Notebook.Bots, :wake}
       },
-      # MCP for agents (/mcp): its streams and tasks, on every node.
-      {Sake, secret_key_base: {NotebookWeb.AgentAuth, :secret, []}, pubsub: Notebook.PubSub},
+      # MCP for agents (/mcp): its streams and tasks, on every node, and
+      # the OAuth server Notebook settings may turn on (NotebookWeb.MCP.Subject).
+      {Sake,
+       secret_key_base: {NotebookWeb.AgentAuth, :secret, []},
+       pubsub: Notebook.PubSub,
+       auth: NotebookWeb.MCP.Subject.auth_options()},
       # Start a worker by calling: Notebook.Worker.start_link(arg)
       # {Notebook.Worker, arg},
       # Start to serve requests, typically the last entry

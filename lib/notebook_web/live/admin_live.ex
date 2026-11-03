@@ -41,7 +41,9 @@ defmodule NotebookWeb.AdminLive do
   end
 
   defp assign_joining(socket) do
-    assign(socket,
+    socket
+    |> assign(mcp_oauth: Notebook.Agents.oauth?())
+    |> assign(
       invite_only: Invitations.invite_only?(),
       invitations: Invitations.pending(),
       invite_url: socket.assigns[:invite_url]
@@ -100,6 +102,26 @@ defmodule NotebookWeb.AdminLive do
 
       {:ok, false} ->
         {:noreply, socket |> assign_joining() |> put_flash(:info, "Anyone may join now.")}
+
+      {:error, :forbidden} ->
+        {:noreply, put_flash(socket, :error, "Only the notebook's admins change its settings.")}
+    end
+  end
+
+  def handle_event("connecting", %{"connecting" => connecting}, socket)
+      when connecting in ["token", "oauth"] do
+    case Notebook.Agents.set_oauth(socket.assigns.current_scope, connecting == "oauth") do
+      {:ok, true} ->
+        {:noreply,
+         socket
+         |> assign_joining()
+         |> put_flash(:info, "MCP clients may sign in with OAuth now, as well as with tokens.")}
+
+      {:ok, false} ->
+        {:noreply,
+         socket
+         |> assign_joining()
+         |> put_flash(:info, "MCP clients connect with tokens only now.")}
 
       {:error, :forbidden} ->
         {:noreply, put_flash(socket, :error, "Only the notebook's admins change its settings.")}
@@ -274,6 +296,36 @@ defmodule NotebookWeb.AdminLive do
               </li>
             </ul>
           </div>
+        </section>
+
+        <section class="settings-wide" id="connecting">
+          <h2>How agents connect</h2>
+          <p>
+            Claude Code, Codex and other MCP clients connect with an agent's token, from each
+            person's Agents page. With OAuth too, a person can sign in to the Notebook from their
+            client instead, and act as any of their agents, switching between them as they work.
+            Admins can also act as the notebook's bots.
+          </p>
+
+          <form id="connecting-form" class="settings-form" phx-change="connecting">
+            <fieldset class="storage-kinds">
+              <legend>MCP clients connect with</legend>
+              <label class={["storage-kind", not @mcp_oauth && "is-chosen"]}>
+                <input type="radio" name="connecting" value="token" checked={not @mcp_oauth} />
+                <.icon name="hero-key" class="size-5" />
+                <span>
+                  <strong>Tokens</strong><small>An agent's token, made on the Agents page.</small>
+                </span>
+              </label>
+              <label class={["storage-kind", @mcp_oauth && "is-chosen"]}>
+                <input type="radio" name="connecting" value="oauth" checked={@mcp_oauth} />
+                <.icon name="hero-arrow-right-end-on-rectangle" class="size-5" />
+                <span>
+                  <strong>Tokens and OAuth</strong><small>Or sign in from the client, and act as any of your agents.</small>
+                </span>
+              </label>
+            </fieldset>
+          </form>
         </section>
 
         <section class="settings-wide" id="storage">

@@ -85,7 +85,8 @@
             <.link href={~p"/users/log-out"} method="delete">Log out</.link>
           </div>
         </details>
-      <% else %>
+      <% end %>
+      <%= if !@current_scope and !assigns[:bare] do %>
         <.link :if={not Notebook.Invitations.invite_only?()} href={~p"/users/register"}>
           Register
         </.link>

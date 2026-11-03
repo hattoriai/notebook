@@ -37,9 +37,10 @@ defmodule NotebookWeb.Router do
     plug :accepts, ["json"]
   end
 
-  # MCP clients, signed in by their person's token (the Agents page).
-  pipeline :agent do
-    plug NotebookWeb.AgentAuth
+  # The Notebook's OAuth server for MCP clients: there only when Notebook
+  # settings turn it on.
+  pipeline :mcp_oauth do
+    plug NotebookWeb.Plugs.MCPOAuth
   end
 
   # The health check kamal-proxy polls before it sends traffic.
@@ -50,9 +51,25 @@ defmodule NotebookWeb.Router do
     chime_mail("/notifications/mail", app_name: "Notebook")
   end
 
+  # MCP clients: an agent's token (the Agents page), or OAuth when Notebook
+  # settings turn it on (NotebookWeb.MCPEndpoint).
+  match :*, "/mcp", NotebookWeb.MCPEndpoint, []
+
+  # The OAuth server's discovery, its token API, and the consent page for
+  # a person signed in (NotebookWeb.MCP.Subject).
   scope "/" do
-    pipe_through :agent
-    sake_endpoint("/mcp", server: NotebookWeb.MCP, secret: {NotebookWeb.AgentAuth, :secret, []})
+    pipe_through :mcp_oauth
+    sake_well_known()
+  end
+
+  scope "/oauth" do
+    pipe_through [:api, :mcp_oauth]
+    sake_oauth_api()
+  end
+
+  scope "/oauth" do
+    pipe_through [:browser, :mcp_oauth, :require_authenticated_user]
+    sake_oauth_authorize()
   end
 
   scope "/", NotebookWeb do

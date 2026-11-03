@@ -33,7 +33,8 @@ defmodule NotebookWeb.AgentAuth do
     end
   end
 
-  defp token_of(conn) do
+  @doc "The token a request brings: `Authorization: Bearer`, or `?token=`."
+  def token_of(conn) do
     case get_req_header(conn, "authorization") do
       ["Bearer " <> token | _] -> token
       _ -> conn |> fetch_query_params() |> Map.get(:query_params) |> Map.get("token")
