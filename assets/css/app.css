@@ -1308,3 +1308,25 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 .space-publishing { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 18px 0 0; }
 .space-publishing-label { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font: 13px ui-sans-serif, system-ui, sans-serif; }
 .space-publishing .erabi { min-width: 26rem; max-width: 100%; }
+/* The error pages (ErrorHTML): a notebook's page, drawn in ink, and a few words. */
+.error-body { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 20px 72px; background: var(--paper); }
+.error-page { width: min(100%, 560px); text-align: center; }
+.error-drawing { width: 132px; margin: 0 auto 18px; animation: error-float 6s ease-in-out infinite; }
+.error-drawing svg { width: 100%; height: auto; display: block; overflow: visible; }
+.error-paper { fill: #fcfbf7; }
+.error-ink { stroke: var(--ink); }
+.error-rule { stroke: #c9cbbf; }
+.error-accent { stroke: var(--accent); }
+.error-blot { fill: var(--ink); }
+#error-500 .error-drawing { width: 150px; }
+#error-500 .error-blot { animation: error-spread 2.4s ease-out both; transform-origin: 88px 140px; }
+@keyframes error-float { 50% { transform: translateY(-6px) rotate(-1.5deg); } }
+@keyframes error-spread { from { transform: scale(.2); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .error-drawing, #error-500 .error-blot { animation: none; } }
+.error-code { margin: 0; font: 600 11px ui-sans-serif, system-ui, sans-serif; letter-spacing: .22em; color: var(--accent); }
+.error-page h1 { margin: 12px 0 14px; font-size: clamp(2.2rem, 6vw, 3.4rem); font-weight: 400; line-height: 1.02; letter-spacing: -.045em; }
+.error-line { margin: 0 auto; max-width: 30rem; color: var(--muted); font-size: 1.08rem; line-height: 1.55; }
+.error-actions { display: flex; justify-content: center; align-items: center; gap: 18px; margin: 30px 0 0; }
+.error-mark { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); color: var(--muted); font: 600 10px ui-sans-serif, system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase; white-space: nowrap; }
+.error-mark:hover { color: var(--accent); }
+.error-actions .copy-action { font: 600 13px ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
