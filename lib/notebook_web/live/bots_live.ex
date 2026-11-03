@@ -360,6 +360,7 @@ defmodule NotebookWeb.BotsLive do
           </table>
         </div>
       </section>
+      <Layouts.palette jumon={@jumon} />
     </main>
     """
   end

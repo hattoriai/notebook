@@ -82,6 +82,25 @@ defmodule NotebookWeb.Layouts do
   end
 
   @doc """
+  The command palette (⌘K, `Jumon`): the notebook's actions
+  (`NotebookWeb.Commands`), its pages and spaces, on every page of a
+  signed-in person.
+  """
+  attr :jumon, :any, required: true
+
+  def palette(assigns) do
+    ~H"""
+    <.command_palette
+      jumon={@jumon}
+      placeholder="Search pages and spaces, or type a command…"
+      icons={~w(hero-document-text hero-pencil-square hero-rectangle-stack hero-plus hero-users)}
+    >
+      <:icon :let={name}><Icons.named name={name} class="size-4" /></:icon>
+    </.command_palette>
+    """
+  end
+
+  @doc """
   Shows the flash group with standard titles and content.
 
   ## Examples

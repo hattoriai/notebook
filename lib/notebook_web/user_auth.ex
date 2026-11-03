@@ -290,14 +290,22 @@ defmodule NotebookWeb.UserAuth do
   Plug for routes that require the user to be authenticated.
   """
   def require_authenticated_user(conn, _opts) do
-    if conn.assigns.current_scope && conn.assigns.current_scope.user do
-      conn
-    else
-      conn
-      |> put_flash(:error, "You must log in to access this page.")
-      |> maybe_store_return_to()
-      |> redirect(to: ~p"/users/log-in")
-      |> halt()
+    cond do
+      conn.assigns.current_scope && conn.assigns.current_scope.user ->
+        conn
+
+      # The pages ask for a person; the notebook's front page does not.
+      conn.method == "GET" and conn.path_info == [] ->
+        conn
+        |> NotebookWeb.PageController.call(NotebookWeb.PageController.init(:home))
+        |> halt()
+
+      true ->
+        conn
+        |> put_flash(:error, "You must log in to access this page.")
+        |> maybe_store_return_to()
+        |> redirect(to: ~p"/users/log-in")
+        |> halt()
     end
   end
 

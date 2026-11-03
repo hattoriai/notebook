@@ -193,8 +193,8 @@ defmodule NotebookWeb.ShareComponent do
             phx-target={@myself}
           >
             <span class={["share-avatar is-agent", closed?(@resource) && "is-closed"]}>
-              <.icon
-                name={if closed?(@resource), do: "hero-no-symbol", else: "hero-sparkles"}
+              <Icons.named
+                name={if closed?(@resource), do: "hero-no-symbol", else: "notebook-robot"}
                 class="size-4"
               />
             </span>

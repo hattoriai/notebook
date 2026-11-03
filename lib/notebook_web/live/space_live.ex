@@ -290,8 +290,8 @@ defmodule NotebookWeb.SpaceLive do
                     "Close this space to agents? No agent will read its pages, find them or join them."
               }
             >
-              <.icon
-                name={if @space.closed_to_agents, do: "hero-no-symbol", else: "hero-sparkles"}
+              <Icons.named
+                name={if @space.closed_to_agents, do: "hero-no-symbol", else: "notebook-robot"}
                 class="size-4"
               />
               {if @space.closed_to_agents, do: "Off limits to agents", else: "Close to agents"}
@@ -422,13 +422,7 @@ defmodule NotebookWeb.SpaceLive do
           </ul>
         </div>
       </main>
-      <.command_palette
-        jumon={@jumon}
-        placeholder="Search pages, or type a command…"
-        icons={~w(hero-document-text hero-pencil-square)}
-      >
-        <:icon :let={name}><.icon name={name} class="size-4" /></:icon>
-      </.command_palette>
+      <Layouts.palette jumon={@jumon} />
     </div>
     """
   end

@@ -409,6 +409,7 @@ defmodule NotebookWeb.AdminLive do
           <.transfer other={@other} transfer={@transfer} files={@files} rate={rate(@samples)} />
         </section>
       </div>
+      <Layouts.palette jumon={@jumon} />
     </main>
     """
   end

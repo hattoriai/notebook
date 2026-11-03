@@ -66,13 +66,7 @@ defmodule NotebookWeb.ArchiveLive do
           </div>
         </div>
       </main>
-      <.command_palette
-        jumon={@jumon}
-        placeholder="Search pages, or type a command…"
-        icons={~w(hero-document-text hero-pencil-square)}
-      >
-        <:icon :let={name}><.icon name={name} class="size-4" /></:icon>
-      </.command_palette>
+      <Layouts.palette jumon={@jumon} />
     </div>
     """
   end

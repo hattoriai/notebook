@@ -155,7 +155,7 @@ defmodule NotebookWeb.Sidebar do
           <.icon name="hero-archive-box" class="size-4" /> Archive
         </.link>
         <.link navigate={~p"/agents"} class={["sidebar-link", @current == :agents && "is-current"]}>
-          <.icon name="hero-sparkles" class="size-4" /> Agents
+          <Icons.robot class="size-4" /> Agents
         </.link>
       </div>
     </nav>

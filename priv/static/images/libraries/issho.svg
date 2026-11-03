@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 112 112" role="img" aria-labelledby="title description">
+<title id="title">Issho</title>
+<desc id="description">Two people in Sumi ink and blade orange, one in front of the other, parted by a paper cut.</desc>
+<defs>
+  <mask id="issho-stack" maskUnits="userSpaceOnUse" x="0" y="0" width="112" height="112">
+    <rect width="112" height="112" fill="white"/>
+    <circle cx="44" cy="56" r="32.75" fill="black"/>
+  </mask>
+</defs>
+<circle fill="#e84a1c" cx="73" cy="56" r="24" mask="url(#issho-stack)"/>
+<circle fill="#0a0a0b" cx="44" cy="56" r="29"/>
+</svg>

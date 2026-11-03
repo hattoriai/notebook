@@ -13,10 +13,11 @@ defmodule NotebookWeb.Commands do
 
   alias Phoenix.LiveView.JS
 
-  alias Notebook.Pages
+  alias Notebook.{Pages, Spaces}
+  alias Notebook.Accounts.Scope
 
   @impl true
-  def actions(_socket) do
+  def actions(socket) do
     [
       action(:new_page, "New page",
         section: "Write",
@@ -31,6 +32,32 @@ defmodule NotebookWeb.Commands do
         keywords: ~w(home index),
         shortcut: "g h",
         navigate: ~p"/"
+      ),
+      action(:new_space, "New space",
+        section: "Write",
+        icon: "hero-squares-plus",
+        keywords: ~w(create team folder),
+        navigate: ~p"/spaces/new"
+      ),
+      action(:inbox, "Inbox",
+        section: "Go to",
+        icon: "hero-inbox",
+        keywords: ~w(notifications mentions bell),
+        shortcut: "g i",
+        navigate: ~p"/inbox"
+      ),
+      action(:archive, "Archive",
+        section: "Go to",
+        icon: "hero-archive-box",
+        keywords: ~w(archived deleted restore trash),
+        navigate: ~p"/archive"
+      ),
+      action(:agents, "Agents",
+        section: "Go to",
+        icon: "notebook-robot",
+        keywords: ~w(mcp claude codex token memory connect),
+        shortcut: "g a",
+        navigate: ~p"/agents"
       ),
       action(:settings, "Settings",
         section: "Go to",
@@ -53,6 +80,24 @@ defmodule NotebookWeb.Commands do
         href: ~p"/users/log-out",
         method: :delete
       )
+    ] ++ if(admin?(socket), do: admin_actions(), else: [])
+  end
+
+  # Those of the notebook's admins only.
+  defp admin_actions do
+    [
+      action(:bots, "Bots",
+        section: "Go to",
+        icon: "hero-sparkles",
+        keywords: ~w(bot assistant ai),
+        navigate: ~p"/bots"
+      ),
+      action(:notebook_settings, "Notebook settings",
+        section: "Go to",
+        icon: "hero-adjustments-horizontal",
+        keywords: ~w(admin storage bucket invite invitation join register),
+        navigate: ~p"/admin"
+      )
     ]
   end
 
@@ -61,7 +106,38 @@ defmodule NotebookWeb.Commands do
   @impl true
   def sources(socket) do
     scope = socket.assigns.current_scope
-    [pages: [label: "Pages", search: &search_pages(scope, &1), min_length: 0]]
+
+    [
+      pages: [label: "Pages", search: &search_pages(scope, &1), min_length: 0],
+      spaces: [label: "Spaces", search: &search_spaces(scope, &1), min_length: 0]
+    ]
+  end
+
+  defp admin?(socket), do: Scope.admin?(socket.assigns.current_scope)
+
+  # The spaces of the sidebar: go to one, or write a page in it.
+  defp search_spaces(scope, query) do
+    actions = scope |> Spaces.list() |> Enum.map(&space_action/1)
+
+    case query do
+      "" -> actions
+      query -> actions |> Jumon.Match.rank(query) |> Enum.map(fn {action, _result} -> action end)
+    end
+  end
+
+  defp space_action(space) do
+    action("space-#{space.id}", space.name,
+      icon: "hero-rectangle-stack",
+      subtitle: "Space",
+      navigate: ~p"/spaces/#{space.id}",
+      actions: [
+        action(:new_page, "New page here",
+          icon: "hero-plus",
+          navigate: ~p"/pages/new?space=#{space.id}"
+        ),
+        action(:members, "Members", icon: "hero-users", navigate: ~p"/spaces/#{space.id}/members")
+      ]
+    )
   end
 
   @impl true

@@ -28,8 +28,9 @@ defmodule Notebook.Publishing do
 
   # The first words of the notebook's own paths: no handle or slug at the
   # top takes them.
-  @reserved ~w(admin agents api archive assets dev favicon.ico feed fonts images inbox issho live
-               login logout mcp notifications pages phoenix public robots.txt settings spaces uploads users)
+  @reserved ~w(admin agents api archive assets bots dev favicon.ico feed fonts images inbox issho live
+               login logout made-with mcp notifications pages phoenix public robots.txt settings spaces
+               up uploads users)
 
   @doc "The words no handle or slug takes: the notebook's own paths."
   def reserved, do: @reserved

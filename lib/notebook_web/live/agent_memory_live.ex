@@ -275,6 +275,7 @@ defmodule NotebookWeb.AgentMemoryLive do
           </div>
         </div>
       </main>
+      <Layouts.palette jumon={@jumon} />
     </div>
     """
   end
