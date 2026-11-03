@@ -89,7 +89,7 @@ defmodule NotebookWeb.ArchiveLive do
               class="page-row archive-row"
               id={"archived-#{page.id}"}
             >
-              <.link navigate={~p"/pages/#{page.id}"}>
+              <.link navigate={~p"/pages/#{page}"}>
                 <span class="page-kicker">
                   <.icon name={Sidebar.page_icon(page.kind)} class="size-3.5" /> {page.space.name}
                 </span>

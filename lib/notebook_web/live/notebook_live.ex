@@ -7,6 +7,19 @@ defmodule NotebookWeb.NotebookLive do
   alias Phoenix.LiveView.JS
   alias Notebook.Pages.Page
 
+  # A page opened by its id (/pages/5, a link from before slugs) or an old
+  # slug goes to its address (/pages/the-last-blade), in place.
+  @impl true
+  def handle_params(%{"id" => param}, _uri, %{assigns: %{page: %Page{} = page}} = socket) do
+    case {Phoenix.Param.to_param(page), socket.assigns.live_action} do
+      {^param, _action} -> {:noreply, socket}
+      {_slug, :edit} -> {:noreply, push_patch(socket, to: ~p"/pages/#{page}/edit", replace: true)}
+      {_slug, _show} -> {:noreply, push_patch(socket, to: ~p"/pages/#{page}", replace: true)}
+    end
+  end
+
+  def handle_params(_params, _uri, socket), do: {:noreply, socket}
+
   @impl true
   def mount(params, _session, socket) do
     user = socket.assigns.current_scope.user
@@ -21,7 +34,7 @@ defmodule NotebookWeb.NotebookLive do
       {:ok,
        socket
        |> put_flash(:error, "You may read this page, not edit it.")
-       |> push_navigate(to: ~p"/pages/#{socket.assigns.page.id}")}
+       |> push_navigate(to: ~p"/pages/#{socket.assigns.page}")}
     else
       {:ok, page_actions(socket)}
     end
@@ -66,7 +79,7 @@ defmodule NotebookWeb.NotebookLive do
       Jumon.action(:copy_link, "Copy link",
         section: page.title,
         icon: "hero-link",
-        copy: url(~p"/pages/#{page.id}")
+        copy: url(~p"/pages/#{page}")
       ),
       Jumon.action(:copy_markdown, "Copy Markdown",
         section: page.title,
@@ -82,7 +95,7 @@ defmodule NotebookWeb.NotebookLive do
             section: page.title,
             icon: "hero-pencil-square",
             shortcut: "e",
-            navigate: ~p"/pages/#{page.id}/edit"
+            navigate: ~p"/pages/#{page}/edit"
           ),
           Jumon.action(:rename_page, "Rename this page…",
             section: page.title,
@@ -141,12 +154,12 @@ defmodule NotebookWeb.NotebookLive do
       Jumon.action(:read_page, "Read this page",
         section: page.title,
         icon: "hero-book-open",
-        navigate: ~p"/pages/#{page.id}"
+        navigate: ~p"/pages/#{page}"
       ),
       Jumon.action(:copy_link, "Copy link",
         section: page.title,
         icon: "hero-link",
-        copy: url(~p"/pages/#{page.id}")
+        copy: url(~p"/pages/#{page}")
       )
     ])
   end
@@ -711,7 +724,7 @@ defmodule NotebookWeb.NotebookLive do
               <.link
                 :for={page <- @pages}
                 class="page-row"
-                navigate={~p"/pages/#{page.id}"}
+                navigate={~p"/pages/#{page}"}
               >
                 <div>
                   <span class="page-kicker">{kind_name(page.kind)} / {page.id}</span><h2>
@@ -1125,7 +1138,7 @@ defmodule NotebookWeb.NotebookLive do
             <.link
               :if={@can_edit?}
               class="button button-primary"
-              navigate={~p"/pages/#{@page.id}/edit"}
+              navigate={~p"/pages/#{@page}/edit"}
               data-issho-anchor="edit-together"
               data-issho-follow
             >Edit together</.link>
@@ -1253,7 +1266,7 @@ defmodule NotebookWeb.NotebookLive do
             </.kotoba>
             <div class="form-actions">
               <button class="button button-primary" type="submit">Publish page</button><.link navigate={
-                ~p"/pages/#{@page.id}"
+                ~p"/pages/#{@page}"
               }>Read page</.link>
             </div>
           </.form>
@@ -1956,10 +1969,10 @@ defmodule NotebookWeb.NotebookLive do
 
     case NotebookWeb.Act.act(socket.assigns.current_scope, Notebook.Actions.CreatePage, args) do
       {:ok, %{result: %Page{kind: "text"} = page}} ->
-        {:noreply, push_navigate(socket, to: ~p"/pages/#{page.id}/edit")}
+        {:noreply, push_navigate(socket, to: ~p"/pages/#{page}/edit")}
 
       {:ok, %{result: page}} ->
-        {:noreply, push_navigate(socket, to: ~p"/pages/#{page.id}")}
+        {:noreply, push_navigate(socket, to: ~p"/pages/#{page}")}
 
       {:error, reason} ->
         # The form says what is wrong with each field; the reason, the rest.
@@ -1992,7 +2005,7 @@ defmodule NotebookWeb.NotebookLive do
        socket
        |> assign(page: page)
        |> put_flash(:info, "Page published")
-       |> push_navigate(to: ~p"/pages/#{page.id}")}
+       |> push_navigate(to: ~p"/pages/#{page}")}
     else
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply,

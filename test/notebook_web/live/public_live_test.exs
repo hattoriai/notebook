@@ -85,7 +85,7 @@ defmodule NotebookWeb.PublicLiveTest do
     {:ok, page} =
       Pages.create(scope, %{"title" => "Kotoba", "space_id" => Spaces.private!(hanzo).id})
 
-    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{page.id}")
+    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{page}")
 
     view |> element("#publish-open") |> render_click()
     assert has_element?(view, ".publish-dialog", "Publish Kotoba")

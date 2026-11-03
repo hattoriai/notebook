@@ -39,7 +39,7 @@ defmodule NotebookWeb.SharingLiveTest do
     yuki: yuki,
     blade: blade
   } do
-    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{blade.id}")
+    {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{blade}")
     view |> element("#share-open") |> render_click()
     assert has_element?(view, ".share-dialog", "Share The last blade")
 
@@ -55,7 +55,7 @@ defmodule NotebookWeb.SharingLiveTest do
       |> then(&Regex.run(~r/value="([^"]+)"/, &1))
       |> List.last()
 
-    assert url =~ "/pages/#{blade.id}?key="
+    assert url =~ "/pages/#{blade.slug}?key="
 
     view |> element("#share-#{yuki.id} .share-remove") |> render_click()
     refute has_element?(view, "#share-#{yuki.id}")
@@ -71,7 +71,7 @@ defmodule NotebookWeb.SharingLiveTest do
     {:ok, view, _html} = live(log_in_user(conn, yuki), ~p"/")
     assert has_element?(view, ".sidebar-shared", "The last blade")
 
-    {:ok, page, html} = live(log_in_user(build_conn(), yuki), ~p"/pages/#{blade.id}")
+    {:ok, page, html} = live(log_in_user(build_conn(), yuki), ~p"/pages/#{blade}")
     assert html =~ "Shared with you"
     refute has_element?(page, "#share-open")
   end
@@ -83,13 +83,13 @@ defmodule NotebookWeb.SharingLiveTest do
     blade: blade
   } do
     conn = log_in_user(conn, yuki)
-    assert_raise Sekisho.Denied, fn -> live(conn, ~p"/pages/#{blade.id}") end
+    assert_raise Sekisho.Denied, fn -> live(conn, ~p"/pages/#{blade}") end
 
     {:ok, token} = Sharing.link(scope, blade, "viewer")
-    conn = get(conn, ~p"/pages/#{blade.id}?key=#{token}")
+    conn = get(conn, ~p"/pages/#{blade}?key=#{token}")
     assert html_response(conn, 200) =~ "The last blade"
 
-    {:ok, _view, html} = live(recycle(conn), ~p"/pages/#{blade.id}")
+    {:ok, _view, html} = live(recycle(conn), ~p"/pages/#{blade}")
     assert html =~ "The last blade"
   end
 

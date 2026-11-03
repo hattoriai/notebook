@@ -165,11 +165,11 @@ defmodule NotebookWeb.Commands do
     action(page.id, page.title,
       icon: "hero-document-text",
       subtitle: page_subtitle(page),
-      navigate: ~p"/pages/#{page.id}",
+      navigate: ~p"/pages/#{page}",
       actions: [
         action(:edit, "Edit together",
           icon: "hero-pencil-square",
-          navigate: ~p"/pages/#{page.id}/edit"
+          navigate: ~p"/pages/#{page}/edit"
         )
       ]
     )

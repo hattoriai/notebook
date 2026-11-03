@@ -184,4 +184,21 @@ defmodule Notebook.SpacesTest do
     {:ok, _forge} = Spaces.create_team(scope, %{name: "The forge"})
     assert_receive :tree_changed
   end
+
+  test "a page's address is its slug, from its title, and its id still finds it", %{
+    scope: scope
+  } do
+    {:ok, forge} = Spaces.create_team(scope, %{name: "The forge"})
+    {:ok, page} = Pages.create(scope, %{"title" => "Kotoba", "space_id" => forge.id})
+    {:ok, again} = Pages.create(scope, %{"title" => "Kotoba", "space_id" => forge.id})
+
+    assert Phoenix.Param.to_param(page) == "kotoba"
+    assert Phoenix.Param.to_param(again) == "kotoba-2"
+    assert Pages.get!(scope, "kotoba").id == page.id
+    assert Pages.get!(scope, to_string(page.id)).id == page.id
+
+    # Renamed, it keeps its address: links to it hold.
+    {:ok, renamed} = Pages.update(scope, page, %{"title" => "Kotoba, rich text"})
+    assert Phoenix.Param.to_param(renamed) == "kotoba"
+  end
 end

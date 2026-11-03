@@ -57,7 +57,7 @@ defmodule NotebookWeb.CommentsTest do
   end
 
   test "a page has its comments in a drawer, and its agents at work", %{conn: conn, page: page} do
-    {:ok, view, _html} = live(conn, ~p"/pages/#{page.id}")
+    {:ok, view, _html} = live(conn, ~p"/pages/#{page}")
 
     assert has_element?(view, "#comments-toggle[aria-controls=comments-drawer]")
     assert has_element?(view, "#comments-drawer #page-comments")
@@ -74,7 +74,7 @@ defmodule NotebookWeb.CommentsTest do
     {:ok, _} = Issho.Comments.start(Notebook.Issho, room, nina, place, "Too long?")
     {:ok, _} = Issho.Comments.start(Notebook.Issho, room, nina, %{"doc" => room}, "And here?")
 
-    {:ok, view, _html} = live(conn, ~p"/pages/#{page.id}")
+    {:ok, view, _html} = live(conn, ~p"/pages/#{page}")
     html = view |> element("#page-comments") |> render()
 
     assert html =~ "In the text: “Fold it, again”"
@@ -88,7 +88,7 @@ defmodule NotebookWeb.CommentsTest do
     ada_agent: ada_agent,
     nina_agent: nina_agent
   } do
-    {:ok, view, _html} = live(conn, ~p"/pages/#{page.id}")
+    {:ok, view, _html} = live(conn, ~p"/pages/#{page}")
 
     candidates =
       view

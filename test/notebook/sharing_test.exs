@@ -97,7 +97,7 @@ defmodule Notebook.SharingTest do
     blade: blade
   } do
     {:ok, token} = Sharing.link(scope, blade, "viewer")
-    assert Sharing.url(blade, token) =~ "/pages/#{blade.id}?key=#{token}"
+    assert Sharing.url(blade, token) =~ "/pages/#{blade.slug}?key=#{token}"
 
     without = Scope.for_user(yuki)
     with_link = Scope.with_links(without, [token])

@@ -26,7 +26,7 @@ defmodule NotebookWeb.NotebookLiveTest do
     conn: conn,
     page: page
   } do
-    {:ok, view, _html} = live(conn, ~p"/pages/#{page.id}/edit")
+    {:ok, view, _html} = live(conn, ~p"/pages/#{page}/edit")
     menu = "#body-editor #body-selection-menu[data-kotoba-selection-menu]"
     assert has_element?(view, menu)
     assert has_element?(view, "#{menu} button[data-kotoba-command='bold']")
@@ -34,7 +34,7 @@ defmodule NotebookWeb.NotebookLiveTest do
   end
 
   test "the reader shows who wrote the page and when it changed", %{conn: conn, page: page} do
-    {:ok, _view, html} = live(conn, ~p"/pages/#{page.id}")
+    {:ok, _view, html} = live(conn, ~p"/pages/#{page}")
     assert html =~ "By Nina Writer"
     assert html =~ "Updated #{Calendar.strftime(page.updated_at, "%-d %B %Y")}"
     refute html =~ "Invite someone"
@@ -53,7 +53,7 @@ defmodule NotebookWeb.NotebookLiveTest do
     colors =
       for account <- [user, other] do
         {:ok, view, _html} =
-          live(log_in_user(build_conn(), account), ~p"/pages/#{page.id}/edit")
+          live(log_in_user(build_conn(), account), ~p"/pages/#{page}/edit")
 
         view
         |> element("#body-editor")
@@ -82,7 +82,7 @@ defmodule NotebookWeb.NotebookLiveTest do
   end
 
   test "the reader copies Markdown and plain text, with a toast", %{conn: conn, page: page} do
-    {:ok, view, _html} = live(conn, ~p"/pages/#{page.id}")
+    {:ok, view, _html} = live(conn, ~p"/pages/#{page}")
 
     copy = fn id ->
       view

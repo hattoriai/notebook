@@ -455,7 +455,7 @@ defmodule NotebookWeb.SpaceLive do
               <p :if={@can_edit?}>Make a page, or a folder to keep pages together.</p>
               <p :if={not @can_edit?}>The space's editors have not made a page here.</p>
             </div>
-            <.link :for={page <- @node.pages} class="page-row" navigate={~p"/pages/#{page.id}"}>
+            <.link :for={page <- @node.pages} class="page-row" navigate={~p"/pages/#{page}"}>
               <div>
                 <span class="page-kicker">
                   <.icon name={Sidebar.page_icon(page.kind)} class="size-3.5" /> {kind_name(page.kind)}

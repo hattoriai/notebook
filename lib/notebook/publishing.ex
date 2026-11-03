@@ -238,6 +238,17 @@ defmodule Notebook.Publishing do
     end
   end
 
+  @doc """
+  A slug for a new page, from its title: its address in the notebook
+  (`/pages/kotoba`) and, when it is published, on the site. Free in the one
+  list of names; a number only when the title's is taken (`notes-2`).
+  """
+  def free_page_slug(title) do
+    base = slugify(title)
+    base = if base == "" or base in @reserved, do: "page", else: base
+    free(base, &(handle?(&1) or slug?(&1)))
+  end
+
   @doc "A slug free for it, from its title or name."
   def suggest_slug(%{slug: slug}) when is_binary(slug), do: slug
 
