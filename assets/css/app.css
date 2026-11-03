@@ -1291,3 +1291,14 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 .space-icon-edit .copy-action:hover { color: var(--accent); }
 /* Erabi's own boxes have its focus ring: not the notebook's fields' outline too. */
 .erabi input:focus, .erabi input:focus-visible { outline: none; box-shadow: none; }
+/* The notebook's "Are you sure?" (Layouts.confirm_dialog/1): paper on a dimmed page. */
+.confirm-dialog { width: min(440px, calc(100vw - 32px)); margin: auto; padding: 0; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); box-shadow: 0 28px 70px -24px rgb(35 38 34 / .45); }
+.confirm-dialog::backdrop { background: rgb(35 38 34 / .38); backdrop-filter: blur(2px); }
+.confirm-dialog[open] { animation: confirm-in .16s ease-out; }
+@keyframes confirm-in { from { opacity: 0; transform: translateY(6px) scale(.98); } }
+@media (prefers-reduced-motion: reduce) { .confirm-dialog[open] { animation: none; } }
+.confirm-dialog-box { padding: 28px 28px 22px; border-top: 3px solid var(--accent); }
+.confirm-dialog-message { margin: 0 0 26px; font-size: 1.12rem; line-height: 1.5; }
+.confirm-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.confirm-dialog .button.is-danger { background: #933126; border-color: #933126; color: #fffaf5; }
+.confirm-dialog .button.is-danger:hover { background: #7a281f; border-color: #7a281f; }

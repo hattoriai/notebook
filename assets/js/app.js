@@ -35,8 +35,10 @@ import {Erabi} from "erabi"
 import "erabi/emoji"
 import {Narabe} from "narabe"
 import {Fude} from "fude"
+import {enableConfirm} from "./confirm"
 
 enableCollaboration(registerCollaboration)
+enableConfirm()
 
 // A published page names its own socket (the notebook's public one, at
 // the notebook's address), and has no session to protect.
