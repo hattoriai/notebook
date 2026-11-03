@@ -83,7 +83,7 @@ defmodule Notebook.MixProject do
       {:kotoba, "~> 0.9"},
       {:hakushi, "~> 0.7"},
       {:masu, "~> 0.8"},
-      {:sake, "~> 0.4.4"},
+      {:sake, "~> 0.6", override: true},
       {:koyomi, "~> 0.2.1"},
       {:fude, "~> 0.8"},
       {:jumon, "~> 0.2"},

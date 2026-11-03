@@ -13,7 +13,12 @@ defmodule NotebookWeb.AgentsLive do
   def mount(_params, _session, socket) do
     {:ok,
      socket
-     |> assign(page_title: "Your agents", connected: nil)
+     |> assign(
+       page_title: "Your agents",
+       connected: nil,
+       oauth: Agents.oauth?(),
+       mcp_url: NotebookWeb.Endpoint.url() <> "/mcp"
+     )
      |> assign_agents()
      |> assign_form(Agents.change(%{"name" => default_name(socket), "lifetime" => "90"}))}
   end
@@ -153,6 +158,17 @@ defmodule NotebookWeb.AgentsLive do
                 </button>
               </li>
             </ul>
+          </section>
+
+          <section :if={@oauth} class="agent-oauth" id="agent-oauth">
+            <h2>Or sign in from your client</h2>
+            <p class="agent-new-help">
+              This notebook takes OAuth too. Add it once, without a token: your client opens the
+              Notebook to sign in, then acts as any of your agents below. Ask it to "act as" one by
+              name to switch.
+            </p>
+            <pre id="oauth-claude-command"><code>claude mcp add --transport http notebook "{@mcp_url}"</code></pre>
+            <pre id="oauth-codex-command"><code>codex mcp add notebook --url "{@mcp_url}"</code></pre>
           </section>
 
           <section class="agent-new" id="agent-new">

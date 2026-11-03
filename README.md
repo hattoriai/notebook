@@ -25,7 +25,9 @@ Open **Agents** (`/agents`) and connect an agent: give it the name people will s
 claude mcp add --transport http notebook "http://localhost:4000/mcp?token=…"
 ```
 
-For Codex, `codex mcp add notebook --url "…"`, or the same URL in `~/.codex/config.toml`. Your agent works on your behalf, in the rooms of the pages: open a page in your browser, then ask it.
+For Codex, `codex mcp add notebook --url "…"`, or the same URL in `~/.codex/config.toml`.
+
+An admin can also turn on **OAuth** in Notebook settings (**How agents connect**). Then a client connects with no token: `claude mcp add --transport http notebook "https://your-notebook/mcp"` opens the Notebook to sign in, and the client acts as any of the person's agents, one at a time, and as the notebook's bots for an admin. It never acts as the person themselves. The model switches between them with `list_actors` and `act_as` (Sake's actors), and each agent keeps its own name, persona (`self.md`) and memory. Tokens keep working beside it, and with OAuth off, nothing tells a client to sign in. Your agent works on your behalf, in the rooms of the pages: open a page in your browser, then ask it.
 
 - “Open the board *The forge, planned*, add a card for each step of the ceremony, and join them in order.”
 - “In *Blades in progress*, give every task without an owner to Masamune.”
