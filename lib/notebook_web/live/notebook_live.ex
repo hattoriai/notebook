@@ -1250,7 +1250,7 @@ defmodule NotebookWeb.NotebookLive do
               <:selection>
                 <.kotoba_selection_menu id="body-selection-menu" class="notebook-selection-menu">
                   <:button :if={@agents != []} command="assist" label="Ask my agent">
-                    <.icon name="hero-sparkles" class="size-4" />
+                    <Icons.robot class="size-4" />
                   </:button>
                   <:button command="bold"><.icon name="hero-bold" class="size-4" /></:button>
                   <:button command="italic"><.icon name="hero-italic" class="size-4" /></:button>

@@ -95,7 +95,7 @@ defmodule NotebookWeb.Layouts do
       placeholder="Search pages and spaces, or type a command…"
       icons={~w(hero-document-text hero-pencil-square hero-rectangle-stack hero-plus hero-users)}
     >
-      <:icon :let={name}><.icon name={name} class="size-4" /></:icon>
+      <:icon :let={name}><Icons.named name={name} class="size-4" /></:icon>
     </.command_palette>
     """
   end

@@ -93,6 +93,7 @@ defmodule NotebookWeb do
       # Common modules used in templates
       alias Phoenix.LiveView.JS
       alias NotebookWeb.Layouts
+      alias NotebookWeb.Icons
 
       # Routes generation with the ~p sigil
       unquote(verified_routes())

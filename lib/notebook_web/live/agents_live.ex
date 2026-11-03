@@ -131,10 +131,7 @@ defmodule NotebookWeb.AgentsLive do
                 id={"agent-#{agent.id}"}
                 class={[ended?(agent) && "is-ended"]}
               >
-                <span class="agent-avatar" aria-hidden="true"><.icon
-                  name="hero-sparkles"
-                  class="size-4"
-                /></span>
+                <span class="agent-avatar" aria-hidden="true"><Icons.robot class="size-4" /></span>
                 <div class="agent-who">
                   <strong>{agent.name}</strong>
                   <small>

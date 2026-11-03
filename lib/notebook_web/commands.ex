@@ -54,7 +54,7 @@ defmodule NotebookWeb.Commands do
       ),
       action(:agents, "Agents",
         section: "Go to",
-        icon: "hero-cpu-chip",
+        icon: "notebook-robot",
         keywords: ~w(mcp claude codex token memory connect),
         shortcut: "g a",
         navigate: ~p"/agents"
