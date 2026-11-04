@@ -129,39 +129,8 @@ defmodule Notebook.Spaces do
 
   ## Icons
 
-  @doc """
-  The notebook's icons a space may have, besides an emoji or an image:
-  `{name, label, keywords}`, as `NotebookWeb.Icons.named/1` draws them.
-  """
-  def icons do
-    [
-      {"hero-user-group", "Team", ~w(people group)},
-      {"hero-building-office-2", "Office", ~w(company organisation)},
-      {"hero-lock-closed", "Private", ~w(lock secret)},
-      {"hero-briefcase", "Work", ~w(job business)},
-      {"hero-rocket-launch", "Launch", ~w(project start)},
-      {"hero-light-bulb", "Ideas", ~w(idea brainstorm)},
-      {"hero-beaker", "Research", ~w(lab science)},
-      {"hero-code-bracket", "Engineering", ~w(code dev)},
-      {"hero-paint-brush", "Design", ~w(art brand)},
-      {"hero-megaphone", "Marketing", ~w(announce)},
-      {"hero-chart-bar", "Numbers", ~w(chart data finance)},
-      {"hero-currency-dollar", "Money", ~w(finance sales)},
-      {"hero-academic-cap", "Learning", ~w(school course)},
-      {"hero-book-open", "Reading", ~w(book library)},
-      {"hero-heart", "Care", ~w(love health)},
-      {"hero-sparkles", "Magic", ~w(shiny new)},
-      {"hero-fire", "Hot", ~w(fire urgent)},
-      {"hero-globe-alt", "World", ~w(web global)},
-      {"hero-home", "Home", ~w(house)},
-      {"hero-camera", "Photos", ~w(photo media)},
-      {"hero-musical-note", "Music", ~w(song audio)},
-      {"hero-puzzle-piece", "Puzzle", ~w(game)},
-      {"hero-wrench-screwdriver", "Tools", ~w(ops fix)},
-      {"hero-calendar-days", "Plans", ~w(calendar schedule)},
-      {"notebook-robot", "Agents", ~w(robot bot ai)}
-    ]
-  end
+  @doc "The notebook's icons a space may have, besides an emoji or an image (`Notebook.Icon.icons/0`)."
+  defdelegate icons, to: Notebook.Icon
 
   @doc """
   Gives a space an icon: one of `icons/0`, an emoji, or nil for its kind's.
@@ -170,8 +139,8 @@ defmodule Notebook.Spaces do
   def set_icon(scope, %Space{} = space, icon) do
     with :ok <- authorize_manage(scope, space),
          {:ok, updated} <-
-           space |> Space.icon_changeset(blank(icon), icon_names()) |> Repo.update() do
-      discard_image(space.icon, updated.icon)
+           space |> Notebook.Icon.change_icon(icon) |> Repo.update() do
+      Notebook.Icon.discard_image(space.icon, updated.icon)
       changed({:ok, updated})
     end
   end
@@ -182,42 +151,17 @@ defmodule Notebook.Spaces do
   """
   def set_icon_image(scope, %Space{} = space, path, name) do
     with :ok <- authorize_manage(scope, space),
-         {:ok, file} <- store_image(path, name) do
+         {:ok, file} <- Notebook.Icon.store_image(path, name) do
       case set_icon(scope, space, "image:" <> file.url) do
         {:ok, space} ->
           {:ok, space}
 
         error ->
-          Notebook.Storage.adapter().delete(file.key)
+          Notebook.Icon.delete_stored(file)
           error
       end
     end
   end
-
-  defp store_image(path, name) do
-    case Storehouse.store(path,
-           name: name,
-           accept: ~w(image/png image/jpeg image/gif image/webp),
-           max_bytes: 2_000_000
-         ) do
-      {:ok, file} -> {:ok, file}
-      {:existing, file} -> {:ok, file}
-      {:error, reason} -> {:error, {:image, reason}}
-    end
-  end
-
-  defp icon_names, do: for({name, _label, _keywords} <- icons(), do: name)
-
-  defp blank(""), do: nil
-  defp blank(icon), do: icon
-
-  # The image a space had, once it has another icon (or none).
-  defp discard_image("image:" <> url = old, new) when old != new do
-    with "/uploads/kotoba/" <> key <- url, do: Notebook.Storage.store_of(key).delete(key)
-    :ok
-  end
-
-  defp discard_image(_old, _new), do: :ok
 
   ## Publishing
 
@@ -287,6 +231,11 @@ defmodule Notebook.Spaces do
       page_ids = Repo.all(from p in Page, where: p.space_id == ^space.id, select: p.id)
       folder_ids = Repo.all(from f in Folder, where: f.space_id == ^space.id, select: f.id)
 
+      page_icons =
+        Repo.all(
+          from p in Page, where: p.space_id == ^space.id and not is_nil(p.icon), select: p.icon
+        )
+
       Repo.transact(fn ->
         delete_documents(page_ids)
 
@@ -306,8 +255,12 @@ defmodule Notebook.Spaces do
         Repo.delete(space)
       end)
       |> tap(fn
-        {:ok, _} -> discard_image(space.icon, nil)
-        _error -> :ok
+        {:ok, _} ->
+          # The space's image, and its pages' (gone with them).
+          for icon <- [space.icon | page_icons], do: Notebook.Icon.discard_image(icon, nil)
+
+        _error ->
+          :ok
       end)
       |> archive_changed()
     end

@@ -630,12 +630,15 @@ defmodule Notebook.Publishing do
   def public_upload?(key) when is_binary(key) do
     pattern = "%" <> String.replace(key, ~w(% _ \\), &("\\" <> &1)) <> "%"
 
-    # The site's icon and its picture of a shared link are anyone's too.
+    # The site's icon and its picture of a shared link are anyone's too,
+    # and a published page's own icon.
     site_image?(key) or
       Repo.exists?(
         from p in Page,
           where: not is_nil(p.published_at) and is_nil(p.archived_at),
-          where: fragment("CAST(? AS TEXT) LIKE ? ESCAPE '\\'", p.body, ^pattern)
+          where:
+            fragment("CAST(? AS TEXT) LIKE ? ESCAPE '\\'", p.body, ^pattern) or
+              p.icon == ^("image:/uploads/kotoba/" <> key)
       )
   end
 
@@ -643,6 +646,34 @@ defmodule Notebook.Publishing do
     %{icon: icon, image: image} = config()
     ("/uploads/kotoba/" <> key) in [icon, image]
   end
+
+  @doc """
+  A published page's own icon, as its page reads it: an image at the
+  notebook's address (wherever the page is read), an emoji, or one of the
+  notebook's icons; nil when it has none.
+  """
+  def page_icon(%Page{icon: "image:" <> url}), do: "image:" <> site_image_url(url)
+  def page_icon(%Page{icon: icon}), do: icon
+
+  @doc """
+  The browser-tab icon of a published page: its own image, or its emoji
+  drawn as an SVG (a `data:` address, text only); nil for the site's.
+  """
+  def favicon(%Page{icon: "image:" <> url}), do: site_image_url(url)
+
+  def favicon(%Page{icon: icon}) when is_binary(icon) do
+    if String.starts_with?(icon, ["hero-", "notebook-"]) do
+      nil
+    else
+      svg =
+        ~s(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">) <>
+          ~s(<text y=".9em" font-size="90">#{icon}</text></svg>)
+
+      "data:image/svg+xml," <> URI.encode(svg, &URI.char_unreserved?/1)
+    end
+  end
+
+  def favicon(_page), do: nil
 
   @doc "A site image's address, wherever the page is read: the notebook's own."
   def site_image_url(nil), do: nil

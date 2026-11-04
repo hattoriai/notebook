@@ -6,23 +6,20 @@
     <%!-- A published page: its HTML may come through a site's proxy, and its
     styles, scripts, files and live socket from the notebook's own address. --%>
     <meta name="live-socket" content={NotebookWeb.Endpoint.url() <> "/public/live"} />
-    <%!-- The site's own icon (Notebook settings → Publishing), else the notebook's. --%>
+    <%!-- The page's own icon, else the site's (Notebook settings → Publishing),
+    else the notebook's. --%>
+    <% site_icon = Notebook.Publishing.site_image_url(Notebook.Publishing.config().icon) %>
+    <% favicon = assigns[:favicon] || site_icon %>
     <link
-      :if={is_nil(Notebook.Publishing.config().icon)}
+      :if={is_nil(favicon)}
       rel="icon"
       href={static_url(NotebookWeb.Endpoint, ~p"/images/favicon.svg")}
       type="image/svg+xml"
     />
-    <link
-      :if={Notebook.Publishing.config().icon}
-      rel="icon"
-      href={Notebook.Publishing.site_image_url(Notebook.Publishing.config().icon)}
-    />
-    <link
-      :if={Notebook.Publishing.config().icon}
-      rel="apple-touch-icon"
-      href={Notebook.Publishing.site_image_url(Notebook.Publishing.config().icon)}
-    />
+    <link :if={favicon} rel="icon" href={favicon} />
+    <%!-- A phone's home screen takes an image, not an emoji's SVG. --%>
+    <% touch = if(favicon && !String.starts_with?(favicon, "data:"), do: favicon, else: site_icon) %>
+    <link :if={touch} rel="apple-touch-icon" href={touch} />
     <meta name="theme-color" content="#f6f3ec" />
     <.live_title
       default={Notebook.Publishing.config().name}

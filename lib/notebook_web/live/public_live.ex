@@ -48,6 +48,7 @@ defmodule NotebookWeb.PublicLive do
       page_title: page.title,
       description: Publishing.description(page),
       og_image: Publishing.social_image(page),
+      favicon: Publishing.favicon(page),
       canonical: Publishing.url(page),
       feed: page.folder && page.folder.published_at && Publishing.feed_url(page.folder),
       # The bots that answer visitors here (Notebook.Bots), and what was asked.
@@ -225,7 +226,13 @@ defmodule NotebookWeb.PublicLive do
       <p :if={@page.folder && @page.folder.published_at} class="eyebrow">
         <a href={Publishing.url(@page.folder)}>{@page.folder.name}</a>
       </p>
-      <h1>{@page.title}</h1>
+      <h1 id="public-title">
+        <Icons.named
+          :if={@page.icon}
+          name={Publishing.page_icon(@page)}
+          class="page-title-icon"
+        />{@page.title}
+      </h1>
       <% options = Publishing.page_options(@page) %>
       <% author? = options.show_author and @page.published_by != nil %>
       <p :if={author? or options.show_date} class="public-byline" id="public-byline">

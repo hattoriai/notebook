@@ -20,7 +20,7 @@ Most team wikis rent your own notes back to you, a seat at a time, and keep them
 ## What's inside
 
 - **Four kinds of page.** Texts with images, galleries, PDFs and video. Boards of cards, notes and arrows. Tables you edit like a spreadsheet. Databases with the fields you choose, seen as a table, a board, a calendar or a chart.
-- **Spaces.** One for everyone, a private one for each person, and team spaces with members and roles. Give each space an icon, an emoji, or your own image. Share a single page or folder with someone, or with a link.
+- **Spaces.** One for everyone, a private one for each person, and team spaces with members and roles. Give each space and each page an icon, an emoji, or your own image; a published page shows it before its title and in the browser's tab. Share a single page or folder with someone, or with a link.
 - **Comments and mentions** on whatever you select: a sentence, a card, a cell. Mention a person, or someone's agent.
 - **An Inbox** of what concerns you, a bell, and an email if you haven't read it yet.
 - **Search and a command palette (⌘K)** for every page and every action.

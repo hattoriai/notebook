@@ -335,6 +335,8 @@ defmodule NotebookWeb.NotebookLive do
       auto_upload: true,
       progress: &handle_progress/3
     )
+    # The page's own image, as its icon: stored as soon as it is chosen.
+    |> allow_upload(:page_icon, NotebookWeb.IconEdit.upload_options(&handle_progress/3))
     # A database record's files: any file, checked by its bytes when stored.
     |> allow_upload(:record_files,
       accept: :any,
@@ -483,6 +485,29 @@ defmodule NotebookWeb.NotebookLive do
   defp embedded(assigns, "table"), do: assigns.tables
   defp embedded(assigns, "chart"), do: assigns.charts
   defp embedded(_assigns, _kind), do: %{}
+
+  attr :page, Page, required: true
+  attr :can_edit?, :boolean, default: false
+  attr :upload, :any, default: nil
+
+  # The page's title, with its own icon before it; its editors change the
+  # icon above it (shown when they point at the heading, or move into it).
+  defp page_title(assigns) do
+    ~H"""
+    <NotebookWeb.IconEdit.icon_edit
+      :if={@can_edit? and @upload}
+      id="page-icon"
+      class={["page-icon-edit", @page.icon && "has-icon"]}
+      icon={@page.icon}
+      label={"#{@page.title}'s icon"}
+      event="set_page_icon"
+      upload={@upload}
+    />
+    <h1 class="page-title" id="page-title">
+      <Icons.named :if={@page.icon} name={@page.icon} class="page-title-icon" />{@page.title}
+    </h1>
+    """
+  end
 
   # The person, as every part of the page knows them: the same key, name
   # and color in the text, the board, the table and the room's list.
@@ -833,7 +858,7 @@ defmodule NotebookWeb.NotebookLive do
           />
           <div class="page-heading">
             <p class="eyebrow">Board · shared live</p>
-            <h1>{@page.title}</h1>
+            <.page_title page={@page} can_edit?={@can_edit?} upload={@uploads[:page_icon]} />
             <p>{kind_hint(@page.kind)}</p>
           </div>
           <div
@@ -873,7 +898,7 @@ defmodule NotebookWeb.NotebookLive do
           />
           <div class="page-heading">
             <p class="eyebrow">Database · shared live</p>
-            <h1>{@page.title}</h1>
+            <.page_title page={@page} can_edit?={@can_edit?} upload={@uploads[:page_icon]} />
             <p>
               Records with the fields you give them, seen as a table, a board, a calendar or a chart.
             </p>
@@ -1085,7 +1110,7 @@ defmodule NotebookWeb.NotebookLive do
           />
           <div class="page-heading">
             <p class="eyebrow">{kind_name(@page.kind)} · shared live</p>
-            <h1>{@page.title}</h1>
+            <.page_title page={@page} can_edit?={@can_edit?} upload={@uploads[:page_icon]} />
             <p>{kind_hint(@page.kind)}</p>
           </div>
           <div
@@ -1125,7 +1150,7 @@ defmodule NotebookWeb.NotebookLive do
           />
           <div class="page-heading">
             <p class="eyebrow">Shared page</p>
-            <h1>{@page.title}</h1>
+            <.page_title page={@page} can_edit?={@can_edit?} upload={@uploads[:page_icon]} />
             <p :if={@live_action == :show}>
               <span :if={@page.author} class="page-byline">By {@page.author.name} ·</span>
               Updated {Calendar.strftime(@page.updated_at, "%-d %B %Y")}
@@ -2020,6 +2045,18 @@ defmodule NotebookWeb.NotebookLive do
 
   def handle_event("restore", _params, socket), do: {:noreply, restore_page(socket)}
 
+  # The page's own icon (Notebook.Icon), or "" for its kind's.
+  def handle_event("set_page_icon", %{"icon" => icon}, socket) do
+    %{current_scope: scope, page: page} = socket.assigns
+
+    case Pages.set_icon(scope, page, icon) do
+      {:ok, page} -> {:noreply, assign(socket, page: page)}
+      {:error, _reason} -> {:noreply, put_flash(socket, :error, "That is not an icon.")}
+    end
+  end
+
+  def handle_event("icon_upload", _params, socket), do: {:noreply, socket}
+
   # Ask my agent: the editor's Assist menu gives the selection and its
   # block; the person says what they want, and of which agent of theirs.
   def handle_event("kotoba:assist", %{"action" => "ask"} = params, socket) do
@@ -2285,6 +2322,31 @@ defmodule NotebookWeb.NotebookLive do
   end
 
   def handle_info(_message, socket), do: {:noreply, socket}
+
+  # The image chosen as the page's icon, stored as soon as it is uploaded.
+  defp handle_progress(:page_icon, %{done?: true} = entry, socket) do
+    %{current_scope: scope, page: page} = socket.assigns
+
+    result =
+      consume_uploaded_entry(socket, entry, fn %{path: path} ->
+        {:ok, Pages.set_icon_image(scope, page, path, entry.client_name)}
+      end)
+
+    case result do
+      {:ok, page} ->
+        {:noreply, assign(socket, page: page)}
+
+      {:error, _reason} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           "That image could not be the icon: use a PNG, JPEG, GIF or WebP."
+         )}
+    end
+  end
+
+  defp handle_progress(:page_icon, _entry, socket), do: {:noreply, socket}
 
   defp handle_progress(:attachments, entry, socket) do
     if entry.done?,

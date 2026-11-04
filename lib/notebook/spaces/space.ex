@@ -39,24 +39,6 @@ defmodule Notebook.Spaces.Space do
 
   def kinds, do: @kinds
 
-  @doc """
-  A space's icon: one of `icons` (the notebook's), an emoji, an uploaded
-  image (`"image:<url>"`), or none.
-  """
-  def icon_changeset(space, icon, icons) do
-    space
-    |> change(icon: icon)
-    |> validate_change(:icon, fn :icon, icon ->
-      if icon_ok?(icon, icons), do: [], else: [icon: "is not an icon"]
-    end)
-  end
-
-  defp icon_ok?("image:" <> url, _icons), do: String.starts_with?(url, ["/", "https://"])
-  defp icon_ok?(icon, icons), do: icon in icons or emoji?(icon)
-
-  # An emoji Erabi's picker has (in any skin tone).
-  defp emoji?(icon), do: Erabi.Emoji.name(icon, "en") != nil
-
   @doc "A team space's name and description; General and Private keep theirs."
   def changeset(space, attrs) do
     space
