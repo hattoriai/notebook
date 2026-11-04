@@ -200,9 +200,6 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
   --kotoba-token-punctuation: #6d6a60;
 }
 .page-form .kotoba { min-height: 360px; }
-/* An image in the editor: at most as wide as the published page's column
-   (.public-main), so the editor does not show it larger than readers see it. */
-.page-form .kotoba-editable > .kotoba-attachment .kotoba-attachment-image { max-width: min(100%, 760px); }
 .kotoba:focus-within { box-shadow: 0 0 0 1px var(--rule), 0 18px 40px -28px #22251e40; }
 .kotoba-editable:focus-visible { outline: none; }
 .kotoba-toolbar { position: sticky; top: 0; z-index: 5; gap: 4px; padding: 6px 8px; background: #f6f2ea; }
@@ -237,10 +234,11 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
 .kotoba-link-card-url { color: #e9b89f; font-family: ui-sans-serif, system-ui, sans-serif; }
 .kotoba-link-card-button { color: #d9d4c9; }
 
-/* The reader: a measured column, with wider figures. */
+/* The reader: the published page's column (.public-main, 760px), so a page
+   reads in the notebook as it does when it is published. */
 .page-body { padding: 48px 0 70px; }
+.page-body > .kotoba-content, .page-body-live > .kotoba-field { max-width: 760px; }
 .page-body .kotoba-content { font-size: 1.12rem; line-height: 1.8; overflow-wrap: anywhere; }
-/* Text keeps a reading measure; code, tables, files and galleries take the page's width. */
 .page-body .kotoba-content > :where(p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, .notebook-callout) { max-width: 46em; }
 .page-body .kotoba-content :where(h1) { font-size: 2.3em; margin-top: 1.4em; }
 .page-body .kotoba-content :where(h2) { font-size: 1.75em; margin-top: 1.6em; }
