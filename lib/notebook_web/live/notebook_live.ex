@@ -1941,7 +1941,7 @@ defmodule NotebookWeb.NotebookLive do
   def handle_event("validate", %{"page" => params}, socket) do
     socket =
       if socket.assigns.page,
-        do: Kotoba.Live.consume_uploads(socket, :attachments, "body-editor"),
+        do: consume_attachments(socket),
         else: socket
 
     page = socket.assigns.page || %Page{}
@@ -2288,9 +2288,22 @@ defmodule NotebookWeb.NotebookLive do
 
   defp handle_progress(:attachments, entry, socket) do
     if entry.done?,
-      do: {:noreply, Kotoba.Live.consume_uploads(socket, :attachments, "body-editor")},
+      do: {:noreply, consume_attachments(socket)},
       else: {:noreply, socket}
   end
+
+  # The body's uploads go in the page's shared document from here, where
+  # their files are stored, as the person's change: a file is in the page
+  # even when the browser could not share it, and one that could not go in
+  # is deleted (Kotoba.Live.consume_uploads/4, :issho).
+  defp consume_attachments(%{assigns: %{issho: [_ | _] = issho}} = socket) do
+    Kotoba.Live.consume_uploads(socket, :attachments, "body-editor",
+      issho: Keyword.put(issho, :author, user(socket))
+    )
+  end
+
+  defp consume_attachments(socket),
+    do: Kotoba.Live.consume_uploads(socket, :attachments, "body-editor")
 
   # The place picked in the new page's form stays picked as it validates.
   defp keep_place(socket, %{"place" => value}) do
