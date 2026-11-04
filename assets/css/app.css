@@ -1285,10 +1285,13 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 /* A space's icon, chosen in its heading: an emoji, one of the notebook's, or an image. */
 .icon-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 14px 0 -4px; }
 .icon-edit .erabi { --erabi-field-height: 2.25rem; min-width: 11rem; }
-.icon-edit-upload label { cursor: pointer; }
 .icon-edit .field-error { flex-basis: 100%; margin: 0; color: #a3322a; font: 13px ui-sans-serif, system-ui, sans-serif; }
 .icon-edit .copy-action { font: 13px ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
 .icon-edit .copy-action:hover { color: var(--accent); }
+/* The picker's Upload tab (Erabi's :tab): its button, and what it takes. */
+.icon-edit-upload-tab { display: grid; justify-items: start; gap: 10px; padding: 6px 2px; }
+.icon-edit-upload-tab .button { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.icon-edit-upload-tab p { margin: 0; color: var(--muted); font: 13px/1.45 ui-sans-serif, system-ui, sans-serif; }
 /* A page's own icon (Notebook.Icon), before its title: as tall as a capital. */
 .page-title-icon { display: inline-block; width: 0.82em; height: 0.82em; margin-right: 0.3em; vertical-align: -0.06em; }
 img.page-title-icon { object-fit: contain; border-radius: 0.14em; }

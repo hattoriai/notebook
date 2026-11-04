@@ -1,11 +1,11 @@
 defmodule NotebookWeb.IconEdit do
   @moduledoc """
-  The icon of a space or a page, as its editors change it (`Notebook.Icon`):
-  Erabi's emoji picker, with the notebook's icons as its second tab, an
-  image of its own to upload, and its usual icon again.
+  The icon of a space or a page, as its editors change it (`Notebook.Icon`),
+  as Notion's: Erabi's emoji picker with the tabs Emoji, Icons (the
+  notebook's) and Upload (an image of its own), and Remove at the top.
 
-  The LiveView handles `event` (`%{"icon" => icon}`, `""` for the usual
-  icon), and stores the upload `upload` when it is done.
+  The LiveView handles `event` (`%{"icon" => icon}`, `""` to remove it),
+  and stores the upload `upload` when it is done.
   """
   use NotebookWeb, :html
 
@@ -30,24 +30,26 @@ defmodule NotebookWeb.IconEdit do
           clearable={false}
         >
           <:icon :let={name}><Icons.named name={name} class="size-5" /></:icon>
+          <%!-- As Notion's: Emoji, Icons, and Upload; Remove at the top. Plain
+          HTML: a component in the picker comes back empty (data-phx-skip)
+          when the picker mounts again with a new id. --%>
+          <:tab label="Upload">
+            <div class="icon-edit-upload-tab">
+              <label for={@upload.ref} class="button" id={"#{@id}-upload-label"}>
+                <span class="hero-photo size-4" aria-hidden="true"></span> Upload an image
+              </label>
+              <p>A PNG, JPEG, GIF or WebP, up to 2 MB. Square images look best.</p>
+            </div>
+          </:tab>
+          <:action :if={@icon}>
+            <button type="button" id={"#{@id}-reset"} phx-click={@event} phx-value-icon="">Remove</button>
+          </:action>
         </Erabi.Components.emoji_picker>
       </form>
-      <form id={"#{@id}-upload"} phx-change="icon_upload" class="icon-edit-upload">
-        <label class="copy-action">
-          <.live_file_input upload={@upload} class="sr-only" />
-          <.icon name="hero-photo" class="size-4" /> Upload an image
-        </label>
+      <%!-- The file input the Upload tab's label opens: LiveView's, outside the picker. --%>
+      <form id={"#{@id}-upload"} phx-change="icon_upload" class="sr-only">
+        <.live_file_input upload={@upload} />
       </form>
-      <button
-        :if={@icon}
-        id={"#{@id}-reset"}
-        type="button"
-        class="copy-action"
-        phx-click={@event}
-        phx-value-icon=""
-      >
-        <.icon name="hero-arrow-uturn-left" class="size-4" /> Its usual icon
-      </button>
       <p :for={error <- errors(@upload)} class="field-error" role="alert">{error}</p>
     </div>
     """
@@ -56,7 +58,9 @@ defmodule NotebookWeb.IconEdit do
   # Erabi's picker ignores LiveView's patches inside it (phx-update="ignore"),
   # so it never sees the <template> of a new image: a new image is a new
   # picker, which mounts again with it.
+  # The same holds for its Remove, there only with an icon.
   defp picker_id(id, "image:" <> url), do: "#{id}-picker-#{:erlang.phash2(url)}"
+  defp picker_id(id, nil), do: "#{id}-picker-none"
   defp picker_id(id, _icon), do: "#{id}-picker"
 
   # The notebook's icons, as the emoji picker's second tab; first, the own

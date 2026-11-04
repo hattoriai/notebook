@@ -23,6 +23,10 @@ defmodule NotebookWeb.PageIconLiveTest do
     {:ok, view, _html} = live(log_in_user(conn, hanzo), ~p"/pages/#{blade}")
     assert has_element?(view, "#page-icon-form .erabi")
     refute has_element?(view, "#page-title .page-title-icon")
+    # As Notion's: an Upload tab whose label opens the page's file input,
+    # and Remove only when there is an icon.
+    assert has_element?(view, ~s(#page-icon [data-part="tab"][data-label="Upload"] label[for]))
+    refute has_element?(view, "#page-icon-reset")
 
     view |> form("#page-icon-form") |> render_change(%{"icon" => "⚔️"})
     assert has_element?(view, "#page-title .notebook-icon-emoji", "⚔️")

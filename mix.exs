@@ -84,7 +84,7 @@ defmodule Notebook.MixProject do
       {:jumon, "~> 0.2"},
       {:storehouse, "~> 0.3"},
       {:chime, "~> 0.1"},
-      {:erabi, "~> 0.2"},
+      {:erabi, "~> 0.3"},
       {:oban, "~> 2.20"},
       {:cardbox, "~> 0.2"},
       {:sekisho, "~> 0.2.0"},
