@@ -140,7 +140,7 @@ defmodule NotebookWeb.Sidebar do
               navigate={~p"/pages/#{page}"}
               class={["sidebar-link", @current == {:page, page.id} && "is-current"]}
             >
-              <.icon name={page_icon(page.kind)} class="size-4" />
+              <Icons.named name={page_icon(page)} class="size-4" />
               <span class="sidebar-shared-title">{page.title}</span>
             </.link>
           </li>
@@ -251,7 +251,7 @@ defmodule NotebookWeb.Sidebar do
       navigate={~p"/pages/#{@page}"}
       class={["sidebar-page", @current == {:page, @page.id} && "is-current"]}
     >
-      <.icon name={page_icon(@page.kind)} class="size-4" />
+      <Icons.named name={page_icon(@page)} class="size-4" />
       <span>{@page.title}</span>
     </.link>
     """
@@ -266,7 +266,9 @@ defmodule NotebookWeb.Sidebar do
   def space_icon(%{kind: "private"}), do: "hero-lock-closed"
   def space_icon(_team), do: "hero-user-group"
 
-  @doc "The icon of a page of a kind."
+  @doc "The icon of a page: its own, or its kind's (as `Icons.named/1` draws it)."
+  def page_icon(%{icon: icon}) when is_binary(icon), do: icon
+  def page_icon(%{kind: kind}), do: page_icon(kind)
   def page_icon("board"), do: "hero-rectangle-group"
   def page_icon("table"), do: "hero-table-cells"
   def page_icon("database"), do: "hero-circle-stack"

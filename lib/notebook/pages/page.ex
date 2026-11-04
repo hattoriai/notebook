@@ -32,6 +32,8 @@ defmodule Notebook.Pages.Page do
     # Published (Notebook.Publishing): its public path's last word, since
     # when, and by whom.
     field :slug, :string
+    # Its own icon, as a space's (Notebook.Icon); none, its kind's.
+    field :icon, :string
     # How it reads, published: "show_author" and "show_date" (true unless
     # false), "description" for search engines and link previews.
     field :publish_options, :map, default: %{}

@@ -201,6 +201,39 @@ defmodule Notebook.Pages do
     end
   end
 
+  @doc """
+  Gives a page an icon of its own, as a space has (`Notebook.Icon`): one of
+  the notebook's icons, an emoji, or nil (or "") for its kind's. Its
+  editors may. The image it had goes.
+  """
+  def set_icon(scope, %Page{} = page, icon) do
+    with :ok <- Permissions.authorize(scope, :edit, page),
+         {:ok, updated} <- page |> Notebook.Icon.change_icon(icon) |> Repo.update() do
+      Notebook.Icon.discard_image(page.icon, updated.icon)
+      Spaces.tree_changed()
+      saved({:ok, updated})
+      {:ok, Repo.preload(updated, [:author, :space, :folder], force: true)}
+    end
+  end
+
+  @doc """
+  Gives a page an image of its own as its icon, from an upload at `path`
+  (Storehouse: only the bytes make an image an image). Its editors may.
+  """
+  def set_icon_image(scope, %Page{} = page, path, name) do
+    with :ok <- Permissions.authorize(scope, :edit, page),
+         {:ok, file} <- Notebook.Icon.store_image(path, name) do
+      case set_icon(scope, page, "image:" <> file.url) do
+        {:ok, page} ->
+          {:ok, page}
+
+        error ->
+          Notebook.Icon.delete_stored(file)
+          error
+      end
+    end
+  end
+
   @doc "Whether agents may not work on the page: it is closed to them, or its space is."
   def closed_to_agents?(%Page{closed_to_agents: true}), do: true
   def closed_to_agents?(%Page{} = page), do: Repo.preload(page, :space).space.closed_to_agents

@@ -1283,12 +1283,20 @@ html[data-sidebar="hidden"] .sidebar-show { position: fixed; top: 88px; left: 14
 .archive-spaces { margin-bottom: 24px; }
 .archive-spaces .page-list { margin-bottom: 36px; }
 /* A space's icon, chosen in its heading: an emoji, one of the notebook's, or an image. */
-.space-icon-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 14px 0 -4px; }
-.space-icon-edit .erabi { --erabi-field-height: 2.25rem; min-width: 11rem; }
-.space-icon-upload label { cursor: pointer; }
-.space-icon-edit .field-error { flex-basis: 100%; margin: 0; color: #a3322a; font: 13px ui-sans-serif, system-ui, sans-serif; }
-.space-icon-edit .copy-action { font: 13px ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
-.space-icon-edit .copy-action:hover { color: var(--accent); }
+.icon-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 14px 0 -4px; }
+.icon-edit .erabi { --erabi-field-height: 2.25rem; min-width: 11rem; }
+.icon-edit-upload label { cursor: pointer; }
+.icon-edit .field-error { flex-basis: 100%; margin: 0; color: #a3322a; font: 13px ui-sans-serif, system-ui, sans-serif; }
+.icon-edit .copy-action { font: 13px ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
+.icon-edit .copy-action:hover { color: var(--accent); }
+/* A page's own icon (Notebook.Icon), before its title: as tall as a capital. */
+.page-title-icon { display: inline-block; width: 0.82em; height: 0.82em; margin-right: 0.3em; vertical-align: -0.06em; }
+img.page-title-icon { object-fit: contain; border-radius: 0.14em; }
+.notebook-icon-emoji.page-title-icon { width: auto; height: auto; font-size: 0.82em; line-height: 1; vertical-align: 0.04em; }
+/* Its editors change it above the title, when they point at the heading. */
+.page-icon-edit { margin: 0 0 8px; opacity: 0; transition: opacity 0.15s ease; }
+.page-heading:hover .page-icon-edit, .page-icon-edit:focus-within { opacity: 1; }
+@media (hover: none) { .page-icon-edit { opacity: 1; } }
 /* Erabi's own boxes have its focus ring: not the notebook's fields' outline too. */
 .erabi input:focus, .erabi input:focus-visible { outline: none; box-shadow: none; }
 /* The notebook's "Are you sure?" (Layouts.confirm_dialog/1): paper on a dimmed page. */
