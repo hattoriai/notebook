@@ -200,9 +200,6 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
   --kotoba-token-punctuation: #6d6a60;
 }
 .page-form .kotoba { min-height: 360px; }
-/* An image in the editor: at most as wide as the published page's column
-   (.public-main), so the editor does not show it larger than readers see it. */
-.page-form .kotoba-editable > .kotoba-attachment .kotoba-attachment-image { max-width: min(100%, 760px); }
 .kotoba:focus-within { box-shadow: 0 0 0 1px var(--rule), 0 18px 40px -28px #22251e40; }
 .kotoba-editable:focus-visible { outline: none; }
 .kotoba-toolbar { position: sticky; top: 0; z-index: 5; gap: 4px; padding: 6px 8px; background: #f6f2ea; }
