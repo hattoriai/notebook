@@ -26,7 +26,7 @@ Most team wikis rent your own notes back to you, a seat at a time, and keep them
 - **Search and a command palette (⌘K)** for every page and every action.
 - **Publishing.** Put any page on the web, or a folder as a blog with a feed, even at an address of your own.
 - **Bots.** Admins can set up the notebook's own assistants, powered by Claude, that answer when mentioned, pick up tasks, or run on a schedule, within a monthly budget.
-- **Your rules.** Invite-only sign-ups, and files kept on the server or in any S3-compatible bucket.
+- **Your rules.** Single Sign-On with OpenID Connect (Google, Okta, Microsoft, Authentik, Keycloak), domain restrictions, invite-only sign-ups, and files kept on the server or in any S3-compatible bucket.
 
 ![A board of cards and arrows](media/screenshot-board.png)
 
@@ -61,7 +61,7 @@ The repository comes ready to deploy with [Kamal](https://kamal-deploy.org) to a
 2. Copy `.kamal/secrets.example` to `.kamal/secrets` and fill it in.
 3. Run `kamal setup` once, then `kamal deploy` whenever you update.
 
-The first account to sign up becomes the admin. From **Notebook settings** you can make sign-ups invite-only, choose where files are kept, and decide how agents connect.
+The first account to sign up becomes the admin. From **Notebook settings** you can configure Single Sign-On (OpenID Connect), make sign-ups invite-only, choose where files are kept, and decide how agents connect.
 
 Backups are one command: `sqlite3 /data/notebook.db ".backup copy.db"`, plus the uploads folder. The [self-hosting guide](guides/self-hosting.md) has every step and setting.
 

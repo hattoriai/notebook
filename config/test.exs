@@ -51,3 +51,6 @@ config :storehouse, Storehouse.Local,
 # The bots' Claude API, answered by the tests (Req.Test).
 config :notebook, Notebook.Bots.Claude,
   req: [plug: {Req.Test, Notebook.Bots.Claude}, retry: false]
+
+# OpenID Connect, answered by the tests (Req.Test).
+config :notebook, Notebook.OIDC, req: [plug: {Req.Test, Notebook.OIDC}, retry: false]

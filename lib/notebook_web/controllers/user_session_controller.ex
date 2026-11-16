@@ -5,7 +5,16 @@ defmodule NotebookWeb.UserSessionController do
   alias NotebookWeb.UserAuth
 
   def create(conn, params) do
-    create(conn, params, "Welcome back!")
+    if Notebook.OIDC.password_login_allowed?() do
+      create(conn, params, "Welcome back!")
+    else
+      conn
+      |> put_flash(
+        :error,
+        "Password log-in is disabled. Please sign in with #{Notebook.OIDC.config().name}."
+      )
+      |> redirect(to: ~p"/users/log-in")
+    end
   end
 
   # email + password login

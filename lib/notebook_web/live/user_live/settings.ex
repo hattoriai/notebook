@@ -13,6 +13,7 @@ defmodule NotebookWeb.UserLive.Settings do
        handle_form: to_form(Accounts.change_user_handle(user)),
        password_form: to_form(Accounts.change_user_password(user, %{}, hash_password: false)),
        current_email: user.email,
+       identities: Accounts.get_user_identities(user),
        page_title: title(socket.assigns.live_action),
        trigger_submit: false
      )}
@@ -64,8 +65,27 @@ defmodule NotebookWeb.UserLive.Settings do
             <button class="button button-primary" type="submit">Save handle</button>
           </.form>
         </section>
+        <section :if={@live_action == :profile} id="profile-sso">
+          <h2>Single sign-on</h2>
+          <p :if={@identities != []}>
+            Your account is connected to:
+          </p>
+          <ul :if={@identities != []} class="space-y-1 my-2">
+            <li :for={identity <- @identities} class="text-sm">
+              <.icon name="hero-shield-check" class="size-4 inline mr-1 text-emerald-600" />
+              <strong>{String.upcase(identity.provider)}</strong> · {identity.email}
+            </li>
+          </ul>
+          <p :if={@identities == []}>
+            No external identity provider is currently linked to your account.
+          </p>
+        </section>
         <section :if={@live_action == :password} id="password">
-          <h2>Password</h2><p>Use at least 12 characters.</p>
+          <h2>Password</h2>
+          <p :if={is_nil(@current_scope.user.hashed_password)}>
+            You signed in with Single Sign-On and have no password set. Create one to be able to sign in with email and password too.
+          </p>
+          <p :if={not is_nil(@current_scope.user.hashed_password)}>Use at least 12 characters.</p>
           <.form
             for={@password_form}
             id="password_form"

@@ -14,7 +14,11 @@ defmodule NotebookWeb.AdminLive do
   @impl true
   def mount(_params, _session, socket) do
     if Scope.admin?(socket.assigns.current_scope) do
-      if connected?(socket), do: Storage.subscribe()
+      if connected?(socket) do
+        Storage.subscribe()
+        Notebook.OIDC.subscribe()
+      end
+
       config = Storage.config()
 
       {:ok,
@@ -63,12 +67,20 @@ defmodule NotebookWeb.AdminLive do
   end
 
   defp assign_joining(socket) do
+    oidc_config = Notebook.OIDC.config()
+    oidc_changeset = Notebook.OIDC.change(oidc_config)
+    oidc_callback_url = url(~p"/users/oidc/callback")
+
     socket
     |> assign(mcp_oauth: Notebook.Agents.oauth?())
     |> assign(
       invite_only: Invitations.invite_only?(),
       invitations: Invitations.pending(),
-      invite_url: socket.assigns[:invite_url]
+      invite_url: socket.assigns[:invite_url],
+      oidc_config: oidc_config,
+      oidc_form: to_form(oidc_changeset, as: :oidc),
+      oidc_enabled: Ecto.Changeset.get_field(oidc_changeset, :enabled),
+      oidc_callback_url: oidc_callback_url
     )
   end
 
@@ -202,6 +214,38 @@ defmodule NotebookWeb.AdminLive do
     end
   end
 
+  def handle_event("oidc_validate", %{"oidc" => params}, socket) do
+    changeset =
+      socket.assigns.oidc_config
+      |> Notebook.OIDC.change(params)
+      |> Map.put(:action, :validate)
+
+    {:noreply,
+     assign(socket,
+       oidc_form: to_form(changeset, as: :oidc),
+       oidc_enabled: Ecto.Changeset.get_field(changeset, :enabled)
+     )}
+  end
+
+  def handle_event("oidc_save", %{"oidc" => params}, socket) do
+    case Notebook.OIDC.save(socket.assigns.current_scope, params) do
+      {:ok, config} ->
+        changeset = Notebook.OIDC.change(config)
+
+        {:noreply,
+         socket
+         |> put_flash(:info, "Single sign-on settings saved.")
+         |> assign(
+           oidc_config: config,
+           oidc_form: to_form(changeset, as: :oidc),
+           oidc_enabled: config.enabled
+         )}
+
+      {:error, changeset} ->
+        {:noreply, assign(socket, oidc_form: to_form(changeset, as: :oidc))}
+    end
+  end
+
   def handle_event("transfer", %{"action" => action}, socket) when action in ["copy", "remove"] do
     case Storage.start_transfer(socket.assigns.current_scope, action) do
       {:ok, transfer} -> {:noreply, assign(socket, transfer: transfer, samples: [])}
@@ -247,6 +291,10 @@ defmodule NotebookWeb.AdminLive do
   def handle_info({:storage, :saved}, socket) do
     config = Storage.config()
     {:noreply, socket |> assign(config: config) |> assign_other()}
+  end
+
+  def handle_info({:oidc, :saved}, socket) do
+    {:noreply, assign_joining(socket)}
   end
 
   # The bytes done, at most a minute back: how fast they go now.
@@ -356,6 +404,140 @@ defmodule NotebookWeb.AdminLive do
               </li>
             </ul>
           </div>
+        </section>
+
+        <section :if={@live_action == :people} class="settings-wide" id="oidc">
+          <h2>Single sign-on (OpenID Connect)</h2>
+          <p>
+            Let people sign in with your team's identity provider: Google Workspace, Okta,
+            Keycloak, Microsoft Entra ID, Authentik, or any service supporting OpenID Connect Discovery.
+          </p>
+
+          <.form
+            for={@oidc_form}
+            id="oidc-form"
+            class="settings-form"
+            phx-change="oidc_validate"
+            phx-submit="oidc_save"
+          >
+            <fieldset class="storage-kinds">
+              <legend>Sign-in method</legend>
+              <label class={["storage-kind", not @oidc_enabled && "is-chosen"]}>
+                <input
+                  type="radio"
+                  name={@oidc_form[:enabled].name}
+                  value="false"
+                  checked={not @oidc_enabled}
+                />
+                <.icon name="hero-key" class="size-5" />
+                <span>
+                  <strong>Passwords only</strong><small>People sign in with an email and password.</small>
+                </span>
+              </label>
+              <label class={["storage-kind", @oidc_enabled && "is-chosen"]}>
+                <input
+                  type="radio"
+                  name={@oidc_form[:enabled].name}
+                  value="true"
+                  checked={@oidc_enabled}
+                />
+                <.icon name="hero-shield-check" class="size-5" />
+                <span>
+                  <strong>OpenID Connect</strong><small>Sign in with your organization's provider.</small>
+                </span>
+              </label>
+            </fieldset>
+
+            <div :if={@oidc_enabled} class="storage-bucket">
+              <div class="storage-pair">
+                <.input
+                  field={@oidc_form[:name]}
+                  type="text"
+                  label="Provider name"
+                  placeholder="Single Sign-On (e.g. Google, Okta)"
+                />
+                <.input
+                  field={@oidc_form[:issuer]}
+                  type="url"
+                  label="Issuer URL (Discovery)"
+                  placeholder="https://accounts.google.com"
+                  autocomplete="off"
+                />
+              </div>
+
+              <div class="storage-pair">
+                <.input
+                  field={@oidc_form[:client_id]}
+                  type="text"
+                  label="Client ID"
+                  autocomplete="off"
+                />
+                <.input
+                  field={@oidc_form[:client_secret]}
+                  type="password"
+                  label="Client Secret"
+                  value=""
+                  placeholder={
+                    if @oidc_config.secret?, do: "Kept. Type a new one to change it", else: ""
+                  }
+                  autocomplete="new-password"
+                />
+              </div>
+
+              <div>
+                <label class="label mb-1">Callback URL (Redirect URI)</label>
+                <div class="share-url">
+                  <input
+                    data-1p-ignore
+                    id="oidc-callback-url"
+                    type="text"
+                    value={@oidc_callback_url}
+                    readonly
+                    aria-label="The Callback URL"
+                  />
+                  <.copy_button
+                    id="copy-oidc-callback"
+                    text={@oidc_callback_url}
+                    what="Callback URL"
+                    class="button"
+                  >
+                    Copy
+                  </.copy_button>
+                </div>
+                <p class="field-hint">
+                  Register this address in your identity provider's client settings.
+                </p>
+              </div>
+
+              <.input
+                field={@oidc_form[:allowed_domains]}
+                type="text"
+                label="Allowed email domains"
+                placeholder="example.com, mycompany.org (leave blank to allow any domain)"
+              />
+
+              <div class="storage-serve">
+                <.input
+                  field={@oidc_form[:auto_register]}
+                  type="checkbox"
+                  label="Allow new accounts without an invitation link"
+                />
+                <.input
+                  field={@oidc_form[:password_login]}
+                  type="checkbox"
+                  label="Keep email and password sign-in alongside Single Sign-On"
+                />
+              </div>
+            </div>
+
+            <button
+              class="button button-primary"
+              type="submit"
+              phx-disable-with="Checking provider…"
+            >
+              {if @oidc_enabled, do: "Check and save", else: "Save"}
+            </button>
+          </.form>
         </section>
 
         <section :if={@live_action == :agents} class="settings-wide" id="connecting">
