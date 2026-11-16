@@ -149,6 +149,9 @@ defmodule NotebookWeb.Router do
     post "/users/log-in", UserSessionController, :create
     post "/users/register", RegistrationController, :create
     delete "/users/log-out", UserSessionController, :delete
+
+    get "/users/oidc", OIDCController, :request
+    get "/users/oidc/callback", OIDCController, :callback
   end
 
   # The emails sent in development (the notifications'), to read them.

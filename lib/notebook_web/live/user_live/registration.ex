@@ -5,15 +5,18 @@ defmodule NotebookWeb.UserLive.Registration do
 
   @impl true
   def mount(_params, _session, %{assigns: %{current_scope: %{user: user}}} = socket)
-      when not is_nil(user), do: {:ok, redirect(socket, to: ~p"/")}
+      when not is_nil(user),
+      do: {:ok, redirect(socket, to: ~p"/")}
 
   def mount(params, _session, socket) do
     invite = params["invite"]
+    oidc = Notebook.OIDC.config()
 
     {:ok,
      assign(socket,
        invite: invite,
        open: Invitations.open?(invite),
+       oidc: oidc,
        form: to_form(Accounts.change_user_registration(%User{}, %{}, validate_unique: false))
      )}
   end
@@ -30,7 +33,19 @@ defmodule NotebookWeb.UserLive.Registration do
       </div>
       <section :if={not @open} id="invite-only" class="auth-panel" aria-labelledby="register-title">
         <p class="eyebrow">Invite only</p><h2 id="register-title">Join with an invitation</h2>
-        <p>
+        <div :if={@oidc.enabled and @oidc.auto_register} class="mb-4">
+          <p class="mb-3">
+            People with an account on {@oidc.name} can join directly.
+          </p>
+          <.link
+            id="sso-register-auto"
+            href={~p"/users/oidc"}
+            class="button button-primary w-full justify-center"
+          >
+            Join with {@oidc.name} <span aria-hidden="true">↗</span>
+          </.link>
+        </div>
+        <p :if={not (@oidc.enabled and @oidc.auto_register)}>
           People join this notebook with a link from its admins. Ask one of them for an
           invitation, or open the link they sent you again: each link works once, for seven days.
         </p>
@@ -39,7 +54,28 @@ defmodule NotebookWeb.UserLive.Registration do
       <section :if={@open} class="auth-panel" aria-labelledby="register-title">
         <p class="eyebrow">Join Notebook</p><h2 id="register-title">Create your account</h2>
         <p>Already here? <.link navigate={~p"/users/log-in"}>Log in</.link></p>
-        <.form for={@form} id="registration_form" action={~p"/users/register"} phx-change="validate">
+
+        <div :if={@oidc.enabled} class="mb-4">
+          <.link
+            id="sso-register"
+            href={if @invite, do: ~p"/users/oidc?#{[invite: @invite]}", else: ~p"/users/oidc"}
+            class="button button-primary w-full justify-center"
+          >
+            Join with {@oidc.name} <span aria-hidden="true">↗</span>
+          </.link>
+        </div>
+
+        <p :if={@oidc.enabled and @oidc.password_login} class="text-xs text-center my-4 opacity-60">
+          or create a password
+        </p>
+
+        <.form
+          :if={not @oidc.enabled or @oidc.password_login}
+          for={@form}
+          id="registration_form"
+          action={~p"/users/register"}
+          phx-change="validate"
+        >
           <input :if={@invite} type="hidden" name="invite" value={@invite} />
           <.input field={@form[:name]} type="text" label="Your name" autocomplete="name" required />
           <.input field={@form[:email]} type="email" label="Email" autocomplete="email" required />

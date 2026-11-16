@@ -117,7 +117,17 @@ defmodule Notebook.Invitations do
     end)
   end
 
-  defp usable(token) when is_binary(token) and token != "" do
+  @doc "Consumes an invitation token for a user."
+  def consume(token, %User{} = user) do
+    if invitation = usable(token) do
+      invitation
+      |> Ecto.Changeset.change(used_at: DateTime.utc_now(:second), used_by_id: user.id)
+      |> Repo.update!()
+    end
+  end
+
+  @doc "The valid invitation for this token, or nil."
+  def usable(token) when is_binary(token) and token != "" do
     now = DateTime.utc_now(:second)
 
     Repo.one(
@@ -126,7 +136,7 @@ defmodule Notebook.Invitations do
     )
   end
 
-  defp usable(_token), do: nil
+  def usable(_token), do: nil
 
   defp hash(token), do: :crypto.hash(:sha256, token)
 end

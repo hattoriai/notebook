@@ -6,7 +6,7 @@ defmodule Notebook.Accounts do
   import Ecto.Query, warn: false
   alias Notebook.Repo
 
-  alias Notebook.Accounts.{User, UserToken, UserNotifier}
+  alias Notebook.Accounts.{User, UserIdentity, UserToken, UserNotifier}
 
   ## Database getters
 
@@ -317,6 +317,124 @@ defmodule Notebook.Accounts do
   def delete_user_session_token(token) do
     Repo.delete_all(from(UserToken, where: [token: ^token, context: "session"]))
     :ok
+  end
+
+  ## OpenID Connect
+
+  @doc "The external identities linked to this user."
+  def get_user_identities(%User{id: id}) do
+    Repo.all(from i in UserIdentity, where: i.user_id == ^id, order_by: [desc: i.inserted_at])
+  end
+
+  @doc "Finds a user by external identity provider, issuer, and subject id."
+  def get_user_by_identity(provider, issuer, uid) do
+    from(i in UserIdentity,
+      join: u in assoc(i, :user),
+      where: i.provider == ^provider and i.issuer == ^issuer and i.uid == ^uid and not u.bot,
+      select: u
+    )
+    |> Repo.one()
+  end
+
+  @doc """
+  Resolves a user from verified OIDC claims:
+    1. If already linked by provider, issuer, and sub, returns the user.
+    2. If an existing human user has this email, links this identity and returns the user.
+    3. If new and allowed (auto_register or valid invitation), provisions the user,
+       sets admin if first person, links identity, and welcomes them to their spaces.
+  """
+  def resolve_oidc_user(claims, opts \\ []) do
+    email = claims[:email] || claims["email"]
+
+    email_verified =
+      claims[:email_verified] == true or claims["email_verified"] in [true, "true", 1, "1"]
+
+    sub = to_string(claims[:sub] || claims["sub"])
+    issuer = to_string(claims[:issuer] || claims["issuer"])
+
+    cond do
+      not is_binary(email) or email == "" ->
+        {:error, :missing_email}
+
+      not email_verified ->
+        {:error, :unverified_email}
+
+      not Notebook.OIDC.domain_allowed?(email) ->
+        {:error, :domain_not_allowed}
+
+      user = get_user_by_identity("oidc", issuer, sub) ->
+        from(i in UserIdentity,
+          where: i.provider == "oidc" and i.issuer == ^issuer and i.uid == ^sub
+        )
+        |> Repo.update_all(set: [email: email, updated_at: DateTime.utc_now(:second)])
+
+        {:ok, user}
+
+      user = Repo.one(from u in User, where: u.email == ^String.downcase(email) and not u.bot) ->
+        Repo.transact(fn ->
+          Repo.insert!(%UserIdentity{
+            user_id: user.id,
+            provider: "oidc",
+            issuer: issuer,
+            uid: sub,
+            email: email
+          })
+
+          user =
+            if is_nil(user.confirmed_at) do
+              Repo.update!(User.confirm_changeset(user))
+            else
+              user
+            end
+
+          {:ok, user}
+        end)
+
+      true ->
+        provision_oidc_user(claims, issuer, sub, email, opts)
+    end
+  end
+
+  defp provision_oidc_user(claims, issuer, sub, email, opts) do
+    invite_token = opts[:invite]
+    auto_register? = Notebook.OIDC.config().auto_register
+
+    if auto_register? or Notebook.Invitations.open?(invite_token) do
+      raw_name = claims[:name] || claims["name"] || hd(String.split(email, "@"))
+      name = raw_name |> String.trim() |> String.slice(0, 60)
+      name = if String.length(name) >= 2, do: name, else: "User"
+      now = DateTime.utc_now(:second)
+
+      Repo.transact(fn ->
+        admin? = not Repo.exists?(from u in User, where: not u.bot)
+        handle = Notebook.Publishing.free_handle(name)
+
+        user =
+          Repo.insert!(%User{
+            name: name,
+            email: String.downcase(email),
+            handle: handle,
+            admin: admin?,
+            confirmed_at: now
+          })
+
+        Repo.insert!(%UserIdentity{
+          user_id: user.id,
+          provider: "oidc",
+          issuer: issuer,
+          uid: sub,
+          email: email
+        })
+
+        if is_binary(invite_token) and invite_token != "" do
+          Notebook.Invitations.consume(invite_token, user)
+        end
+
+        Notebook.Spaces.welcome(user)
+      end)
+    else
+      {:error, :invite_only}
+    end
   end
 
   ## Token helper
