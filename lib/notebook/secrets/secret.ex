@@ -4,7 +4,7 @@ defmodule Notebook.Secrets.Secret do
 
   @primary_key {:name, :string, autogenerate: false}
   schema "secrets" do
-    field :value, Notebook.Encrypted.Binary, redact: true
+    field :value, Strongbox.Encrypted, vault: Notebook.Vault, redact: true
     timestamps(type: :utc_datetime)
   end
 end

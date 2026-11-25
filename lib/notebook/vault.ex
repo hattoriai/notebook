@@ -1,8 +1,8 @@
 defmodule Notebook.Vault do
   @moduledoc """
-  The key of the notebook's secrets (`Notebook.Secrets`): AES-256-GCM
-  (Erlang's `:crypto`), each secret tagged with the key that encrypted
-  it, so that keys rotate.
+  The keys of the notebook's secrets (`Notebook.Secrets`): a
+  [Strongbox](https://hexdocs.pm/strongbox) vault. Each secret is tagged
+  with the key that encrypted it, so that keys rotate.
 
   The key is `NOTEBOOK_VAULT_KEY` (32 bytes, Base64: `openssl rand
   -base64 32`), or else one derived from `SECRET_KEY_BASE`, so that a
@@ -11,22 +11,27 @@ defmodule Notebook.Vault do
   commas), restart, then re-encrypt with `Notebook.Secrets.rotate/0`.
   The key derived from `SECRET_KEY_BASE` is always among the retired, so
   setting a key the first time needs no more.
+
+  The vault is no process: the keys are read once, when the notebook
+  starts (`load/0`).
   """
-  use Agent
+  use Strongbox
 
   alias Plug.Crypto.KeyGenerator
+  alias Strongbox.Key
 
-  # A secret is as Cloak's AES.GCM kept it (the notebook's secrets before
-  # 0.x), so that those still open: the key's tag (a type byte, its length,
-  # the tag), a 12-byte IV, the 16-byte GCM tag, then the ciphertext.
-  @aad "AES256GCM"
-  @iv 12
+  # The key that encrypts now, then the retired ones that still open. Each
+  # is there twice: as Strongbox writes, and as the notebook's vault of
+  # before did (Cloak's AES.GCM, with a 12-byte IV), so that the secrets
+  # of before still open.
+  @impl true
+  def keys, do: :persistent_term.get(__MODULE__, nil) || load()
 
-  @doc false
-  def start_link(_opts), do: Agent.start_link(&keys/0, name: __MODULE__)
-
-  # The key that encrypts now, then the retired ones that still open.
-  defp keys do
+  @doc """
+  Reads the keys from the environment, keeps them for `keys/0`, and gives
+  them. Raises when a key is not 32 bytes in Base64.
+  """
+  def load do
     derived = derived()
 
     {default, retired} =
@@ -35,51 +40,23 @@ defmodule Notebook.Vault do
         [] -> {derived, configured("NOTEBOOK_VAULT_RETIRED_KEYS")}
       end
 
-    [default | retired |> Enum.uniq() |> Enum.reject(&(&1 == default))]
+    keys = [default | retired |> Enum.uniq() |> Enum.reject(&(&1 == default))]
+
+    keys =
+      Enum.map(keys, &%{tag: Key.tag(&1), key: &1}) ++
+        Enum.map(
+          keys,
+          &%{tag: "AES.GCM." <> Key.tag(&1), key: &1, format: :cloak, iv_length: 12}
+        )
+
+    :persistent_term.put(__MODULE__, keys)
+    keys
   end
-
-  @doc "Encrypts `plaintext` with the key of now."
-  def encrypt(plaintext) when is_binary(plaintext) do
-    [key | _retired] = Agent.get(__MODULE__, & &1)
-    tag = tag(key)
-    iv = :crypto.strong_rand_bytes(@iv)
-
-    {ciphertext, gcm_tag} =
-      :crypto.crypto_one_time_aead(:aes_256_gcm, key, iv, plaintext, @aad, true)
-
-    <<1, byte_size(tag), tag::binary, iv::binary, gcm_tag::binary, ciphertext::binary>>
-  end
-
-  @doc "Decrypts what `encrypt/1` gave, with the key its tag names: `{:ok, plaintext}`, or `:error` when no key opens it."
-  def decrypt(
-        <<1, size, tag::binary-size(size), iv::binary-size(@iv), gcm_tag::binary-16,
-          ciphertext::binary>>
-      ) do
-    with key when is_binary(key) <- Enum.find(Agent.get(__MODULE__, & &1), &(tag(&1) == tag)),
-         plaintext when is_binary(plaintext) <-
-           :crypto.crypto_one_time_aead(:aes_256_gcm, key, iv, ciphertext, @aad, gcm_tag, false) do
-      {:ok, plaintext}
-    else
-      _none -> :error
-    end
-  end
-
-  def decrypt(_value), do: :error
 
   @doc "The tag of the key that encrypts now, as each secret carries it."
-  def tag, do: tag(current_key())
-
-  @doc false
-  def tag(key),
-    do:
-      "AES.GCM." <>
-        (:crypto.hash(:sha256, key) |> binary_part(0, 4) |> Base.encode16(case: :lower))
-
-  defp current_key do
-    case configured("NOTEBOOK_VAULT_KEY") do
-      [key] -> key
-      [] -> derived()
-    end
+  def tag do
+    [%{tag: tag} | _retired] = keys()
+    tag
   end
 
   defp derived do

@@ -64,7 +64,7 @@ The page also shows this server's disk: what the files, the database and everyth
 
 ## Secrets
 
-The notebook's secrets (a bucket's key, and the tokens and webhook secrets to come) are encrypted in the database (AES-256-GCM with Erlang's `:crypto`, `Notebook.Secrets`). The key is `NOTEBOOK_VAULT_KEY` (`openssl rand -base64 32`); without it, one is derived from `SECRET_KEY_BASE`, so a notebook needs nothing more to start. To rotate, set the new key, keep the old ones in `NOTEBOOK_VAULT_RETIRED_KEYS` (comma-separated), restart, and encrypt them again:
+The notebook's secrets (a bucket's key, and the tokens and webhook secrets to come) are encrypted in the database (AES-256-GCM, with [Strongbox](https://hex.pm/packages/strongbox), `Notebook.Secrets`). The key is `NOTEBOOK_VAULT_KEY` (`openssl rand -base64 32`); without it, one is derived from `SECRET_KEY_BASE`, so a notebook needs nothing more to start. To rotate, set the new key, keep the old ones in `NOTEBOOK_VAULT_RETIRED_KEYS` (comma-separated), restart, and encrypt them again:
 
 ```sh
 bin/notebook eval "Notebook.Secrets.rotate()"

@@ -5,7 +5,7 @@ defmodule Notebook.Secrets do
   database by `Notebook.Vault`, and never leaves it but to the code that
   uses it.
   """
-  import Ecto.Query, only: [select: 3, where: 2]
+  import Ecto.Query, only: [where: 2]
 
   alias Notebook.Repo
   alias Notebook.Secrets.Secret
@@ -39,21 +39,15 @@ defmodule Notebook.Secrets do
   end
 
   @doc """
-  Encrypts every secret again with the key of now (`Notebook.Vault`):
-  after a key is changed, so that the old one can go. Gives the number
-  encrypted again; a secret no key opens is left as it is.
+  Encrypts again, with the key of now (`Notebook.Vault`), every secret
+  another key encrypted: after a key is changed, so that the old one can
+  go. Gives the number encrypted again; a secret no key opens is left as
+  it is.
 
       bin/notebook eval "Notebook.Secrets.rotate()"
   """
   def rotate do
-    Secret
-    |> select([s], s.name)
-    |> Repo.all()
-    |> Enum.count(fn name ->
-      case get(name) do
-        nil -> false
-        value -> put(name, value) == :ok
-      end
-    end)
+    {:ok, %{rewritten: rewritten}} = Strongbox.Rotation.run(Repo, Secret)
+    rewritten
   end
 end
