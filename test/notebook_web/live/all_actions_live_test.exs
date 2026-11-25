@@ -8,6 +8,7 @@ defmodule NotebookWeb.AllActionsLiveTest do
   import Jumon.Test
   import Notebook.AccountsFixtures
 
+  alias Issho.Tool.Context
   alias Notebook.Accounts.Scope
   alias Notebook.Cardbox, as: Box
   alias Notebook.{Databases, Pages, Repo, Spaces}
@@ -39,7 +40,7 @@ defmodule NotebookWeb.AllActionsLiveTest do
   end
 
   defp ctx(user) do
-    Issho.Tool.Context.new(
+    Context.new(
       Notebook.Issho,
       %{id: "agent:#{user.id}", name: "Claude Code", kind: :agent},
       on_behalf_of: user

@@ -8,6 +8,7 @@ defmodule Notebook.Bots.Runner do
   """
   require Logger
 
+  alias Issho.Tool.Context
   alias Notebook.Bots
   alias Notebook.Bots.{Bot, Claude, Run}
   alias Notebook.{Pages, Repo}
@@ -20,7 +21,7 @@ defmodule Notebook.Bots.Runner do
   """
   def run(%Bot{} = bot, trigger, %Run{} = run) do
     ctx =
-      Issho.Tool.Context.new(Notebook.Issho, Bots.actor(bot),
+      Context.new(Notebook.Issho, Bots.actor(bot),
         only: Bots.tool_names(bot),
         idle: 120_000
       )
@@ -57,7 +58,7 @@ defmodule Notebook.Bots.Runner do
         else:
           {save(run, status: "failed", error: "The notebook has no key of the Claude API."), nil}
 
-    for room <- state.rooms, do: Issho.Tool.Context.leave(ctx, room)
+    for room <- state.rooms, do: Context.leave(ctx, room)
     {run, words}
   end
 
@@ -69,37 +70,41 @@ defmodule Notebook.Bots.Runner do
 
     case Claude.messages(body, state.key) do
       {:ok, answer} ->
-        run = count(state.run, state.bot, answer["usage"] || %{}, step)
-        state = %{state | run: run}
-        content = answer["content"] || []
-        messages = state.messages ++ [%{"role" => "assistant", "content" => content}]
-
-        cond do
-          answer["stop_reason"] == "refusal" ->
-            {save(run, status: "failed", error: "The model declined: #{refusal(answer)}"), nil}
-
-          Bots.over_budget?(state.bot) ->
-            {save(run, status: "stopped", error: "It spent its month's budget."), words(content)}
-
-          answer["stop_reason"] == "tool_use" ->
-            {results, state} = use_tools(content, state)
-
-            loop(
-              %{state | messages: messages ++ [%{"role" => "user", "content" => results}]},
-              step + 1
-            )
-
-          answer["stop_reason"] == "pause_turn" ->
-            loop(%{state | messages: messages}, step + 1)
-
-          true ->
-            words = words(content)
-            status = if answer["stop_reason"] == "max_tokens", do: "stopped", else: "done"
-            {save(run, status: status, summary: words), words}
-        end
+        answered(state, answer, step)
 
       {:error, message} ->
         {save(state.run, status: "failed", error: message), nil}
+    end
+  end
+
+  defp answered(state, answer, step) do
+    run = count(state.run, state.bot, answer["usage"] || %{}, step)
+    state = %{state | run: run}
+    content = answer["content"] || []
+    messages = state.messages ++ [%{"role" => "assistant", "content" => content}]
+
+    cond do
+      answer["stop_reason"] == "refusal" ->
+        {save(run, status: "failed", error: "The model declined: #{refusal(answer)}"), nil}
+
+      Bots.over_budget?(state.bot) ->
+        {save(run, status: "stopped", error: "It spent its month's budget."), words(content)}
+
+      answer["stop_reason"] == "tool_use" ->
+        {results, state} = use_tools(content, state)
+
+        loop(
+          %{state | messages: messages ++ [%{"role" => "user", "content" => results}]},
+          step + 1
+        )
+
+      answer["stop_reason"] == "pause_turn" ->
+        loop(%{state | messages: messages}, step + 1)
+
+      true ->
+        words = words(content)
+        status = if answer["stop_reason"] == "max_tokens", do: "stopped", else: "done"
+        {save(run, status: status, summary: words), words}
     end
   end
 
@@ -115,17 +120,18 @@ defmodule Notebook.Bots.Runner do
           do: %{state | rooms: MapSet.put(state.rooms, input["room"])},
           else: state
 
-      result =
-        try do
-          Issho.Tools.call(state.tools, name, input, state.ctx)
-        rescue
-          error ->
-            Logger.error("Bot #{state.bot.id}'s #{name} raised: " <> Exception.message(error))
-            {:error, "The tool failed."}
-        end
+      result = call_tool(state, name, input)
 
       {tool_result(id, result), state}
     end)
+  end
+
+  defp call_tool(state, name, input) do
+    Issho.Tools.call(state.tools, name, input, state.ctx)
+  rescue
+    error ->
+      Logger.error("Bot #{state.bot.id}'s #{name} raised: " <> Exception.message(error))
+      {:error, "The tool failed."}
   end
 
   defp tool_result(id, {:ok, result}),
@@ -235,44 +241,47 @@ defmodule Notebook.Bots.Runner do
     by = get_in(item, ["by", "name"]) || get_in(item, ["by", "key"]) || "Someone"
     page = page_title(room)
 
-    case name do
-      "agent.handed_off" ->
-        for = get_in(data, ["for", "name"])
-
-        {"""
-         #{by}#{if for, do: " (for #{for})", else: ""} handed you a task in #{page} (room #{room}), \
-         handoff #{data["handoff"]}:
-
-         #{quoted(data["task"])}
-
-         #{if data["data"] not in [nil, %{}], do: "What it gave with it: #{JSON.encode!(data["data"])}\n", else: ""}\
-         Answer it with answer_handoff: accepted when you take it on, then done (and what you did), \
-         or declined (and why).
-         """, room}
-
-      "agent.asked" ->
-        {"""
-         #{by} asked you privately in #{page} (room #{room}), request #{data["request"]}:
-
-         #{quoted(data["text"])}
-
-         #{if data["place"], do: "At: #{JSON.encode!(data["place"])}\n", else: ""}\
-         Answer with start_stream (its request, and its place as document and at), a suggestion \
-         they take or leave.
-         """, room}
-
-      _comment ->
-        {"""
-         #{by} mentioned you in a comment in #{page} (room #{room}), thread #{data["thread"]}:
-
-         #{quoted(data["body"])}
-
-         Answer in that thread (comment, with its thread), after doing what it asks if you may.
-         """, room}
-    end
+    inbox(name, data, by, page, room)
   end
 
   defp inbox(_item), do: {"Your inbox has something you do not know. Do nothing.", nil}
+
+  defp inbox("agent.handed_off", data, by, page, room) do
+    for = get_in(data, ["for", "name"])
+
+    {"""
+     #{by}#{if for, do: " (for #{for})", else: ""} handed you a task in #{page} (room #{room}), \
+     handoff #{data["handoff"]}:
+
+     #{quoted(data["task"])}
+
+     #{if data["data"] in [nil, %{}], do: "", else: "What it gave with it: #{JSON.encode!(data["data"])}\n"}\
+     Answer it with answer_handoff: accepted when you take it on, then done (and what you did), \
+     or declined (and why).
+     """, room}
+  end
+
+  defp inbox("agent.asked", data, by, page, room) do
+    {"""
+     #{by} asked you privately in #{page} (room #{room}), request #{data["request"]}:
+
+     #{quoted(data["text"])}
+
+     #{if data["place"], do: "At: #{JSON.encode!(data["place"])}\n", else: ""}\
+     Answer with start_stream (its request, and its place as document and at), a suggestion \
+     they take or leave.
+     """, room}
+  end
+
+  defp inbox(_comment, data, by, page, room) do
+    {"""
+     #{by} mentioned you in a comment in #{page} (room #{room}), thread #{data["thread"]}:
+
+     #{quoted(data["body"])}
+
+     Answer in that thread (comment, with its thread), after doing what it asks if you may.
+     """, room}
+  end
 
   defp page_title(room) do
     with id when is_integer(id) <- Notebook.Collaboration.page_id(room),

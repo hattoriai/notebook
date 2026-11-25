@@ -54,15 +54,7 @@ defmodule NotebookWeb.SpaceLive do
     scope = socket.assigns.current_scope
     folder = params["folder_id"] && Spaces.get_folder!(scope, params["folder_id"])
 
-    {space, in_space?} =
-      case folder do
-        nil ->
-          {Spaces.get!(scope, id), true}
-
-        folder ->
-          {Notebook.Repo.get!(Space, folder.space_id),
-           Spaces.allowed?(scope, :read, %Space{id: folder.space_id})}
-      end
+    {space, in_space?} = space_of(scope, id, folder)
 
     if to_string(space.id) != to_string(id), do: raise(Ecto.NoResultsError, queryable: Space)
 
@@ -85,6 +77,13 @@ defmodule NotebookWeb.SpaceLive do
     |> load_members()
   end
 
+  defp space_of(scope, id, nil), do: {Spaces.get!(scope, id), true}
+
+  defp space_of(scope, _id, folder) do
+    {Notebook.Repo.get!(Space, folder.space_id),
+     Spaces.allowed?(scope, :read, %Space{id: folder.space_id})}
+  end
+
   # A folder shared with someone outside its space: its pages and folders
   # they may read.
   defp shared_node(scope, folder) do
@@ -104,13 +103,13 @@ defmodule NotebookWeb.SpaceLive do
   defp folder_node(node, nil), do: node || %{folders: [], pages: []}
 
   defp folder_node(node, folder) do
-    find = fn nodes, find ->
-      Enum.find_value(nodes, fn n ->
-        if n.folder.id == folder.id, do: n, else: find.(n.folders, find)
-      end)
-    end
+    (node && find_folder(node.folders, folder)) || %{folder: folder, folders: [], pages: []}
+  end
 
-    (node && find.(node.folders, find)) || %{folder: folder, folders: [], pages: []}
+  defp find_folder(nodes, folder) do
+    Enum.find_value(nodes, fn n ->
+      if n.folder.id == folder.id, do: n, else: find_folder(n.folders, folder)
+    end)
   end
 
   defp load_members(%{assigns: %{live_action: :members, space: space}} = socket) do

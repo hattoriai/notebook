@@ -15,8 +15,7 @@ defmodule NotebookWeb.Layouts do
     name
     |> String.split(~r/\s+/, trim: true)
     |> Enum.take(2)
-    |> Enum.map(&String.first/1)
-    |> Enum.join()
+    |> Enum.map_join(&String.first/1)
     |> String.upcase()
   end
 

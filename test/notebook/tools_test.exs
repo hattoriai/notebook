@@ -4,10 +4,11 @@ defmodule Notebook.ToolsTest do
 
   import Notebook.AccountsFixtures
 
+  alias Issho.Tool.Context
   alias Notebook.Accounts.Scope
   alias Notebook.Actions.CreatePage
-  alias Notebook.Tools.ListPages
   alias Notebook.{Pages, Spaces}
+  alias Notebook.Tools.ListPages
 
   setup do
     hanzo = user_fixture(%{name: "Hattori Hanzo"})
@@ -25,7 +26,7 @@ defmodule Notebook.ToolsTest do
 
   # An agent's context, as NotebookWeb.MCP makes it for a person's token.
   defp ctx(user) do
-    Issho.Tool.Context.new(
+    Context.new(
       Notebook.Issho,
       %{id: "agent:#{user.id}", name: "Claude Code", kind: :agent},
       on_behalf_of: user

@@ -93,9 +93,9 @@ defmodule NotebookWeb do
       import Jumon.Components, only: [command_button: 1, command_palette: 1]
 
       # Common modules used in templates
-      alias Phoenix.LiveView.JS
-      alias NotebookWeb.Layouts
       alias NotebookWeb.Icons
+      alias NotebookWeb.Layouts
+      alias Phoenix.LiveView.JS
 
       # Routes generation with the ~p sigil
       unquote(verified_routes())

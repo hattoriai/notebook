@@ -24,12 +24,14 @@ defmodule Notebook.Actions.DeleteRecords do
   @impl Issho.Action
   def run(%{page_id: id, ids: ids}, invocation) do
     with {:ok, scope, _page, collection} <- Actions.database(id, invocation) do
-      Enum.reduce_while(ids, {:ok, []}, fn record, {:ok, done} ->
-        case Box.delete(collection, record, actor: scope) do
-          {:ok, deleted} -> {:cont, {:ok, [deleted.id | done]}}
-          {:error, error} -> {:halt, {:error, error}}
-        end
-      end)
+      Enum.reduce_while(ids, {:ok, []}, &delete(collection, &1, &2, scope))
+    end
+  end
+
+  defp delete(collection, record, {:ok, done}, scope) do
+    case Box.delete(collection, record, actor: scope) do
+      {:ok, deleted} -> {:cont, {:ok, [deleted.id | done]}}
+      {:error, error} -> {:halt, {:error, error}}
     end
   end
 

@@ -5,6 +5,8 @@ defmodule Notebook.Application do
 
   use Application
 
+  alias NotebookWeb.MCP.Subject
+
   @impl true
   def start(_type, _args) do
     children = [
@@ -38,7 +40,7 @@ defmodule Notebook.Application do
       {Sake,
        secret_key_base: {NotebookWeb.AgentAuth, :secret, []},
        pubsub: Notebook.PubSub,
-       auth: NotebookWeb.MCP.Subject.auth_options()},
+       auth: Subject.auth_options()},
       # Start a worker by calling: Notebook.Worker.start_link(arg)
       # {Notebook.Worker, arg},
       # Start to serve requests, typically the last entry

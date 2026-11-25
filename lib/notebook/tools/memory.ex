@@ -22,6 +22,9 @@ defmodule Notebook.Tools.Memory do
 
   arg(:command, :string, required: true, max_length: 4_000, description: "A bash command line")
 
+  alias Notebook.Accounts.Scope
+  alias Notebook.Memory.Shell
+
   @impl true
   def call(%{command: command}, ctx) do
     case agent(ctx) do
@@ -31,8 +34,8 @@ defmodule Notebook.Tools.Memory do
       agent ->
         # It sees what it may read as its person's agent, and notes keep
         # the pages it is on.
-        scope = Notebook.Accounts.Scope.for_agent(agent.user, Notebook.Agents.key(agent))
-        {:ok, Notebook.Memory.Shell.run(agent.id, command, scope: scope, sources: sources(agent))}
+        scope = Scope.for_agent(agent.user, Notebook.Agents.key(agent))
+        {:ok, Shell.run(agent.id, command, scope: scope, sources: sources(agent))}
     end
   end
 

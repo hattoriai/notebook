@@ -4,6 +4,7 @@ defmodule Notebook.MemorySourcesTest do
 
   import Notebook.AccountsFixtures
 
+  alias Issho.Tool.Context
   alias Notebook.Accounts.Scope
   alias Notebook.{Agents, Collaboration, Memory, Pages, Spaces}
   alias Notebook.Memory.Shell
@@ -111,7 +112,7 @@ defmodule Notebook.MemorySourcesTest do
     :yes = :global.register_name(name, stand_in)
     on_exit(fn -> send(stand_in, :stop) end)
 
-    ctx = Issho.Tool.Context.new(Notebook.Issho, actor, on_behalf_of: hanzo)
+    ctx = Context.new(Notebook.Issho, actor, on_behalf_of: hanzo)
 
     assert {:ok, %{"exit_code" => 0}} =
              Notebook.Tools.Memory.call(%{command: "echo '- then' > plans.md"}, ctx)

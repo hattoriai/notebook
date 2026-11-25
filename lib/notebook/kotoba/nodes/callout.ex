@@ -1,4 +1,8 @@
 defmodule Notebook.Kotoba.Nodes.Callout do
+  @moduledoc """
+  A text page's callout box ("notebook-callout", the editor's callout.js):
+  in HTML an aside, in Markdown a quoted note.
+  """
   use Kotoba.Node, type: "notebook-callout", kind: :block, element: true
   alias Kotoba.Renderer
 

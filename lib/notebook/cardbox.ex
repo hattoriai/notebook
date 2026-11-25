@@ -8,6 +8,7 @@ defmodule Notebook.Cardbox do
   use Cardbox, repo: Notebook.Repo, pubsub: Notebook.PubSub
 
   alias Notebook.Accounts.{Scope, User}
+  alias Notebook.Cardbox.Repeat
   alias Notebook.Pages
 
   @impl Cardbox
@@ -28,7 +29,7 @@ defmodule Notebook.Cardbox do
   # update (Notebook.Cardbox.Repeat).
   @impl Cardbox
   def after_update(collection, before, record, changed),
-    do: {:ok, Notebook.Cardbox.Repeat.next(collection, before, record, changed)}
+    do: {:ok, Repeat.next(collection, before, record, changed)}
 
   defp editable?(scope, id) do
     case Pages.fetch(to_id(id)) do

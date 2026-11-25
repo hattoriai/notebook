@@ -15,6 +15,8 @@ defmodule Notebook.DataCase do
 
   use ExUnit.CaseTemplate
 
+  alias Ecto.Adapters.SQL.Sandbox
+
   using do
     quote do
       alias Notebook.Repo
@@ -35,8 +37,8 @@ defmodule Notebook.DataCase do
   Sets up the sandbox based on the test tags.
   """
   def setup_sandbox(tags) do
-    pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Notebook.Repo, shared: not tags[:async])
-    on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
+    pid = Sandbox.start_owner!(Notebook.Repo, shared: not tags[:async])
+    on_exit(fn -> Sandbox.stop_owner(pid) end)
     # What notifies of the test's changes is done before its sandbox goes.
     on_exit(fn -> Notebook.Notifications.settle() end)
     # So are the test's agents and people in Issho's rooms, and its

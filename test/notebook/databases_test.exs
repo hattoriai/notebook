@@ -4,11 +4,12 @@ defmodule Notebook.DatabasesTest do
 
   import Notebook.AccountsFixtures
 
+  alias Issho.Tool.Context
   alias Notebook.Accounts.Scope
-  alias Notebook.Cardbox, as: Box
   alias Notebook.Actions.{AddRecords, CreatePage, UpdateRecords}
-  alias Notebook.Tools.{ListPages, ReadDatabase}
+  alias Notebook.Cardbox, as: Box
   alias Notebook.{Databases, Pages, Spaces}
+  alias Notebook.Tools.{ListPages, ReadDatabase}
 
   setup do
     hanzo = user_fixture(%{name: "Hattori Hanzo"})
@@ -51,7 +52,7 @@ defmodule Notebook.DatabasesTest do
 
   # An agent's context, as NotebookWeb.MCP makes it for a person's token.
   defp ctx(user) do
-    Issho.Tool.Context.new(
+    Context.new(
       Notebook.Issho,
       %{id: "agent:#{user.id}", name: "Claude Code", kind: :agent},
       on_behalf_of: user
@@ -187,8 +188,8 @@ defmodule Notebook.DatabasesTest do
     } do
       ctx = ctx(hanzo)
       room = Notebook.Collaboration.room(page)
-      key = Issho.Tool.Context.key(ctx)
-      {:ok, agent} = Issho.Tool.Context.join(ctx, room)
+      key = Context.key(ctx)
+      {:ok, agent} = Context.join(ctx, room)
 
       try do
         by = %{id: to_string(hanzo.id), name: hanzo.name}

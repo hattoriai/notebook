@@ -47,21 +47,23 @@ defmodule Notebook.Tools.Databases do
   stored, to discard if the write fails.
   """
   def store_files(collection, values) when is_map(values) do
-    Enum.reduce_while(values, {:ok, %{}, []}, fn {ref, value}, {:ok, acc, stored} ->
-      case Cardbox.Collection.field(collection, to_string(ref)) do
-        %Cardbox.Field{type: "file"} ->
-          case files(List.wrap(value)) do
-            {:ok, files, new} -> {:cont, {:ok, Map.put(acc, ref, files), stored ++ new}}
-            {:error, message} -> {:halt, discard(stored, message)}
-          end
-
-        _ ->
-          {:cont, {:ok, Map.put(acc, ref, value), stored}}
-      end
-    end)
+    Enum.reduce_while(values, {:ok, %{}, []}, &store_value(collection, &1, &2))
   end
 
   def store_files(_collection, values), do: {:ok, values, []}
+
+  defp store_value(collection, {ref, value}, {:ok, acc, stored}) do
+    case Cardbox.Collection.field(collection, to_string(ref)) do
+      %Cardbox.Field{type: "file"} ->
+        case files(List.wrap(value)) do
+          {:ok, files, new} -> {:cont, {:ok, Map.put(acc, ref, files), stored ++ new}}
+          {:error, message} -> {:halt, discard(stored, message)}
+        end
+
+      _ ->
+        {:cont, {:ok, Map.put(acc, ref, value), stored}}
+    end
+  end
 
   @doc "`store_files/2` of each record's values: all stored, or none."
   def store_all(collection, records) do
@@ -74,19 +76,17 @@ defmodule Notebook.Tools.Databases do
   end
 
   defp files(list) do
-    Enum.reduce_while(list, {:ok, [], []}, fn file, {:ok, files, stored} ->
-      case file do
-        %{"data" => data} ->
-          case store(data, file["name"], file["content_type"]) do
-            {:ok, file} -> {:cont, {:ok, files ++ [file], [file | stored]}}
-            {:error, message} -> {:halt, discard(stored, message)}
-          end
-
-        file ->
-          {:cont, {:ok, files ++ [file], stored}}
-      end
-    end)
+    Enum.reduce_while(list, {:ok, [], []}, &add_file/2)
   end
+
+  defp add_file(%{"data" => data} = file, {:ok, files, stored}) do
+    case store(data, file["name"], file["content_type"]) do
+      {:ok, file} -> {:cont, {:ok, files ++ [file], [file | stored]}}
+      {:error, message} -> {:halt, discard(stored, message)}
+    end
+  end
+
+  defp add_file(file, {:ok, files, stored}), do: {:cont, {:ok, files ++ [file], stored}}
 
   defp store(_data, name, _type) when not is_binary(name) or name == "",
     do:

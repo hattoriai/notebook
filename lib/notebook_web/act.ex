@@ -6,6 +6,8 @@ defmodule NotebookWeb.Act do
   the same policy, as their agent's tool.
   """
 
+  alias Notebook.Accounts.User
+
   @doc "Runs the action as the scope's person, in its room. Options: `Issho.Live.act/3`'s."
   def act(scope, action, args, opts \\ []) do
     with {:ok, room} <- Issho.Action.room(action, args),
@@ -22,7 +24,7 @@ defmodule NotebookWeb.Act do
     person = %{
       id: to_string(account.id),
       name: account.name,
-      color: Notebook.Accounts.User.color(account)
+      color: User.color(account)
     }
 
     if links == [], do: person, else: Issho.Identity.new(person, claims: %{links: links})

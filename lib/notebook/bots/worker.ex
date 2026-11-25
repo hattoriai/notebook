@@ -15,24 +15,27 @@ defmodule Notebook.Bots.Worker do
     with %Bot{} = bot <- Repo.get(Bot, id) |> Repo.preload(:user) do
       read(bot, trigger)
       run = Repo.insert!(%Run{bot_id: bot.id, trigger: kind(trigger), status: "running"})
-
-      cond do
-        not bot.enabled ->
-          finish(run, "stopped", "The bot is off.")
-
-        Bots.over_budget?(bot) ->
-          finish(run, "stopped", "It spent its month's budget.")
-
-        true ->
-          trigger =
-            if trigger["kind"] == "schedule", do: %{"kind" => "schedule_task"}, else: trigger
-
-          {run, words} = Runner.run(bot, trigger, run)
-          answer(trigger, words, run)
-      end
+      start(bot, trigger, run)
     end
 
     :ok
+  end
+
+  defp start(bot, trigger, run) do
+    cond do
+      not bot.enabled ->
+        finish(run, "stopped", "The bot is off.")
+
+      Bots.over_budget?(bot) ->
+        finish(run, "stopped", "It spent its month's budget.")
+
+      true ->
+        trigger =
+          if trigger["kind"] == "schedule", do: %{"kind" => "schedule_task"}, else: trigger
+
+        {run, words} = Runner.run(bot, trigger, run)
+        answer(trigger, words, run)
+    end
   end
 
   defp kind(%{"kind" => "inbox", "item" => %{"name" => name}}), do: name

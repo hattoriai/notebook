@@ -3,6 +3,7 @@ defmodule Notebook.MemoryTest do
 
   import Notebook.AccountsFixtures
 
+  alias Issho.Tool.Context
   alias Notebook.Accounts.Scope
   alias Notebook.{Agents, Memory}
   alias Notebook.Memory.Shell
@@ -89,7 +90,7 @@ defmodule Notebook.MemoryTest do
 
   test "the memory tool is an agent's own, by its key", %{agent: agent} do
     ctx =
-      Issho.Tool.Context.new(Notebook.Issho, %{
+      Context.new(Notebook.Issho, %{
         id: Agents.key(agent),
         name: agent.name,
         kind: :agent
@@ -100,7 +101,7 @@ defmodule Notebook.MemoryTest do
 
     assert Memory.get(agent.id, "/hi.md").content == "hi\n"
 
-    person = Issho.Tool.Context.new(Notebook.Issho, %{id: "1", name: "Hanzo"})
+    person = Context.new(Notebook.Issho, %{id: "1", name: "Hanzo"})
     assert {:error, _} = Notebook.Tools.Memory.call(%{command: "ls"}, person)
 
     {:ok, _} =

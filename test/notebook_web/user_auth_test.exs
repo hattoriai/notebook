@@ -1,10 +1,10 @@
 defmodule NotebookWeb.UserAuthTest do
   use NotebookWeb.ConnCase
 
-  alias Phoenix.LiveView
   alias Notebook.Accounts
   alias Notebook.Accounts.Scope
   alias NotebookWeb.UserAuth
+  alias Phoenix.LiveView
 
   import Notebook.AccountsFixtures
 

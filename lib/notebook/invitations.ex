@@ -103,18 +103,22 @@ defmodule Notebook.Invitations do
           {:error, :invite_only}
 
         invitation = invite_only?() && usable(token) ->
-          with {:ok, user} <- Accounts.register_user(attrs) do
-            invitation
-            |> Ecto.Changeset.change(used_at: DateTime.utc_now(:second), used_by_id: user.id)
-            |> Repo.update!()
-
-            {:ok, user}
-          end
+          register_invited(invitation, attrs)
 
         true ->
           Accounts.register_user(attrs)
       end
     end)
+  end
+
+  defp register_invited(invitation, attrs) do
+    with {:ok, user} <- Accounts.register_user(attrs) do
+      invitation
+      |> Ecto.Changeset.change(used_at: DateTime.utc_now(:second), used_by_id: user.id)
+      |> Repo.update!()
+
+      {:ok, user}
+    end
   end
 
   defp usable(token) when is_binary(token) and token != "" do

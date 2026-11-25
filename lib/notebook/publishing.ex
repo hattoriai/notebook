@@ -29,9 +29,9 @@ defmodule Notebook.Publishing do
   import Ecto.Query
 
   alias Notebook.Accounts.{Scope, User}
+  alias Notebook.{Pages, Repo, Spaces}
   alias Notebook.Pages.Page
   alias Notebook.Spaces.Folder
-  alias Notebook.{Pages, Repo, Spaces}
   alias Notebook.Storage.Setting
 
   @setting "publishing"

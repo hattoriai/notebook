@@ -14,6 +14,8 @@ defmodule Notebook.Vault do
   """
   use Agent
 
+  alias Plug.Crypto.KeyGenerator
+
   # A secret is as Cloak's AES.GCM kept it (the notebook's secrets before
   # 0.x), so that those still open: the key's tag (a type byte, its length,
   # the tag), a 12-byte IV, the 16-byte GCM tag, then the ciphertext.
@@ -82,7 +84,7 @@ defmodule Notebook.Vault do
 
   defp derived do
     secret_key_base = Application.fetch_env!(:notebook, NotebookWeb.Endpoint)[:secret_key_base]
-    Plug.Crypto.KeyGenerator.generate(secret_key_base, "notebook vault", length: 32)
+    KeyGenerator.generate(secret_key_base, "notebook vault", length: 32)
   end
 
   defp configured(variable) do

@@ -66,38 +66,42 @@ defmodule Notebook.FakeS3 do
         )
 
       {body, type} ->
-        conn =
-          conn
-          |> put_resp_header("content-type", type)
-          |> put_resp_header("etag", etag(body))
-          |> put_resp_header("last-modified", "Sun, 25 Oct 2026 12:00:00 GMT")
-          |> put_resp_header("accept-ranges", "bytes")
-
-        case conn |> get_req_header("range") |> List.first() do
-          "bytes=" <> range when method == "GET" ->
-            [first, last] = String.split(range, "-")
-            first = String.to_integer(first)
-
-            last =
-              min(
-                if(last == "", do: byte_size(body) - 1, else: String.to_integer(last)),
-                byte_size(body) - 1
-              )
-
-            conn
-            |> put_resp_header("content-range", "bytes #{first}-#{last}/#{byte_size(body)}")
-            |> send_resp(206, binary_part(body, first, last - first + 1))
-
-          _whole when method == "HEAD" ->
-            conn |> put_resp_header("content-length", "#{byte_size(body)}") |> send_resp(200, "")
-
-          _whole ->
-            send_resp(conn, 200, body)
-        end
+        send_object(conn, method, body, type)
     end
   end
 
   defp object(_method, _key, conn, _agent), do: send_resp(conn, 405, "")
+
+  defp send_object(conn, method, body, type) do
+    conn =
+      conn
+      |> put_resp_header("content-type", type)
+      |> put_resp_header("etag", etag(body))
+      |> put_resp_header("last-modified", "Sun, 25 Oct 2026 12:00:00 GMT")
+      |> put_resp_header("accept-ranges", "bytes")
+
+    case conn |> get_req_header("range") |> List.first() do
+      "bytes=" <> range when method == "GET" ->
+        [first, last] = String.split(range, "-")
+        first = String.to_integer(first)
+
+        last =
+          min(
+            if(last == "", do: byte_size(body) - 1, else: String.to_integer(last)),
+            byte_size(body) - 1
+          )
+
+        conn
+        |> put_resp_header("content-range", "bytes #{first}-#{last}/#{byte_size(body)}")
+        |> send_resp(206, binary_part(body, first, last - first + 1))
+
+      _whole when method == "HEAD" ->
+        conn |> put_resp_header("content-length", "#{byte_size(body)}") |> send_resp(200, "")
+
+      _whole ->
+        send_resp(conn, 200, body)
+    end
+  end
 
   defp list(conn, agent) do
     prefix = conn.query_params["prefix"] || ""

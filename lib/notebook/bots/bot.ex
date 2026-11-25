@@ -10,6 +10,8 @@ defmodule Notebook.Bots.Bot do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Notebook.Bots.Schedule
+
   @models ~w(claude-opus-5-5 claude-sonnet-5-5 claude-haiku-5-5 claude-fable-5-1)
   @efforts ~w(low medium high)
 
@@ -88,7 +90,7 @@ defmodule Notebook.Bots.Bot do
 
       schedule ->
         cond do
-          Notebook.Bots.Schedule.parse(schedule) == :error ->
+          Schedule.parse(schedule) == :error ->
             add_error(changeset, :schedule, "is a rule and a time: FREQ=DAILY@09:00")
 
           get_field(changeset, :schedule_task) in [nil, ""] ->

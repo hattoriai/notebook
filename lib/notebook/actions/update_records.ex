@@ -41,16 +41,18 @@ defmodule Notebook.Actions.UpdateRecords do
     with {:ok, scope, _page, collection} <- Actions.database(id, invocation) do
       # Each change is guarded: an agent paused halfway makes no more.
       changes
-      |> Enum.reduce_while({:ok, []}, fn change, {:ok, done} ->
-        case guard(invocation, fn -> update(collection, change, scope) end) do
-          {:ok, record} -> {:cont, {:ok, [record | done]}}
-          {:error, reason} -> {:halt, halted(reason, done)}
-        end
-      end)
+      |> Enum.reduce_while({:ok, []}, &apply_change(invocation, collection, &1, &2, scope))
       |> case do
         {:ok, records} -> {:ok, {collection, Enum.reverse(records)}}
         error -> error
       end
+    end
+  end
+
+  defp apply_change(invocation, collection, change, {:ok, done}, scope) do
+    case guard(invocation, fn -> update(collection, change, scope) end) do
+      {:ok, record} -> {:cont, {:ok, [record | done]}}
+      {:error, reason} -> {:halt, halted(reason, done)}
     end
   end
 
