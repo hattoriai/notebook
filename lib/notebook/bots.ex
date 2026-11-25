@@ -31,9 +31,9 @@ defmodule Notebook.Bots do
   import Ecto.Query
 
   alias Notebook.Accounts.{Scope, User}
-  alias Notebook.Bots.{Bot, Run, Schedule}
-  alias Notebook.Spaces.{Member, Space}
+  alias Notebook.Bots.{Bot, Run, Schedule, Worker}
   alias Notebook.{Permissions, Repo}
+  alias Notebook.Spaces.{Member, Space}
 
   @secret "anthropic.api_key"
 
@@ -149,17 +149,19 @@ defmodule Notebook.Bots do
     with :ok <- admin(scope) do
       changeset = Bot.changeset(%Bot{}, attrs)
 
-      Repo.transact(fn ->
-        with {:ok, bot} <- Ecto.Changeset.apply_action(changeset, :insert),
-             {:ok, user} <- Repo.insert(account(bot.name)),
-             {:ok, bot} <-
-               changeset
-               |> Ecto.Changeset.put_change(:user_id, user.id)
-               |> Ecto.Changeset.put_change(:next_run_at, next_run(bot.schedule))
-               |> Repo.insert() do
-          {:ok, %{bot | user: user}}
-        end
-      end)
+      Repo.transact(fn -> insert_with_account(changeset) end)
+    end
+  end
+
+  defp insert_with_account(changeset) do
+    with {:ok, bot} <- Ecto.Changeset.apply_action(changeset, :insert),
+         {:ok, user} <- Repo.insert(account(bot.name)),
+         {:ok, bot} <-
+           changeset
+           |> Ecto.Changeset.put_change(:user_id, user.id)
+           |> Ecto.Changeset.put_change(:next_run_at, next_run(bot.schedule))
+           |> Repo.insert() do
+      {:ok, %{bot | user: user}}
     end
   end
 
@@ -177,16 +179,18 @@ defmodule Notebook.Bots do
     with :ok <- admin(scope) do
       changeset = Bot.changeset(bot, attrs)
 
-      Repo.transact(fn ->
-        with {:ok, updated} <- Ecto.Changeset.apply_action(changeset, :update),
-             changeset =
-               Ecto.Changeset.put_change(changeset, :next_run_at, next_run(updated.schedule)),
-             {:ok, updated} <- Repo.update(changeset),
-             bot = Repo.preload(bot, :user),
-             {:ok, user} <- bot.user |> Ecto.Changeset.change(name: updated.name) |> Repo.update() do
-          {:ok, %{updated | user: user}}
-        end
-      end)
+      Repo.transact(fn -> update_with_account(bot, changeset) end)
+    end
+  end
+
+  defp update_with_account(bot, changeset) do
+    with {:ok, updated} <- Ecto.Changeset.apply_action(changeset, :update),
+         changeset =
+           Ecto.Changeset.put_change(changeset, :next_run_at, next_run(updated.schedule)),
+         {:ok, updated} <- Repo.update(changeset),
+         bot = Repo.preload(bot, :user),
+         {:ok, user} <- bot.user |> Ecto.Changeset.change(name: updated.name) |> Repo.update() do
+      {:ok, %{updated | user: user}}
     end
   end
 
@@ -310,17 +314,21 @@ defmodule Notebook.Bots do
   """
   def wake("bot:" <> _ = key, %{} = item) do
     with %Bot{enabled: true} = bot <- by_key(key) do
-      cond do
-        visitor?(item) -> if bot.public, do: enqueue(bot, visitor(item))
-        bot.on_mention -> enqueue(bot, %{"kind" => "inbox", "item" => item})
-        true -> :ok
-      end
+      wake_bot(bot, item)
     end
 
     :ok
   end
 
   def wake(_key, _item), do: :ok
+
+  defp wake_bot(bot, item) do
+    cond do
+      visitor?(item) -> if bot.public, do: enqueue(bot, visitor(item))
+      bot.on_mention -> enqueue(bot, %{"kind" => "inbox", "item" => item})
+      true -> :ok
+    end
+  end
 
   # A visitor's question on a published page (Issho.Requests, by a guest).
   defp visitor?(%{"name" => "agent.asked", "by" => %{"kind" => "guest"}}), do: true
@@ -391,7 +399,7 @@ defmodule Notebook.Bots do
   @doc false
   def enqueue(%Bot{} = bot, trigger) do
     %{"bot_id" => bot.id, "trigger" => trigger}
-    |> Notebook.Bots.Worker.new()
+    |> Worker.new()
     |> Oban.insert()
   end
 end

@@ -3,6 +3,7 @@ defmodule Notebook.Cardbox.RepeatTest do
   use Notebook.DataCase, async: false
 
   alias Cardbox.{Collection, Error, Field}
+  alias Notebook.Accounts.Scope
   alias Notebook.Cardbox, as: Box
   alias Notebook.Cardbox.Repeat
 
@@ -16,7 +17,7 @@ defmodule Notebook.Cardbox.RepeatTest do
   import Notebook.AccountsFixtures
 
   setup do
-    scope = Notebook.Accounts.Scope.for_user(user_fixture(%{name: "Hattori Hanzo"}))
+    scope = Scope.for_user(user_fixture(%{name: "Hattori Hanzo"}))
     Process.put(:scope, scope)
     %{scope: scope}
   end

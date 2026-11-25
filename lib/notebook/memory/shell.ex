@@ -7,6 +7,8 @@ defmodule Notebook.Memory.Shell do
   costs nothing while it does not call, however many there are.
   """
 
+  alias Notebook.Memory.Store
+
   @mount "/memories"
   @max_output 16_000
 
@@ -22,9 +24,9 @@ defmodule Notebook.Memory.Shell do
     bash =
       [cwd: @mount, limits: :default]
       |> JustBash.new()
-      |> JustBash.mount(@mount, Notebook.Memory.Store.new(agent_id, opts))
+      |> JustBash.mount(@mount, Store.new(agent_id, opts))
 
-    {result, _bash} = Notebook.Memory.Store.command(fn -> JustBash.exec(bash, command) end)
+    {result, _bash} = Store.command(fn -> JustBash.exec(bash, command) end)
 
     %{
       "stdout" => cut(result.stdout),

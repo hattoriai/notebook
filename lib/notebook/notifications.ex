@@ -14,9 +14,11 @@ defmodule Notebook.Notifications do
   hears of a page they may not read (`Notebook.Notifier`).
   """
   alias Notebook.Accounts.{Scope, User}
+  alias Notebook.Cardbox.Repeat
   alias Notebook.Notifications, as: N
-  alias Notebook.Pages.Page
+  alias Notebook.Notifications.Queue
   alias Notebook.{Pages, Repo}
+  alias Notebook.Pages.Page
 
   @categories [
     mentions: [label: "Mentions", description: "Someone mentions you in a comment."],
@@ -167,10 +169,10 @@ defmodule Notebook.Notifications do
   # Away from the process of the change (a room's, whose comments a reply
   # reads; a LiveView's; a grid's), one after the other: SQLite takes one
   # writer at a time, and the notifications keep the order of the changes.
-  defp run(fun), do: Notebook.Notifications.Queue.run(fun)
+  defp run(fun), do: Queue.run(fun)
 
   @doc "Waits until what notifies of the changes made so far is done: for the seeds and the tests."
-  def settle, do: Notebook.Notifications.Queue.settle()
+  def settle, do: Queue.settle()
 
   # A comment in a page's room: the people it mentions hear of it, and, of
   # a reply, the others who wrote in the thread.
@@ -184,11 +186,15 @@ defmodule Notebook.Notifications do
       for user <- mentioned, do: Chime.notify(N.Mentioned, params, to: user)
 
       if data[:reply] do
-        case in_thread(room, data[:thread], [author | Enum.map(mentioned, &to_string(&1.id))]) do
-          [] -> :ok
-          people -> Chime.notify(N.Replied, params, to: people)
-        end
+        notify_thread(room, data[:thread], author, mentioned, params)
       end
+    end
+  end
+
+  defp notify_thread(room, thread, author, mentioned, params) do
+    case in_thread(room, thread, [author | Enum.map(mentioned, &to_string(&1.id))]) do
+      [] -> :ok
+      people -> Chime.notify(N.Replied, params, to: people)
     end
   end
 
@@ -224,10 +230,7 @@ defmodule Notebook.Notifications do
       {:ok, threads} ->
         threads
         |> Enum.find(&(&1["id"] == thread_id))
-        |> case do
-          nil -> []
-          thread -> for(c <- thread["comments"] || [], do: get_in(c, ["author", "key"]))
-        end
+        |> authors()
         |> users(nil)
         |> Enum.reject(&(to_string(&1.id) in except))
 
@@ -235,6 +238,9 @@ defmodule Notebook.Notifications do
         []
     end
   end
+
+  defp authors(nil), do: []
+  defp authors(thread), do: for(c <- thread["comments"] || [], do: get_in(c, ["author", "key"]))
 
   # A record of a database page given to people (its person fields): each
   # person in a field that changed, but the one who changed it.
@@ -372,7 +378,7 @@ defmodule Notebook.Notifications do
       (repeat && Cardbox.Collection.field(collection, repeat.options["done"])) ||
         Enum.find(collection.fields, &(&1.type == "status"))
 
-    field != nil and Notebook.Cardbox.Repeat.done?(field, record.data)
+    field != nil and Repeat.done?(field, record.data)
   end
 
   defp remind_record(page, collection, record) do

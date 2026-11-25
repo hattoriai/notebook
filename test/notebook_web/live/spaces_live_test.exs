@@ -308,7 +308,7 @@ defmodule NotebookWeb.SpacesLiveTest do
 
   test "a page opened by its id, a link from before slugs, goes to its slug", %{conn: conn} do
     hanzo = Notebook.AccountsFixtures.user_fixture(%{name: "Hattori Hanzo"})
-    scope = Notebook.Accounts.Scope.for_user(hanzo)
+    scope = Scope.for_user(hanzo)
     space = Notebook.Spaces.private!(hanzo)
 
     {:ok, page} =

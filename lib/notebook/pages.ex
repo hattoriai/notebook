@@ -7,6 +7,7 @@ defmodule Notebook.Pages do
   scope first.
   """
   import Ecto.Query
+  alias Narabe.Ecto.Mixed
   alias Notebook.Accounts.Scope
   alias Notebook.Pages.Page
   alias Notebook.Permissions
@@ -115,7 +116,7 @@ defmodule Notebook.Pages do
              %Page{author_id: user.id, space_id: space.id, folder_id: folder_id}
              |> Page.changeset(attrs)
              |> with_slug()
-             |> Narabe.Ecto.Mixed.put_position(Repo, Spaces.order(space))
+             |> Mixed.put_position(Repo, Spaces.order(space))
              |> Repo.insert(),
            :ok <- with_collection(scope, page, attrs["fields"]) do
         {:ok, page}
@@ -275,7 +276,7 @@ defmodule Notebook.Pages do
          {:ok, page} <-
            page
            |> Ecto.Changeset.change(space_id: space.id, folder_id: folder_id, position: nil)
-           |> Narabe.Ecto.Mixed.put_position(Repo, Spaces.order(space))
+           |> Mixed.put_position(Repo, Spaces.order(space))
            |> Repo.update() do
       Spaces.tree_changed()
       {:ok, Repo.preload(page, [:author, :space, :folder], force: true)}
@@ -303,17 +304,21 @@ defmodule Notebook.Pages do
     within = &(Date.compare(&1, first) != :lt and Date.compare(&1, last) != :gt)
 
     due = if page.due_on && within.(page.due_on), do: [{page.due_on, :due}], else: []
-    review_day = page.review_at && DateTime.to_date(local(page.review_at))
-    review = if review_day && within.(review_day), do: [{review_day, :review}], else: []
-
-    covers =
-      case page.covers do
-        %Date.Range{} = covers -> for day <- covers, within.(day), do: {day, :covers}
-        nil -> []
-      end
+    review = review_events(page, within)
+    covers = cover_events(page.covers, within)
 
     due ++ review ++ covers ++ revisits(page, first, last)
   end
+
+  defp review_events(page, within) do
+    review_day = page.review_at && DateTime.to_date(local(page.review_at))
+    if review_day && within.(review_day), do: [{review_day, :review}], else: []
+  end
+
+  defp cover_events(%Date.Range{} = covers, within),
+    do: for(day <- covers, within.(day), do: {day, :covers})
+
+  defp cover_events(nil, _within), do: []
 
   defp revisits(%Page{revisit: nil}, _first, _last), do: []
 
@@ -373,19 +378,20 @@ defmodule Notebook.Pages do
       end)
 
     for day <- range, Date.day_of_week(day) in 1..5, into: %{} do
-      slots =
-        for hour <- 10..16 do
-          time = Time.new!(hour, 0, 0)
-
-          case Map.fetch(taken, NaiveDateTime.new!(day, time)) do
-            {:ok, nil} -> %{time: time, label: "Taken", disabled: true}
-            {:ok, title} -> %{time: time, label: "Taken: #{title}", disabled: true}
-            :error -> %{time: time}
-          end
-        end
+      slots = for hour <- 10..16, do: slot(taken, day, hour)
 
       free = Enum.count(slots, &(!Map.get(&1, :disabled)))
       {day, [slots: slots, title: "#{free} free #{if free == 1, do: "time", else: "times"}"]}
+    end
+  end
+
+  defp slot(taken, day, hour) do
+    time = Time.new!(hour, 0, 0)
+
+    case Map.fetch(taken, NaiveDateTime.new!(day, time)) do
+      {:ok, nil} -> %{time: time, label: "Taken", disabled: true}
+      {:ok, title} -> %{time: time, label: "Taken: #{title}", disabled: true}
+      :error -> %{time: time}
     end
   end
 

@@ -33,6 +33,7 @@ defmodule NotebookWeb.MCP do
   alias Notebook.Accounts.User
   alias Notebook.Agents.Agent
   alias Notebook.Bots.Bot
+  alias NotebookWeb.MCP.Actors
   alias Sake.Actors.Actor
 
   @doc """
@@ -56,7 +57,7 @@ defmodule NotebookWeb.MCP do
   def agent(%Sake.Context{scope: %Agent{} = agent}), do: agent_of(agent)
 
   def agent(%Sake.Context{scope: %User{} = user} = ctx) do
-    case NotebookWeb.MCP.Actors.default(ctx) do
+    case Actors.default(ctx) do
       %Actor{} = actor -> agent(%{ctx | actor: actor})
       nil -> client_agent(user, ctx)
     end

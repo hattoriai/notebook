@@ -6,7 +6,7 @@ defmodule Notebook.Accounts do
   import Ecto.Query, warn: false
   alias Notebook.Repo
 
-  alias Notebook.Accounts.{User, UserToken, UserNotifier}
+  alias Notebook.Accounts.{User, UserNotifier, UserToken}
 
   ## Database getters
 

@@ -8,6 +8,7 @@ defmodule Notebook.Spaces do
   """
   import Ecto.Query
 
+  alias Narabe.Ecto.Mixed
   alias Notebook.Accounts.{Scope, User}
   alias Notebook.Pages.Page
   alias Notebook.Permissions
@@ -254,19 +255,19 @@ defmodule Notebook.Spaces do
 
         Repo.delete(space)
       end)
-      |> tap(fn
-        {:ok, _} ->
-          # The space's image, and its pages' (gone with them).
-          for icon <- [space.icon | page_icons], do: Notebook.Icon.discard_image(icon, nil)
-
-        _error ->
-          :ok
-      end)
+      |> tap(&discard_icons(&1, space, page_icons))
       |> archive_changed()
     end
   end
 
   def delete(_scope, %Space{}), do: {:error, :not_archived}
+
+  # The space's image, and its pages' (gone with them).
+  defp discard_icons({:ok, _}, space, page_icons) do
+    for icon <- [space.icon | page_icons], do: Notebook.Icon.discard_image(icon, nil)
+  end
+
+  defp discard_icons(_error, _space, _page_icons), do: :ok
 
   # A page's collaborative documents (its text's drafts, its comments, its
   # charts' rooms), by their ids: "page:<id>" and "page:<id>/…".
@@ -402,7 +403,7 @@ defmodule Notebook.Spaces do
          :ok <- parent_ok(parent, space) do
       %Folder{space_id: space.id, parent_id: parent && parent.id}
       |> Folder.changeset(attrs)
-      |> Narabe.Ecto.Mixed.put_position(Repo, order(space))
+      |> Mixed.put_position(Repo, order(space))
       |> Repo.insert()
       |> changed()
     end
@@ -451,7 +452,7 @@ defmodule Notebook.Spaces do
   archived, each sibling list in the order people put it in.
   """
   def order(%Space{id: id}) do
-    Narabe.Ecto.Mixed.new(
+    Mixed.new(
       [
         folder: [from: where(Folder, space_id: ^id), parent: :parent_id],
         page: [
@@ -475,7 +476,7 @@ defmodule Notebook.Spaces do
 
     with :ok <- Permissions.authorize(scope, :edit, space),
          :ok <- shallow(tree, move) do
-      tree_result = Narabe.Ecto.Mixed.move(Repo, tree, move)
+      tree_result = Mixed.move(Repo, tree, move)
       changed(tree_result)
     end
   end
@@ -484,11 +485,11 @@ defmodule Notebook.Spaces do
   defp shallow(tree, %Narabe.Move{ids: ids, parent: parent}) do
     folders =
       for id <- ids,
-          {:ok, {"folder", pk}} <- [Narabe.Ecto.Mixed.parse_id(tree, to_string(id))],
+          {:ok, {"folder", pk}} <- [Mixed.parse_id(tree, to_string(id))],
           do: pk
 
     parent_depth =
-      case parent && Narabe.Ecto.Mixed.parse_id(tree, to_string(parent)) do
+      case parent && Mixed.parse_id(tree, to_string(parent)) do
         {:ok, {"folder", pk}} -> if Repo.get!(Folder, pk).parent_id, do: 2, else: 1
         _top -> 0
       end
@@ -510,7 +511,7 @@ defmodule Notebook.Spaces do
   def tree(scope) do
     for space <- list(scope) do
       order = order(space)
-      items = Narabe.Ecto.Mixed.items(Repo, order)
+      items = Mixed.items(Repo, order)
       children = Enum.group_by(items, & &1.parent_id)
 
       node = fn parent, node ->

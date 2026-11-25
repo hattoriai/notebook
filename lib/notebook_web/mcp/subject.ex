@@ -53,13 +53,13 @@ defmodule NotebookWeb.MCP.Subject do
     host = url[:host] || "localhost"
     port = url[:port] || if(scheme == "http", do: get_in(config, [:http, :port]))
 
-    case {scheme, port} do
-      {_, nil} -> "#{scheme}://#{host}"
-      {"https", 443} -> "https://#{host}"
-      {"http", 80} -> "http://#{host}"
-      {_, port} -> "#{scheme}://#{host}:#{port}"
-    end
+    origin(scheme, host, port)
   end
+
+  defp origin(scheme, host, nil), do: "#{scheme}://#{host}"
+  defp origin("https", host, 443), do: "https://#{host}"
+  defp origin("http", host, 80), do: "http://#{host}"
+  defp origin(scheme, host, port), do: "#{scheme}://#{host}:#{port}"
 
   @doc "The options of Sake's OAuth server, for the application's `{Sake, auth: ...}`."
   def auth_options do

@@ -10,8 +10,8 @@ defmodule Notebook.Databases do
   """
   alias Notebook.Accounts.{Scope, User}
   alias Notebook.Cardbox, as: Box
-  alias Notebook.Pages.Page
   alias Notebook.{Pages, Spaces}
+  alias Notebook.Pages.Page
 
   @default_fields [
     %{name: "Name", type: "text"},

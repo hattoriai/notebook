@@ -34,17 +34,19 @@ defmodule Notebook.Bots.Schedule do
   `DateTime`; nil when the rule has no time left.
   """
   def next(text, %DateTime{} = now, time_zone) do
-    with {:ok, rule, time} <- parse(text) do
-      local = DateTime.shift_zone!(now, time_zone)
-      start = NaiveDateTime.new!(DateTime.to_date(local), time)
+    case parse(text) do
+      {:ok, rule, time} ->
+        local = DateTime.shift_zone!(now, time_zone)
+        start = NaiveDateTime.new!(DateTime.to_date(local), time)
 
-      rule
-      |> Koyomi.Recurrence.occurrences(start)
-      |> Stream.take(5_000)
-      |> Stream.map(&to_utc(&1, time_zone))
-      |> Enum.find(&(&1 && DateTime.compare(&1, now) == :gt))
-    else
-      :error -> nil
+        rule
+        |> Koyomi.Recurrence.occurrences(start)
+        |> Stream.take(5_000)
+        |> Stream.map(&to_utc(&1, time_zone))
+        |> Enum.find(&(&1 && DateTime.compare(&1, now) == :gt))
+
+      :error ->
+        nil
     end
   end
 

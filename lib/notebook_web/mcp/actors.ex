@@ -19,9 +19,9 @@ defmodule NotebookWeb.MCP.Actors do
   import Ecto.Query
 
   alias Notebook.Accounts.{Scope, User}
+  alias Notebook.{Agents, Bots, Repo}
   alias Notebook.Agents.Agent
   alias Notebook.Bots.Bot
-  alias Notebook.{Agents, Bots, Repo}
   alias Sake.Actors.Actor
 
   @impl true

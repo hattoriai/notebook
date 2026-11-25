@@ -4,7 +4,7 @@ defmodule Notebook.PublishingTest do
 
   import Notebook.AccountsFixtures
 
-  alias Notebook.Accounts.Scope
+  alias Notebook.Accounts.{Scope, User}
   alias Notebook.{Pages, Publishing, Spaces}
 
   setup do
@@ -36,7 +36,7 @@ defmodule Notebook.PublishingTest do
   test "no handle takes the settings' addresses", %{hanzo: hanzo} do
     for word <- ~w(account notebook) do
       assert word in Publishing.reserved()
-      changeset = Notebook.Accounts.User.handle_changeset(hanzo, %{handle: word})
+      changeset = User.handle_changeset(hanzo, %{handle: word})
       assert "is a path of the notebook" in errors_on(changeset).handle
     end
   end

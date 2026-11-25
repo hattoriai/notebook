@@ -1,8 +1,9 @@
 defmodule Notebook.Accounts.UserNotifier do
+  @moduledoc "The emails sent to users: to change their email, to log in, to confirm their account."
   import Swoosh.Email
 
-  alias Notebook.Mailer
   alias Notebook.Accounts.User
+  alias Notebook.Mailer
 
   # Delivers the email using the application mailer.
   defp deliver(recipient, subject, body) do

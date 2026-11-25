@@ -13,8 +13,8 @@ defmodule Notebook.Charts do
 
   alias Notebook.Accounts.Scope
   alias Notebook.Charts.Chart
-  alias Notebook.Pages.{Page, Row}
   alias Notebook.{Pages, Repo}
+  alias Notebook.Pages.{Page, Row}
 
   @presets [
     {"points_by_status", "Points by status", "How far the work has come"},

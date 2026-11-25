@@ -13,8 +13,8 @@ defmodule NotebookWeb.Commands do
 
   alias Phoenix.LiveView.JS
 
-  alias Notebook.{Pages, Spaces}
   alias Notebook.Accounts.Scope
+  alias Notebook.{Pages, Spaces}
 
   @impl true
   def actions(socket) do

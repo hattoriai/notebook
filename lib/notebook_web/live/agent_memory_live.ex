@@ -9,6 +9,7 @@ defmodule NotebookWeb.AgentMemoryLive do
 
   import Ecto.Query, only: [from: 2]
 
+  alias Notebook.Accounts.Scope
   alias Notebook.Agents.Agent
   alias Notebook.Memory
 
@@ -55,7 +56,7 @@ defmodule NotebookWeb.AgentMemoryLive do
     hidden =
       Memory.hidden(
         agent.id,
-        Notebook.Accounts.Scope.for_agent(scope.user, Notebook.Agents.key(agent))
+        Scope.for_agent(scope.user, Notebook.Agents.key(agent))
       )
 
     assign(socket, files: files, file: file, hidden: hidden, sources: sources(scope, file))
@@ -87,7 +88,7 @@ defmodule NotebookWeb.AgentMemoryLive do
 
     result =
       if path == Memory.self_path(),
-        do: with({:ok, agent} <- Memory.put_instructions(agent, content), do: {:ok, agent}),
+        do: Memory.put_instructions(agent, content),
         else: Memory.write(agent.id, path, content)
 
     case result do

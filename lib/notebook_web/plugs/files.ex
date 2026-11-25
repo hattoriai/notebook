@@ -9,6 +9,7 @@ defmodule NotebookWeb.Plugs.Files do
   @behaviour Plug
 
   alias Notebook.Storage
+  alias Storehouse.Local.Plug, as: LocalPlug
 
   @impl true
   def init(opts), do: opts
@@ -17,7 +18,7 @@ defmodule NotebookWeb.Plugs.Files do
   def call(%Plug.Conn{path_info: ["uploads", "kotoba" | parts]} = conn, _opts) do
     case Storage.store_of(Enum.join(parts, "/")) do
       Storehouse.Local ->
-        Storehouse.Local.Plug.call(conn, Storehouse.Local.Plug.init(at: Storage.prefix()))
+        LocalPlug.call(conn, LocalPlug.init(at: Storage.prefix()))
 
       bucket ->
         plug = if Storage.serve() == "redirect", do: Storehouse.Redirect, else: Storehouse.Proxy

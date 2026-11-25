@@ -9,6 +9,8 @@ defmodule Notebook.Tools do
   (`Notebook.Actions`: rename it, give it a due date, add records).
   """
 
+  alias Notebook.Accounts.Scope
+
   @doc "Every tool of the Notebook, for MCP (NotebookWeb.MCP) or an app's own model."
   def all do
     [Notebook.Tools.ListPages, Notebook.Tools.Memory, Notebook.Tools.ReadDatabase] ++
@@ -34,7 +36,7 @@ defmodule Notebook.Tools do
          key = Issho.Identity.new(person).key,
          {id, ""} <- Integer.parse(key),
          %Notebook.Accounts.User{} = user <- Notebook.Repo.get(Notebook.Accounts.User, id) do
-      Notebook.Accounts.Scope.for_agent(user, Issho.Identity.new(ctx.actor).key)
+      Scope.for_agent(user, Issho.Identity.new(ctx.actor).key)
     else
       _ -> nil
     end

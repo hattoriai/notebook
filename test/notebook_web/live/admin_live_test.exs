@@ -6,6 +6,7 @@ defmodule NotebookWeb.AdminLiveTest do
   import Phoenix.LiveViewTest
   import Notebook.AccountsFixtures
 
+  alias Notebook.Accounts.Scope
   alias Notebook.{FakeS3, Storage}
 
   setup do
@@ -104,7 +105,7 @@ defmodule NotebookWeb.AdminLiveTest do
     assert get(signed_in, "/uploads/kotoba/" <> key).resp_body == "Fold the steel twelve times."
 
     {:ok, _config} =
-      Storage.save(Notebook.Accounts.Scope.for_user(admin), %{
+      Storage.save(Scope.for_user(admin), %{
         "kind" => "bucket",
         "provider" => "other",
         "endpoint" => bucket.endpoint,
@@ -114,7 +115,7 @@ defmodule NotebookWeb.AdminLiveTest do
         "secret_access_key" => "no-more-swords"
       })
 
-    scope = Notebook.Accounts.Scope.for_user(admin)
+    scope = Scope.for_user(admin)
 
     for action <- ["copy", "remove"] do
       {:ok, transfer} = Storage.start_transfer(scope, action)

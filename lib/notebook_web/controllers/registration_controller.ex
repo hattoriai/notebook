@@ -20,8 +20,7 @@ defmodule NotebookWeb.RegistrationController do
       {:error, changeset} ->
         message =
           changeset.errors
-          |> Enum.map(fn {field, {reason, _}} -> "#{field} #{reason}" end)
-          |> Enum.join(", ")
+          |> Enum.map_join(", ", fn {field, {reason, _}} -> "#{field} #{reason}" end)
 
         conn
         |> put_flash(:error, message)

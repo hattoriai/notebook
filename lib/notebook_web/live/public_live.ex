@@ -12,8 +12,8 @@ defmodule NotebookWeb.PublicLive do
   use NotebookWeb, :live_view
 
   alias Notebook.Accounts.Scope
-  alias Notebook.Pages.Page
   alias Notebook.{Charts, Pages, Publishing}
+  alias Notebook.Pages.Page
 
   @impl true
   def mount(%{"path" => words}, session, socket) do

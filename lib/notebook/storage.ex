@@ -20,7 +20,7 @@ defmodule Notebook.Storage do
 
   alias Notebook.Accounts.Scope
   alias Notebook.Repo
-  alias Notebook.Storage.{Config, Setting}
+  alias Notebook.Storage.{Config, Setting, Transfer}
 
   @topic "storage"
   # The bucket's secret is the notebook's (Notebook.Secrets), not the settings'.
@@ -105,16 +105,20 @@ defmodule Notebook.Storage do
         add_error(changeset, :endpoint, "is needed for this store")
 
       {_provider, endpoint} ->
-        case URI.parse(endpoint) do
-          %URI{scheme: scheme, host: host}
-          when scheme in ["http", "https"] and host not in [nil, ""] ->
-            if String.contains?(endpoint, "<"),
-              do: add_error(changeset, :endpoint, "has a part to fill in"),
-              else: changeset
+        validate_address(changeset, endpoint)
+    end
+  end
 
-          _other ->
-            add_error(changeset, :endpoint, "must be an address, https://…")
-        end
+  defp validate_address(changeset, endpoint) do
+    case URI.parse(endpoint) do
+      %URI{scheme: scheme, host: host}
+      when scheme in ["http", "https"] and host not in [nil, ""] ->
+        if String.contains?(endpoint, "<"),
+          do: add_error(changeset, :endpoint, "has a part to fill in"),
+          else: changeset
+
+      _other ->
+        add_error(changeset, :endpoint, "must be an address, https://…")
     end
   end
 
@@ -317,7 +321,7 @@ defmodule Notebook.Storage do
     end
   end
 
-  @doc "How the bucket's files are served: `\"app\"` or `\"redirect\"`."
+  @doc ~s(How the bucket's files are served: `"app"` or `"redirect"`.)
   def serve, do: Map.get(stored(), "serve", "app")
 
   @doc "The address of the files, the same in every store."
@@ -355,7 +359,7 @@ defmodule Notebook.Storage do
         "started_at" => now,
         "finished_at" => nil
       })
-      |> Notebook.Storage.Transfer.enqueue()
+      |> Transfer.enqueue()
     else
       nil -> {:error, :nothing_to_move}
       error -> error
@@ -369,7 +373,7 @@ defmodule Notebook.Storage do
       transfer
       |> Map.merge(%{"state" => if(transfer["total"], do: "running", else: "counting")})
       |> put_transfer()
-      |> Notebook.Storage.Transfer.enqueue()
+      |> Transfer.enqueue()
     end
   end
 

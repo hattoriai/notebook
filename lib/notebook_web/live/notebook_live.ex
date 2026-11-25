@@ -1,11 +1,11 @@
 defmodule NotebookWeb.NotebookLive do
   use NotebookWeb, :live_view
 
-  alias Notebook.{Charts, Databases, Pages}
   alias Notebook.Cardbox, as: Box
   alias Notebook.Cardbox.People
-  alias Phoenix.LiveView.JS
+  alias Notebook.{Charts, Databases, Pages}
   alias Notebook.Pages.Page
+  alias Phoenix.LiveView.JS
 
   # A page opened by its id (/pages/5, a link from before slugs) or an old
   # slug goes to its address (/pages/the-last-blade), in place.

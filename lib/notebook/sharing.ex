@@ -15,8 +15,8 @@ defmodule Notebook.Sharing do
 
   alias Notebook.Accounts.{Scope, User}
   alias Notebook.Pages.Page
-  alias Notebook.Spaces.Folder
   alias Notebook.{Permissions, Repo, Spaces}
+  alias Notebook.Spaces.Folder
 
   @roles ~w(viewer commenter editor)
 

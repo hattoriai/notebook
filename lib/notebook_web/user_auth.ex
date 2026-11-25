@@ -1,4 +1,8 @@
 defmodule NotebookWeb.UserAuth do
+  @moduledoc """
+  Signing people in and out (the session and the remember-me cookie), and
+  the plugs and `on_mount` hooks that load the current scope or require it.
+  """
   use NotebookWeb, :verified_routes
 
   import Plug.Conn

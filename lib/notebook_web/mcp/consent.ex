@@ -12,6 +12,8 @@ defmodule NotebookWeb.MCP.Consent do
 
   use NotebookWeb, :html
 
+  alias Phoenix.HTML.Safe
+
   @impl true
   def render(assigns),
     do:
@@ -25,7 +27,7 @@ defmodule NotebookWeb.MCP.Consent do
   defp page(inner, title) do
     %{inner_content: inner, page_title: title, current_scope: nil, bare: true}
     |> NotebookWeb.Layouts.root()
-    |> Phoenix.HTML.Safe.to_iodata()
+    |> Safe.to_iodata()
   end
 
   defp consent(assigns) do

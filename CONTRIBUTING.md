@@ -61,9 +61,10 @@ A pull request with an issue says so: `Fixes #123` or `Closes #123`.
   ```
 
   It compiles with warnings as errors, unlocks unused dependencies,
-  formats the code and runs the tests. CI runs the same checks, but with
-  `mix format --check-formatted` and `mix deps.unlock --check-unused`, so
-  it fails rather than changing your files. CI also runs Dialyzer, which
+  formats the code, runs `mix credo --strict` and runs the tests. CI runs
+  the same checks, but with `mix format --check-formatted` and
+  `mix deps.unlock --check-unused`, so it fails rather than changing your
+  files. CI also runs Dialyzer, which
   is slower; run it yourself for a change to types or specs:
 
   ```sh
@@ -76,8 +77,8 @@ The pull request template has these as a checklist.
 
 Match the code around your change: its naming, its comments and the way
 its guides are written. [AGENTS.md](AGENTS.md) has the project's
-conventions for Phoenix, LiveView, Ecto and the templates. `mix format`
-settles the rest.
+conventions for Phoenix, LiveView, Ecto and the templates. `mix format` and
+`mix credo --strict` settle the rest.
 
 ## License
 

@@ -1,4 +1,5 @@
 defmodule Notebook.People do
+  @moduledoc "The people of the notebook (not bots) by name: those an \"@\" in a text offers."
   import Ecto.Query
   alias Notebook.Accounts.User
   alias Notebook.Repo

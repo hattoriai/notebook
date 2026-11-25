@@ -3,8 +3,10 @@ defmodule NotebookWeb.UpController do
 
   use NotebookWeb, :controller
 
+  alias Ecto.Adapters.SQL
+
   def index(conn, _params) do
-    Ecto.Adapters.SQL.query!(Notebook.Repo, "SELECT 1")
+    SQL.query!(Notebook.Repo, "SELECT 1")
     text(conn, "ok")
   end
 end

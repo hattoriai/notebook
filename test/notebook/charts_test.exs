@@ -4,6 +4,8 @@ defmodule Notebook.ChartsTest do
 
   import Notebook.AccountsFixtures
 
+  alias Fude.Issho.Tools.{Change, Read}
+  alias Issho.Tool.Context
   alias Notebook.Accounts.Scope
   alias Notebook.{Charts, Pages, Repo, Spaces}
   alias Notebook.Pages.Row
@@ -41,7 +43,7 @@ defmodule Notebook.ChartsTest do
   end
 
   defp ctx(user) do
-    Issho.Tool.Context.new(
+    Context.new(
       Notebook.Issho,
       %{id: "agent:#{user.id}", name: "Claude Code", kind: :agent},
       on_behalf_of: user
@@ -107,7 +109,7 @@ defmodule Notebook.ChartsTest do
     document = Charts.document(chart)
     Phoenix.PubSub.subscribe(Notebook.PubSub, Charts.topic(numbers.id))
 
-    {:ok, read} = Fude.Issho.Tools.Read.call(%{room: room, chart: document}, ctx(hanzo))
+    {:ok, read} = Read.call(%{room: room, chart: document}, ctx(hanzo))
 
     assert %{
              "columns" => ["Status", "Points"],
@@ -117,14 +119,14 @@ defmodule Notebook.ChartsTest do
     spec = Map.put(read["spec"], "title", "How far the blades have come")
 
     assert {:ok, _} =
-             Fude.Issho.Tools.Change.call(%{room: room, chart: document, spec: spec}, ctx(hanzo))
+             Change.call(%{room: room, chart: document, spec: spec}, ctx(hanzo))
 
     assert_receive {:chart_changed, id}
     assert id == chart.id
     assert Repo.get!(Charts.Chart, chart.id).spec["title"] == "How far the blades have come"
 
     # Yuki's agent is in the page's room, and does not read the table.
-    {:ok, read} = Fude.Issho.Tools.Read.call(%{room: room, chart: document}, ctx(yuki))
+    {:ok, read} = Read.call(%{room: room, chart: document}, ctx(yuki))
     assert %{"errors" => [_]} = read["shows"]
   end
 
