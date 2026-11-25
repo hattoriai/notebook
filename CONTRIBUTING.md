@@ -15,8 +15,8 @@ what it adds.
   expected and what happened.
 - **An idea or a change of behaviour.** Open an issue with the feature
   request form, and say the problem before the solution.
-- **A security problem.** Do not open an issue. Report it privately, from
-  the repository's Security tab ("Report a vulnerability").
+- **A security problem.** Do not open an issue. See
+  [SECURITY.md](SECURITY.md).
 
 Search the open and closed issues first: the idea may already be planned,
 or turned down for a reason given there.
@@ -73,3 +73,8 @@ Match the code around your change: its naming, its comments and the way
 its guides are written. [AGENTS.md](AGENTS.md) has the project's
 conventions for Phoenix, LiveView, Ecto and the templates. `mix format`
 settles the rest.
+
+## License
+
+By contributing, you agree that your contribution is released under the
+MIT License of the project (see [LICENSE](LICENSE)).

@@ -109,3 +109,7 @@ Notebook is also a showcase. Each of its parts is an open-source library for Pho
 ## Contributing
 
 Bugs and ideas start as an issue, and a larger change is agreed there before a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+Notebook is released under the MIT License. See [LICENSE](LICENSE).
