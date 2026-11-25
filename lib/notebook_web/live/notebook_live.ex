@@ -1602,7 +1602,7 @@ defmodule NotebookWeb.NotebookLive do
   # selection in the body (a Kotoba place: the answer replaces it), else its
   # block (the answer goes after it).
   defp asked_place(document, %{selection: %{"anchor" => _, "focus" => _} = selection, text: text}),
-       do: %{"doc" => document, "at" => selection, "label" => text}
+    do: %{"doc" => document, "at" => selection, "label" => text}
 
   defp asked_place(document, %{block: block, text: text}) when is_binary(block),
     do: %{"doc" => document, "at" => %{"node" => block}, "label" => text}

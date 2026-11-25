@@ -21,6 +21,8 @@ defmodule Notebook.Accounts.User do
     field :as_agent, :boolean, virtual: true, default: false
     field :authenticated_at, :utc_datetime, virtual: true
 
+    has_many :identities, Notebook.Accounts.UserIdentity
+
     timestamps(type: :utc_datetime)
   end
 

@@ -127,4 +127,47 @@ defmodule NotebookWeb.AdminLiveTest do
     assert response.resp_body == "Fold the steel twelve times."
     assert get(build_conn(), "/uploads/kotoba/" <> key).status == 404
   end
+
+  test "an admin configures OpenID Connect on people settings", %{conn: conn, admin: admin} do
+    Req.Test.stub(Notebook.OIDC, fn conn ->
+      Req.Test.json(conn, %{
+        "issuer" => "https://auth.example.com",
+        "authorization_endpoint" => "https://auth.example.com/oauth/authorize",
+        "token_endpoint" => "https://auth.example.com/oauth/token",
+        "jwks_uri" => "https://auth.example.com/oauth/jwks"
+      })
+    end)
+
+    {:ok, view, html} = live(log_in_user(conn, admin), ~p"/notebook/settings/people")
+    assert html =~ "Single sign-on (OpenID Connect)"
+    assert has_element?(view, "#oidc")
+    refute has_element?(view, "#oidc_issuer")
+
+    # Toggle to OpenID Connect
+    view |> form("#oidc-form", oidc: %{enabled: "true"}) |> render_change()
+    assert has_element?(view, "#oidc_issuer")
+    assert has_element?(view, "#oidc_client_id")
+    assert has_element?(view, "#oidc-callback-url")
+
+    # Save OIDC configuration
+    view
+    |> form("#oidc-form",
+      oidc: %{
+        enabled: "true",
+        name: "Google Workspace",
+        issuer: "https://auth.example.com",
+        client_id: "google-client-id",
+        client_secret: "google-secret",
+        allowed_domains: "company.com",
+        auto_register: "true",
+        password_login: "false"
+      }
+    )
+    |> render_submit()
+
+    assert Notebook.OIDC.config().enabled == true
+    assert Notebook.OIDC.config().name == "Google Workspace"
+    assert Notebook.OIDC.config().password_login == false
+    assert Notebook.OIDC.config().allowed_domains == "company.com"
+  end
 end

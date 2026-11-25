@@ -4,28 +4,37 @@ defmodule NotebookWeb.RegistrationController do
   alias NotebookWeb.UserAuth
 
   def create(conn, %{"user" => params} = all) do
-    invite = all["invite"]
+    if not Notebook.OIDC.password_login_allowed?() do
+      conn
+      |> put_flash(
+        :error,
+        "Password registration is disabled. Please sign in with #{Notebook.OIDC.config().name}."
+      )
+      |> redirect(to: ~p"/users/log-in")
+    else
+      invite = all["invite"]
 
-    case Invitations.register(params, invite) do
-      {:ok, user} ->
-        conn
-        |> put_flash(:info, "Welcome to Notebook, #{user.name}.")
-        |> UserAuth.log_in_user(user)
+      case Invitations.register(params, invite) do
+        {:ok, user} ->
+          conn
+          |> put_flash(:info, "Welcome to Notebook, #{user.name}.")
+          |> UserAuth.log_in_user(user)
 
-      {:error, :invite_only} ->
-        conn
-        |> put_flash(:error, "This notebook is invite only, and this link does not work.")
-        |> redirect(to: ~p"/users/register")
+        {:error, :invite_only} ->
+          conn
+          |> put_flash(:error, "This notebook is invite only, and this link does not work.")
+          |> redirect(to: ~p"/users/register")
 
-      {:error, changeset} ->
-        message =
-          changeset.errors
-          |> Enum.map(fn {field, {reason, _}} -> "#{field} #{reason}" end)
-          |> Enum.join(", ")
+        {:error, changeset} ->
+          message =
+            changeset.errors
+            |> Enum.map(fn {field, {reason, _}} -> "#{field} #{reason}" end)
+            |> Enum.join(", ")
 
-        conn
-        |> put_flash(:error, message)
-        |> redirect(to: register_path(invite))
+          conn
+          |> put_flash(:error, message)
+          |> redirect(to: register_path(invite))
+      end
     end
   end
 

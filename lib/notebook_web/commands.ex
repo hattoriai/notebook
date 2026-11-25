@@ -95,7 +95,7 @@ defmodule NotebookWeb.Commands do
       action(:notebook_settings, "Notebook settings",
         section: "Go to",
         icon: "hero-adjustments-horizontal",
-        keywords: ~w(admin storage bucket invite invitation join register),
+        keywords: ~w(admin storage bucket invite invitation join register oidc sso login),
         navigate: ~p"/notebook/settings/people"
       )
     ]
