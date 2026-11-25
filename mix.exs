@@ -96,6 +96,8 @@ defmodule Notebook.MixProject do
       {:cardbox, "~> 0.2"},
       {:sekisho, "~> 0.2.0"},
       {:narabe, "~> 0.2"},
+      # The notebook's secrets, encrypted in the database (Notebook.Vault).
+      {:strongbox, "~> 0.1.0-dev"},
       {:tz, "~> 0.28"},
       # 0.43 frees a statement without waiting for its connection's lock,
       # which another connection could hold through SQLite's busy timeout:

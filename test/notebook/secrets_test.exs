@@ -8,17 +8,16 @@ defmodule Notebook.SecretsTest do
   @new Base.encode64(:binary.copy(<<2>>, 32))
 
   # The vault again, with the keys of the environment now.
-  defp restart_vault(env) do
+  defp load_vault(env) do
     for {name, value} <- env,
         do: if(value, do: System.put_env(name, value), else: System.delete_env(name))
 
-    :ok = Supervisor.terminate_child(Notebook.Supervisor, Vault)
-    {:ok, _pid} = Supervisor.restart_child(Notebook.Supervisor, Vault)
+    Vault.load()
   end
 
   setup do
     on_exit(fn ->
-      restart_vault(%{"NOTEBOOK_VAULT_KEY" => nil, "NOTEBOOK_VAULT_RETIRED_KEYS" => nil})
+      load_vault(%{"NOTEBOOK_VAULT_KEY" => nil, "NOTEBOOK_VAULT_RETIRED_KEYS" => nil})
     end)
   end
 
@@ -32,7 +31,8 @@ defmodule Notebook.SecretsTest do
     assert Secrets.get("storage.secret_access_key") == "no-more-swords"
     refute raw("storage.secret_access_key") =~ "no-more-swords"
     # Its key's tag, at its start: a secret names the key it needs.
-    assert String.contains?(raw("storage.secret_access_key"), Vault.tag())
+    assert <<2, _flags, 8, tag::binary-8, _rest::binary>> = raw("storage.secret_access_key")
+    assert tag == Vault.tag()
 
     :ok = Secrets.put("storage.secret_access_key", "a new one")
     assert Secrets.get("storage.secret_access_key") == "a new one"
@@ -45,30 +45,56 @@ defmodule Notebook.SecretsTest do
     :ok = Secrets.put("webhook", "the first")
 
     # A key set the first time: the derived one is retired at once.
-    restart_vault(%{"NOTEBOOK_VAULT_KEY" => @old})
+    load_vault(%{"NOTEBOOK_VAULT_KEY" => @old})
     assert Secrets.get("webhook") == "the first"
+    assert Vault.stale?(raw("webhook"))
     assert Secrets.rotate() == 1
+    refute Vault.stale?(raw("webhook"))
     assert String.contains?(raw("webhook"), Vault.tag(Base.decode64!(@old)))
 
+    # Nothing is written again under the key of now.
+    assert Secrets.rotate() == 0
+
     # Another key, the old one retired.
-    restart_vault(%{"NOTEBOOK_VAULT_KEY" => @new, "NOTEBOOK_VAULT_RETIRED_KEYS" => @old})
+    load_vault(%{"NOTEBOOK_VAULT_KEY" => @new, "NOTEBOOK_VAULT_RETIRED_KEYS" => @old})
     assert Secrets.get("webhook") == "the first"
     assert Secrets.rotate() == 1
     assert String.contains?(raw("webhook"), Vault.tag(Base.decode64!(@new)))
 
     # The old key gone: what it encrypted is to be given again, nothing breaks.
-    restart_vault(%{"NOTEBOOK_VAULT_KEY" => @old, "NOTEBOOK_VAULT_RETIRED_KEYS" => nil})
+    load_vault(%{"NOTEBOOK_VAULT_KEY" => @old, "NOTEBOOK_VAULT_RETIRED_KEYS" => nil})
     assert Secrets.get("webhook") == nil
     assert Secrets.rotate() == 0
   end
 
-  # A secret Cloak's AES.GCM encrypted (the notebook's vault before), with
-  # the key @old: it still opens, so a notebook's secrets outlive Cloak.
+  # A secret Cloak's AES.GCM encrypted (the notebook's vault before
+  # Strongbox), with the key @old: it still opens, so a notebook's secrets
+  # outlive both.
   @cloaked "ARBBRVMuR0NNLjcyY2Q2ZTg00C5LoImp00XI4gabqVLQbhqQ9zljy4NhVTEfVZzoPTKENJq+2aJ4Pk3S"
 
   test "a secret Cloak encrypted still opens" do
-    restart_vault(%{"NOTEBOOK_VAULT_KEY" => @old})
+    load_vault(%{"NOTEBOOK_VAULT_KEY" => @old})
     assert Vault.decrypt(Base.decode64!(@cloaked)) == {:ok, "no-more-swords"}
     assert Vault.decrypt("not a secret") == :error
+  end
+
+  test "a secret of the vault of before opens, and is encrypted again as Strongbox does" do
+    load_vault(%{"NOTEBOOK_VAULT_KEY" => @new, "NOTEBOOK_VAULT_RETIRED_KEYS" => @old})
+
+    Repo.query!(
+      "INSERT INTO secrets (name, value, inserted_at, updated_at) VALUES (?, ?, ?, ?)",
+      ["webhook", {:blob, Base.decode64!(@cloaked)}, "2026-10-25T00:00:00", "2026-10-25T00:00:00"]
+    )
+
+    assert Secrets.get("webhook") == "no-more-swords"
+    assert Vault.stale?(raw("webhook"))
+
+    assert Secrets.rotate() == 1
+    assert Secrets.get("webhook") == "no-more-swords"
+    refute Vault.stale?(raw("webhook"))
+
+    # The key of before gone: the secret no longer needs it.
+    load_vault(%{"NOTEBOOK_VAULT_KEY" => @new, "NOTEBOOK_VAULT_RETIRED_KEYS" => nil})
+    assert Secrets.get("webhook") == "no-more-swords"
   end
 end

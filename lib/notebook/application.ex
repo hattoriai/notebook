@@ -9,11 +9,12 @@ defmodule Notebook.Application do
 
   @impl true
   def start(_type, _args) do
+    # The keys of the notebook's secrets (Notebook.Secrets), read once.
+    Notebook.Vault.load()
+
     children = [
       NotebookWeb.Telemetry,
       Notebook.Repo,
-      # The key of the notebook's secrets (Notebook.Secrets).
-      Notebook.Vault,
       # Where the files are kept (this disk, or a bucket), as the admins chose.
       Notebook.Storage,
       {DNSCluster, query: Application.get_env(:notebook, :dns_cluster_query) || :ignore},

@@ -13,6 +13,21 @@ How to deploy a version is in the
 
 ## [Unreleased]
 
+### Upgrading
+
+Nothing to do: the secrets a notebook has still open, with the same
+`NOTEBOOK_VAULT_KEY` (or `SECRET_KEY_BASE`). A secret is written in the
+new format when it is saved, or all at once with
+`Notebook.Secrets.rotate()`. Version 0.2.0 does not read the new format:
+to go back to it, give those secrets again.
+
+### Changed
+
+- The notebook's secrets are encrypted with
+  [Strongbox](https://hex.pm/packages/strongbox): each has a key of its
+  own, derived from the vault's key, and is bound to its column. The
+  vault's keys, and how they rotate, are as before.
+
 ## [0.2.0] - 2026-11-25
 
 The first release. Before it, Notebook was deployed from `main`.

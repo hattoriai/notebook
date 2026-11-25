@@ -9,6 +9,7 @@ defmodule Notebook.Secrets do
 
   alias Notebook.Repo
   alias Notebook.Secrets.Secret
+  alias Notebook.Vault
 
   @doc "The secret named `name`, or nil (also when no key opens it)."
   def get(name) do
@@ -39,20 +40,26 @@ defmodule Notebook.Secrets do
   end
 
   @doc """
-  Encrypts every secret again with the key of now (`Notebook.Vault`):
-  after a key is changed, so that the old one can go. Gives the number
-  encrypted again; a secret no key opens is left as it is.
+  Encrypts again, with the key of now (`Notebook.Vault`), every secret
+  another key encrypted: after a key is changed, so that the old one can
+  go. Gives the number encrypted again; a secret no key opens is left as
+  it is.
 
       bin/notebook eval "Notebook.Secrets.rotate()"
   """
   def rotate do
+    # Each secret as it is stored, to ask the vault whether the key of now
+    # wrote it. (Strongbox.Rotation.run/3 of Strongbox 0.1.0-dev writes
+    # nothing on SQLite: it compares the stored bytes with a text.)
     Secret
-    |> select([s], s.name)
+    |> select([s], {s.name, fragment("?", s.value)})
     |> Repo.all()
-    |> Enum.count(fn name ->
-      case get(name) do
-        nil -> false
-        value -> put(name, value) == :ok
+    |> Enum.count(fn {name, stored} ->
+      with true <- Vault.stale?(stored),
+           value when is_binary(value) <- get(name) do
+        put(name, value) == :ok
+      else
+        _current_or_unreadable -> false
       end
     end)
   end
