@@ -105,3 +105,7 @@ Notebook is also a showcase. Each of its parts is an open-source library for Pho
 - [Self-hosting](guides/self-hosting.md): deploying with Kamal, files, secrets and backups
 - [Publishing](guides/publishing.md): pages and blogs at an address of your own
 - [Development](guides/development.md): running the checks, and trying unreleased library changes
+
+## Contributing
+
+Bugs and ideas start as an issue, and a larger change is agreed there before a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md).

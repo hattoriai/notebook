@@ -1,0 +1,69 @@
+name: Bug report
+description: Something in Notebook does not work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. A security problem goes to a private report instead (see CONTRIBUTING.md).
+
+  - type: input
+    id: version
+    attributes:
+      label: Notebook version
+      description: The commit or image tag you run, or "main".
+      placeholder: "main @ 864c6c3"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: setup
+    attributes:
+      label: Where it runs
+      options:
+        - Self-hosted (Kamal / Docker)
+        - Locally, for development
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and OS
+      description: For what the browser shows or does.
+      placeholder: "Safari 26, macOS 26"
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps
+      placeholder: |
+        1. Open a page
+        2. Paste an image
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: The error and its stacktrace, from the server log or the browser console. Remove secrets and personal data first.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched the open and closed issues.
+          required: true
