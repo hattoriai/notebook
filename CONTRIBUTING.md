@@ -63,7 +63,12 @@ A pull request with an issue says so: `Fixes #123` or `Closes #123`.
   It compiles with warnings as errors, unlocks unused dependencies,
   formats the code and runs the tests. CI runs the same checks, but with
   `mix format --check-formatted` and `mix deps.unlock --check-unused`, so
-  it fails rather than changing your files.
+  it fails rather than changing your files. CI also runs Dialyzer, which
+  is slower; run it yourself for a change to types or specs:
+
+  ```sh
+  mix dialyzer
+  ```
 
 The pull request template has these as a checklist.
 
