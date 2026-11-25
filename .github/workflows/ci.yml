@@ -9,12 +9,9 @@ jobs:
   # The checks of `mix precommit`, without its writes: the formatter checks
   # instead of formatting, and the unused dependencies are reported instead
   # of unlocked. The tests run on SQLite, the notebook's database, in a file
-  # under tmp/: no service is needed.
+  # under tmp/: no service is needed. Then Dialyzer, in :dev.
   test:
     runs-on: ubuntu-latest
-
-    env:
-      MIX_ENV: test
 
     steps:
       - uses: actions/checkout@v7
@@ -35,6 +32,14 @@ jobs:
           restore-keys: |
             mix-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-
 
+      - uses: actions/cache@v6
+        with:
+          path: priv/plts
+          key: plt-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            plt-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-
+
+      # All environments: the tests run in :test, dialyxir in :dev.
       - run: mix deps.get
 
       - run: mix deps.unlock --check-unused
@@ -42,5 +47,13 @@ jobs:
       - run: mix format --check-formatted
 
       - run: mix compile --warnings-as-errors
+        env:
+          MIX_ENV: test
 
       - run: mix test
+        env:
+          MIX_ENV: test
+
+      - run: mix dialyzer
+        env:
+          MIX_ENV: dev

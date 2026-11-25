@@ -16,6 +16,6 @@ Fixes #<!-- the issue; see CONTRIBUTING.md for when a pull request needs one -->
 
 - [ ] One change: anything unrelated is in its own pull request.
 - [ ] A bug fix has a test that fails on `main` and passes here.
-- [ ] `mix precommit` passes (CI runs the same checks).
+- [ ] `mix precommit` and `mix dialyzer` pass (CI runs the same checks).
 - [ ] Says so here if it adds a migration, a setting or environment variable, or changes sign-in, permissions or what a running notebook does today.
 - [ ] The README and `guides/` are updated, for a change an admin or a user can see.
