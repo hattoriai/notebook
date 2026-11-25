@@ -50,7 +50,7 @@ defmodule Notebook.SecretsTest do
     assert Vault.stale?(raw("webhook"))
     assert Secrets.rotate() == 1
     refute Vault.stale?(raw("webhook"))
-    assert String.contains?(raw("webhook"), Vault.tag(Base.decode64!(@old)))
+    assert String.contains?(raw("webhook"), Strongbox.Key.tag(Base.decode64!(@old)))
 
     # Nothing is written again under the key of now.
     assert Secrets.rotate() == 0
@@ -59,7 +59,7 @@ defmodule Notebook.SecretsTest do
     load_vault(%{"NOTEBOOK_VAULT_KEY" => @new, "NOTEBOOK_VAULT_RETIRED_KEYS" => @old})
     assert Secrets.get("webhook") == "the first"
     assert Secrets.rotate() == 1
-    assert String.contains?(raw("webhook"), Vault.tag(Base.decode64!(@new)))
+    assert String.contains?(raw("webhook"), Strongbox.Key.tag(Base.decode64!(@new)))
 
     # The old key gone: what it encrypted is to be given again, nothing breaks.
     load_vault(%{"NOTEBOOK_VAULT_KEY" => @old, "NOTEBOOK_VAULT_RETIRED_KEYS" => nil})

@@ -18,6 +18,7 @@ defmodule Notebook.Vault do
   use Strongbox
 
   alias Plug.Crypto.KeyGenerator
+  alias Strongbox.Key
 
   # The key that encrypts now, then the retired ones that still open. Each
   # is there twice: as Strongbox writes, and as the notebook's vault of
@@ -42,8 +43,11 @@ defmodule Notebook.Vault do
     keys = [default | retired |> Enum.uniq() |> Enum.reject(&(&1 == default))]
 
     keys =
-      Enum.map(keys, &%{tag: tag(&1), key: &1}) ++
-        Enum.map(keys, &%{tag: "AES.GCM." <> tag(&1), key: &1, format: :cloak, iv_length: 12})
+      Enum.map(keys, &%{tag: Key.tag(&1), key: &1}) ++
+        Enum.map(
+          keys,
+          &%{tag: "AES.GCM." <> Key.tag(&1), key: &1, format: :cloak, iv_length: 12}
+        )
 
     :persistent_term.put(__MODULE__, keys)
     keys
@@ -54,9 +58,6 @@ defmodule Notebook.Vault do
     [%{tag: tag} | _retired] = keys()
     tag
   end
-
-  @doc false
-  def tag(key), do: :crypto.hash(:sha256, key) |> binary_part(0, 4) |> Base.encode16(case: :lower)
 
   defp derived do
     secret_key_base = Application.fetch_env!(:notebook, NotebookWeb.Endpoint)[:secret_key_base]

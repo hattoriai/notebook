@@ -5,11 +5,10 @@ defmodule Notebook.Secrets do
   database by `Notebook.Vault`, and never leaves it but to the code that
   uses it.
   """
-  import Ecto.Query, only: [select: 3, where: 2]
+  import Ecto.Query, only: [where: 2]
 
   alias Notebook.Repo
   alias Notebook.Secrets.Secret
-  alias Notebook.Vault
 
   @doc "The secret named `name`, or nil (also when no key opens it)."
   def get(name) do
@@ -48,19 +47,7 @@ defmodule Notebook.Secrets do
       bin/notebook eval "Notebook.Secrets.rotate()"
   """
   def rotate do
-    # Each secret as it is stored, to ask the vault whether the key of now
-    # wrote it. (Strongbox.Rotation.run/3 of Strongbox 0.1.0-dev writes
-    # nothing on SQLite: it compares the stored bytes with a text.)
-    Secret
-    |> select([s], {s.name, fragment("?", s.value)})
-    |> Repo.all()
-    |> Enum.count(fn {name, stored} ->
-      with true <- Vault.stale?(stored),
-           value when is_binary(value) <- get(name) do
-        put(name, value) == :ok
-      else
-        _current_or_unreadable -> false
-      end
-    end)
+    {:ok, %{rewritten: rewritten}} = Strongbox.Rotation.run(Repo, Secret)
+    rewritten
   end
 end
