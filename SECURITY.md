@@ -12,8 +12,11 @@ and credit you in the advisory unless you ask us not to.
 
 ## Supported versions
 
-Notebook is not released in versions: security fixes are made on `main`.
-If you host a notebook, update to the latest `main` and deploy again.
+Security fixes are made to the latest release, as a patch version
+(0.2.1), with the advisory linked from [CHANGELOG.md](CHANGELOG.md).
+Notebook is before 1.0, so a fix is not backported to an earlier minor
+version: if you host a notebook, upgrade to the latest release (see the
+[self-hosting guide](guides/self-hosting.md#upgrade)).
 
 ## What is in scope
 

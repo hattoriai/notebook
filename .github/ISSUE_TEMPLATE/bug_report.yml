@@ -11,8 +11,8 @@ body:
     id: version
     attributes:
       label: Notebook version
-      description: The commit or image tag you run, or "main".
-      placeholder: "main @ 864c6c3"
+      description: The release you run (`bin/notebook version`), or the commit of `main`.
+      placeholder: "0.2.0"
     validations:
       required: true
 
