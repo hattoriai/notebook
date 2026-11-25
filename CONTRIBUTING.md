@@ -53,7 +53,9 @@ A pull request with an issue says so: `Fixes #123` or `Closes #123`.
   a new setting has a default that keeps today's behaviour. Say in the
   description what an admin has to do, if anything, when they upgrade.
 - **Docs.** A change an admin or a user can see updates the README or the
-  guide it belongs to.
+  guide it belongs to, and the `[Unreleased]` section of
+  [CHANGELOG.md](CHANGELOG.md), with what an admin has to do when they
+  upgrade.
 - **The checks pass.** CI runs them on every pull request; run them first:
 
   ```sh
@@ -72,6 +74,26 @@ A pull request with an issue says so: `Fixes #123` or `Closes #123`.
   ```
 
 The pull request template has these as a checklist.
+
+## Releases
+
+The maintainers make the releases. The version in `mix.exs`, the release
+headings of the changelog and the tags change only at a release:
+
+1. Bump the version in `mix.exs`: a minor version (0.3.0) for features,
+   migrations or settings, a patch version (0.2.1) for fixes.
+2. In `CHANGELOG.md`, move `[Unreleased]` under a heading of the version
+   and the date, with a line on what it brings and its **Upgrading**
+   notes, and update the links at the bottom.
+3. Merge that pull request, then tag its commit and push the tag:
+
+   ```sh
+   git tag v0.3.0
+   git push origin v0.3.0
+   ```
+
+4. Publish a GitHub release of the tag, with the changelog's section as
+   its notes.
 
 ## Style
 

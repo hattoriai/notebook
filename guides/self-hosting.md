@@ -34,6 +34,26 @@ After that, `kamal deploy` with the same variables. Each deploy builds the image
 
 Back up the volume: the database is `/data/notebook.db` (`sqlite3 /data/notebook.db ".backup copy.db"` makes a consistent copy) and the files kept on the server's disk are in `/data/uploads`.
 
+## Upgrade
+
+Notebook is released in versions, tagged `v0.2.0`, `v0.3.0`... Deploy a
+release rather than `main`, which is where the next one is made. Its
+[releases](https://github.com/hattoriai/notebook/releases) and
+[CHANGELOG.md](../CHANGELOG.md) say what each version changes, and what to
+do when you upgrade to it, under **Upgrading**.
+
+To upgrade, read the **Upgrading** notes of each version since yours,
+back up the database (above), then deploy the new tag:
+
+```sh
+git fetch --tags
+git checkout v0.3.0
+kamal deploy
+```
+
+The migrations run as part of the deploy. To see the version a notebook
+runs, `kamal app exec 'bin/notebook version'`.
+
 ## Where files are kept
 
 The notebook's first person is its admin. **Notebook settings** (the account menu, `/notebook/settings`) has a group at each address: **People** (who joins), **Agents** (how agents connect), **Bots** and **Files**. **Files** chooses where the pages' images and attachments are kept: on this server's disk, or in a bucket of any store that speaks S3 (Amazon S3, Cloudflare R2, Tigris, Backblaze B2, MinIO). A Google Drive, Dropbox or OneDrive works through [`rclone serve s3`](https://rclone.org/commands/rclone_serve_s3/). A bucket is tried before it is kept, and nothing needs deploying again.
